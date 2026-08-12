@@ -1,0 +1,2209 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>任務管理 - 互動原型</title>
+<style>
+  :root{
+    --header-bg:#3d2439;
+    --sidebar-bg:#ffffff;
+    --page-bg:#f4f5f8;
+    --border:#e5e7eb;
+    --text:#1f2937;
+    --text-secondary:#6b7280;
+    --accent:#2f6fed;
+    --accent-dark:#1e4fc0;
+    --accent-tint:#eef3ff;
+    --success:#16a34a;
+    --success-bg:#e8f7ee;
+    --danger:#dc2626;
+    --danger-bg:#fdecec;
+    --warning:#b45309;
+    --warning-bg:#fdf3e3;
+    --task-tint:#f7f9ff;
+    --reward-tint:#f5fbf8;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color:var(--text);background:var(--page-bg);font-size:14px;}
+  .app-shell{display:flex;flex-direction:column;height:100vh;}
+  svg.ic{display:inline-block;vertical-align:-3px;}
+  /* ---------- Top bar ---------- */
+  .topbar{height:52px;flex:0 0 auto;background:var(--header-bg);color:#fff;display:flex;align-items:center;padding:0 16px;gap:16px;}
+  .topbar .env-tag{font-weight:600;font-size:14px;white-space:nowrap;}
+  .topbar select, .topbar .env-id{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:6px;padding:5px 10px;font-size:13px;}
+  .topbar .env-id{color:rgba(255,255,255,.7);}
+  .topbar .spacer{flex:1;}
+  .topbar .icon-btn{width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.85);cursor:pointer;}
+  .topbar .icon-btn:hover{background:rgba(255,255,255,.12);}
+  .topbar .user{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;}
+  .topbar .avatar{width:26px;height:26px;border-radius:50%;background:#8a6a80;display:flex;align-items:center;justify-content:center;font-size:12px;}
+  /* ---------- Body shell ---------- */
+  .body-shell{flex:1;display:flex;min-height:0;}
+  .sidebar{width:212px;flex:0 0 auto;background:var(--sidebar-bg);border-right:1px solid var(--border);overflow-y:auto;padding:8px 0;}
+  .sidebar .item{display:flex;align-items:center;gap:10px;padding:10px 16px;color:#4b5563;font-size:13.5px;cursor:pointer;border-left:3px solid transparent;}
+  .sidebar .item:hover{background:#f7f7fb;}
+  .sidebar .item.active{color:var(--accent);border-left-color:var(--accent);background:#eef3ff;font-weight:600;}
+  .sidebar .item .dot{width:6px;height:6px;border-radius:50%;background:#c7c9d1;flex:0 0 auto;}
+  .sidebar .item.active .dot{background:var(--accent);}
+  .sidebar .sub{padding-left:34px;}
+  .sidebar .sub2{padding-left:50px;}
+  .scope-link{cursor:pointer;color:var(--accent);}
+  .scope-link:hover{text-decoration:underline;}
+  .main{flex:1;overflow-y:auto;padding:20px 24px;}
+  .breadcrumb{color:var(--text-secondary);font-size:13px;margin-bottom:12px;}
+  /* ---------- Card / Tabs ---------- */
+  .card{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .tabs{display:flex;border-bottom:1px solid var(--border);padding:0 16px;}
+  .tab{padding:14px 6px;margin-right:28px;font-size:14px;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+  .tab-panel{display:none;padding:16px;}
+  .tab-panel.active{display:block;}
+  /* ---------- Filter bar ---------- */
+  .filter-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .filter-bar input[type=date], .filter-bar input[type=time], .filter-bar input[type=text], .filter-bar select{
+    border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--text);background:#fff;
+  }
+  .filter-bar .arrow{color:var(--text-secondary);}
+  .btn{border:none;border-radius:6px;padding:8px 16px;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background .15s;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-outline{background:#fff;border:1px solid var(--border);color:var(--text);}
+  .btn-outline:hover{background:#f4f5f8;border-color:#d1d5db;}
+  .btn-outline[disabled]{opacity:.45;cursor:not-allowed;}
+  .btn-text{background:none;color:var(--accent);padding:6px 4px;}
+  .btn-sm{padding:5px 10px;font-size:12.5px;}
+  .spacer-flex{flex:1;}
+  /* ---------- Table ---------- */
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead th{text-align:center;background:#fafafa;color:var(--text-secondary);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  thead th.sortable{cursor:pointer;user-select:none;}
+  thead th.sortable:hover{color:var(--accent);}
+  .sort-icon{display:inline-block;margin-left:4px;font-size:10px;color:#c7cbd3;}
+  .sort-icon.active{color:var(--accent);}
+  tbody td{padding:11px 12px;border-bottom:1px solid #f0f0f2;vertical-align:middle;}
+  tbody tr:hover{background:#fafbff;}
+  .pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12.5px;font-weight:600;white-space:nowrap;}
+  .pill-success{background:var(--success-bg);color:var(--success);}
+  .pill-danger{background:var(--danger-bg);color:var(--danger);}
+  .pill-warning{background:var(--warning-bg);color:var(--warning);}
+  .pill-muted{background:#f0f1f5;color:var(--text-secondary);}
+  .tag{display:inline-block;background:#f0f1f5;border-radius:4px;padding:2px 6px;font-size:12px;margin-right:4px;color:#4b5563;}
+  .switch{position:relative;display:inline-block;width:36px;height:20px;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;cursor:pointer;inset:0;background:#d1d5db;border-radius:20px;transition:.2s;}
+  .slider:before{content:"";position:absolute;height:16px;width:16px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.2s;}
+  .switch input:checked + .slider{background:var(--accent);}
+  .switch input:checked + .slider:before{transform:translateX(16px);}
+  .switch input:disabled + .slider{opacity:.5;cursor:not-allowed;}
+  .switch input:disabled{cursor:not-allowed;}
+  .icon-action{width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-right:4px;color:#fff;}
+  .icon-view{background:#3aa0e0;}
+  .icon-edit{background:#3fbf6f;}
+  .icon-del{background:var(--danger);}
+  .btn-resend{background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning);font-weight:600;padding:5px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;}
+  .btn-resend:hover{background:var(--warning);color:#fff;}
+  /* ---------- Stat cards (紀錄頁統計) ---------- */
+  .stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+  #report-stats{grid-template-columns:repeat(6,1fr);}
+  .stat-card{background:#fafbfd;border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .stat-card .label{font-size:12.5px;color:var(--text-secondary);margin-bottom:6px;}
+  .stat-card .value{font-size:22px;font-weight:700;color:var(--text);}
+  .stat-card.accent .value{color:var(--accent);}
+  /* ---------- 分析報表:達成率長條 ---------- */
+  .rate-bar-wrap{display:inline-block;width:90px;height:8px;background:#eee;border-radius:4px;overflow:hidden;vertical-align:middle;margin-right:8px;}
+  .rate-bar{height:100%;border-radius:4px;}
+  .rate-bar.bar-good{background:var(--success);}
+  .rate-bar.bar-warn{background:var(--warning);}
+  .rate-bar.bar-bad{background:var(--danger);}
+  .rate-text{font-size:12.5px;color:var(--text-secondary);vertical-align:middle;}
+  .report-mission-row{background:#f7f8fa;font-weight:700;cursor:pointer;}
+  .report-mission-row:hover{background:#f0f2f6;}
+  .report-name-cell{display:flex;align-items:center;gap:6px;}
+  .report-chevron{display:inline-flex;transition:transform .15s;}
+  .report-task-row td:nth-child(2){padding-left:34px;color:var(--text-secondary);}
+  .report-daily-indent{padding-left:34px;color:var(--text-secondary);}
+  td.num{text-align:right;}
+  .btn-mode{border:1px solid var(--border);background:#fff;color:var(--text-secondary);padding:7px 16px;border-radius:6px;font-size:13.5px;font-weight:600;cursor:pointer;}
+  .btn-mode.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  /* ---------- Modal ---------- */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,15,20,.45);align-items:flex-start;justify-content:center;padding:32px 16px;z-index:100;overflow-y:auto;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:#fff;border-radius:14px;width:100%;max-width:960px;max-height:calc(100vh - 64px);display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(20,20,30,.22);}
+  .modal.small{max-width:460px;}
+  .modal-header{padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0;background:#fbfbfd;}
+  .modal-header h3{margin:0;font-size:16px;font-weight:700;}
+  .modal-close{cursor:pointer;color:var(--text-secondary);display:flex;padding:4px;border-radius:6px;}
+  .modal-close:hover{background:#f0f1f5;color:var(--text);}
+  .modal-body{padding:22px;overflow-y:auto;flex:1;}
+  .modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+  .form-section{margin-bottom:24px;}
+  .form-section > .sec-title{font-size:14px;font-weight:700;margin-bottom:14px;padding-left:10px;border-left:3px solid var(--accent);display:flex;align-items:center;gap:8px;}
+  .form-row{display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;}
+  .form-item{flex:1;min-width:180px;}
+  .form-item label{display:block;font-size:12.5px;color:var(--text-secondary);margin-bottom:5px;font-weight:600;}
+  .form-item input[type=text], .form-item input[type=number], .form-item input[type=date], .form-item input[type=time], .form-item select{
+    width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13.5px;
+  }
+  .hint{font-size:12px;color:var(--text-secondary);margin-top:4px;}
+  .hint.warn{color:var(--warning);}
+  .banner{display:flex;gap:10px;align-items:flex-start;background:var(--warning-bg);color:var(--warning);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px;}
+  .banner svg{flex:0 0 auto;margin-top:2px;}
+  /* ---------- generic multi-select dropdown ---------- */
+  .ms{position:relative;}
+  .ms-control{border:1px solid var(--border);border-radius:6px;padding:7px 10px;min-height:36px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;background:#fff;font-size:13px;}
+  .ms-control:hover{border-color:#c6cbd4;}
+  .ms-control .ms-summary{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ms-control .ms-summary.placeholder{color:#9aa1ac;}
+  .ms-control .chevron{flex:0 0 auto;color:var(--text-secondary);transition:transform .15s;}
+  .ms.open .ms-control .chevron{transform:rotate(180deg);}
+  .ms-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 12px 28px rgba(20,20,30,.14);z-index:20;max-height:280px;flex-direction:column;}
+  .ms.open .ms-panel{display:flex;}
+  /* 遊戲下拉選單改往上展開(置頂),避免被彈窗下緣切掉導致看不到所有選項 */
+  .ms.drop-up .ms-panel{top:auto;bottom:calc(100% + 4px);}
+  .ms-search{padding:8px;border-bottom:1px solid var(--border);}
+  .ms-search input{width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;}
+  .ms-list{overflow-y:auto;padding:6px 4px;}
+  .ms-group-title{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--text);padding:6px 8px;background:#fafbfd;border-radius:5px;}
+  .ms-option{display:flex;align-items:center;gap:7px;padding:5px 8px 5px 24px;font-size:13px;border-radius:5px;cursor:pointer;}
+  .ms-option:hover{background:#f4f6fb;}
+  .ms-empty{padding:16px;text-align:center;color:var(--text-secondary);font-size:12.5px;}
+  .chip{display:inline-flex;align-items:center;background:var(--accent-tint);color:var(--accent-dark);border-radius:5px;padding:1px 7px;font-size:12px;margin:0 4px 0 0;}
+  /* operator tree legacy checkbox (kept for reference removed from UI) */
+  /* task/reward block */
+  .tr-block{border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 2px rgba(20,20,30,.04);}
+  .tr-block-header{background:#f5f7fc;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;}
+  .tr-block-header .no-wrap{display:flex;align-items:center;gap:8px;}
+  .no-badge{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:0 0 auto;}
+  .tr-block-header .title{font-weight:700;font-size:13.5px;}
+  .tr-block-body{display:flex;}
+  .tr-col{flex:1;padding:14px;}
+  .tr-col.task{background:var(--task-tint);}
+  .tr-col.reward{background:var(--reward-tint);border-left:1px dashed var(--border);}
+  .tr-col-title{font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:10px;letter-spacing:.02em;text-transform:uppercase;}
+  select.template-select{border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;min-width:220px;}
+  .toolbar-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+  .toolbar-row .left{display:flex;align-items:center;gap:10px;}
+  .empty-note{font-size:12px;color:var(--text-secondary);}
+  .badge-fixed{display:inline-block;background:#eef3ff;color:var(--accent);border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;}
+  .detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f2;font-size:13px;}
+  .detail-row .k{color:var(--text-secondary);}
+  .detail-row .v{font-weight:600;text-align:right;}
+  /* ---------- 唯讀(檢視)模式:內容與編輯一致,僅欄位不可操作 ---------- */
+  .modal.readonly #template-apply-wrap,
+  .modal.readonly #add-task-block-btn,
+  .modal.readonly #operator-quick-select-row,
+  .modal.readonly .preset-chip .icon-mini,
+  .modal.readonly .tr-block-header .btn,
+  .modal.readonly #mission-save-btn{display:none;}
+  .modal.readonly .preset-chip > span:first-child{pointer-events:none;}
+  .modal.readonly .form-item input,
+  .modal.readonly .form-item select,
+  .modal.readonly .ms-control{pointer-events:none;background:#f7f7f9;color:var(--text-secondary);}
+  /* ---------- 啟用中(準備開始/進行中)部分鎖定模式:內容全顯示,僅名稱/結束時間可編輯 ---------- */
+  .modal.partial-lock #template-apply-wrap,
+  .modal.partial-lock #add-task-block-btn,
+  .modal.partial-lock #operator-quick-select-row,
+  .modal.partial-lock .preset-chip .icon-mini,
+  .modal.partial-lock .tr-block-header .btn{display:none;}
+  .modal.partial-lock .preset-chip > span:first-child{pointer-events:none;}
+  .modal.partial-lock .form-item select,
+  .modal.partial-lock .ms-control{pointer-events:none;background:#f7f7f9;color:var(--text-secondary);}
+  .modal.partial-lock .form-item input:not(#mission-name):not(#mission-end-date):not(#mission-end-time){pointer-events:none;background:#f7f7f9;color:var(--text-secondary);}
+  /* ---------- 幣別未選前鎖定高級營運/營運 ---------- */
+  .ms.disabled .ms-control{pointer-events:none;background:#f3f4f6;color:#9aa1ac;}
+  .form-item input[disabled]{background:#f3f4f6;color:var(--text-secondary);cursor:not-allowed;}
+  /* ---------- 營運快速選取 ---------- */
+  .preset-chip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-tint);color:var(--accent-dark);border-radius:16px;padding:4px 8px 4px 12px;font-size:12.5px;margin:0 6px 6px 0;}
+  .preset-chip > span:first-child{cursor:pointer;font-weight:600;}
+  .preset-chip .icon-mini{display:inline-flex;width:16px;height:16px;align-items:center;justify-content:center;cursor:pointer;color:var(--accent-dark);opacity:.7;}
+  .preset-chip .icon-mini:hover{opacity:1;}
+  .btn-add-preset{width:30px;height:30px;border-radius:50%;background:var(--success);color:#fff;border:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1;flex:0 0 auto;}
+  .btn-add-preset:hover{background:#128a4a;}
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ============ Top Bar ============ -->
+  <div class="topbar">
+    <div class="env-tag">測試環境(QAT)</div>
+    <select><option>新台幣 / TWD</option><option>港幣 / HKD</option><option>馬幣 / MYR</option></select>
+    <select><option>所有營運</option><option>高級營運 A</option><option>高級營運 B</option></select>
+    <div class="env-id">da0ec7e9 · v095685f9</div>
+    <div class="spacer"></div>
+    <div class="icon-btn" title="重新整理"></div>
+    <div class="icon-btn" title="複製"></div>
+    <div class="icon-btn" title="下載"></div>
+    <select style="margin-left:4px;"><option>繁體中文</option><option>English</option></select>
+    <div class="user"><div class="avatar">Y</div>yvonne</div>
+  </div>
+
+  <div class="body-shell">
+    <!-- ============ Sidebar ============ -->
+    <div class="sidebar">
+      <div class="item"><span class="dot"></span>系統總覽</div>
+      <div class="item"><span class="dot"></span>帳號管理</div>
+      <div class="item"><span class="dot"></span>權限管理</div>
+      <div class="item"><span class="dot"></span>遊戲管理</div>
+      <div class="item"><span class="dot"></span>遊戲機率</div>
+      <div class="item"><span class="dot"></span>彩池管理</div>
+      <div class="item"><span class="dot"></span>彩票管理</div>
+      <div class="item"><span class="dot"></span>記錄查詢</div>
+      <div class="item"><span class="dot"></span>消息管理</div>
+      <div class="item"><span class="dot"></span>日誌管理</div>
+      <div class="item"><span class="dot"></span>系統設定</div>
+      <div class="item"><span class="dot"></span>活動模組</div>
+      <div class="item sub"><span class="dot"></span>彩金活動</div>
+      <div class="item sub sub2 active"><span class="dot"></span>任務活動</div>
+    </div>
+
+    <!-- ============ Main ============ -->
+    <div class="main">
+      <div class="breadcrumb">活動模組 / 任務活動</div>
+
+      <div class="card">
+        <div class="tabs">
+          <div class="tab active" data-tab="mission">任務</div>
+          <div class="tab" data-tab="template">任務樣板</div>
+          <div class="tab" data-tab="record">紀錄</div>
+          <div class="tab" data-tab="report">分析報表</div>
+        </div>
+
+        <!-- ---------------- Tab 1: 任務 ---------------- -->
+        <div class="tab-panel active" id="panel-mission">
+          <div class="filter-bar">
+            <input type="date" value="2026-07-13">
+            <input type="time" value="00:00" lang="en-GB">
+            <span class="arrow">→</span>
+            <input type="date" value="2026-07-13">
+            <input type="time" value="23:59" lang="en-GB">
+            <input type="text" placeholder="搜尋營運">
+            <select><option>幣別:請選擇</option><option>新台幣/TWD</option><option>港幣/HKD</option></select>
+            <select><option>狀態:請選擇</option><option>進行中</option><option>未開始</option><option>已停用</option></select>
+            <button class="btn btn-primary">搜尋</button>
+            <div class="spacer-flex"></div>
+            <button class="btn btn-primary" onclick="openMissionModal('mission')"><span class="icon" data-icon="plus"></span> 新增任務活動</button>
+          </div>
+
+          <table>
+            <thead><tr>
+              <th>ID</th><th>名稱</th>
+              <th class="sortable" onclick="sortMissionsBy('start')">開始時間<span class="sort-icon" id="sort-icon-start"></span></th>
+              <th class="sortable" onclick="sortMissionsBy('end')">結束時間<span class="sort-icon" id="sort-icon-end"></span></th>
+              <th>幣別</th><th>營運</th>
+              <th class="sortable" onclick="sortMissionsBy('status')">狀態<span class="sort-icon" id="sort-icon-status"></span></th>
+              <th>啟用</th><th>功能</th>
+            </tr></thead>
+            <tbody id="mission-tbody"></tbody>
+          </table>
+          <div class="hint" style="margin-top:10px;">說明:「啟用」後即代表活動已對外生效,為避免中途誤改任務規則影響已參加的會員,啟用中僅能調整「名稱」與「結束時間」(可提前結束或延長),開始時間、幣別、營運、任務與獎勵內容維持鎖定,如需完整修改請先停用。「狀態」欄由啟用狀態與活動起訖時間自動計算,不可手動設定:新增後從未啟用過顯示「草稿」;啟用後依起訖時間顯示「準備開始/進行中/已結束」;曾啟用後停用則顯示「已停用」。啟用開關規則:停用後即不可重新啟用(僅新增後、從未啟用過的第一次啟用不受此限);活動狀態變成「已結束」後,啟用開關與名稱/結束時間調整功能皆會鎖定,無法再變更。</div>
+        </div>
+
+        <!-- ---------------- Tab 2: 任務樣板 ---------------- -->
+        <div class="tab-panel" id="panel-template">
+          <div class="toolbar-row">
+            <div class="left"><input type="text" placeholder="搜尋樣板名稱" style="border:1px solid var(--border);border-radius:6px;padding:7px 10px;"></div>
+            <button class="btn btn-primary" onclick="openMissionModal('template')"><span class="icon" data-icon="plus"></span> 新增樣板</button>
+          </div>
+          <table>
+            <thead><tr><th>樣板名稱</th><th>任務組數</th><th>建立人</th><th>最後更新時間</th><th>功能</th></tr></thead>
+            <tbody id="template-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- ---------------- Tab 3: 紀錄 ---------------- -->
+        <div class="tab-panel" id="panel-record">
+          <div class="filter-bar">
+            <select id="record-time-type-select" title="搜尋的時間類型">
+              <option value="claimedAt">開始時間</option>
+              <option value="achievedAt">達成時間</option>
+              <option value="rewardedAt">領獎時間</option>
+            </select>
+            <input type="date" value="2026-07-13">
+            <input type="time" value="00:00:00" step="1" lang="en-GB">
+            <span class="arrow">→</span>
+            <input type="date" value="2026-07-13">
+            <input type="time" value="23:59:59" step="1" lang="en-GB">
+            <input type="text" placeholder="搜尋會員帳號">
+            <div class="ms" id="record-operator-ms" style="width:220px;">
+              <div class="ms-control" onclick="toggleDropdownById('record-operator-ms')">
+                <span class="ms-summary" id="record-operator-summary">請選擇營運</span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="record-operator-panel"></div>
+            </div>
+            <select><option>任務類型:請選擇</option><option>有效投注金額</option><option>有效投注次數</option><option>進免費遊戲次數</option><option>進超級免費遊戲次數</option></select>
+            <select><option>狀態:請選擇</option><option>進行中</option><option>未領獎</option><option>已完成</option><option>未達成</option></select>
+            <button class="btn btn-primary">搜尋</button>
+            <div class="spacer-flex"></div>
+            <button class="btn btn-outline" onclick="exportRecords()"><span class="icon" data-icon="download"></span> 匯出</button>
+          </div>
+          <div class="stat-cards" id="record-stats"></div>
+          <div class="hint" style="margin-bottom:10px;">說明:時間搜尋可切換依「開始 / 達成 / 領獎」時間查詢,並支援到時分秒;營運可複選。統計卡皆依目前清單內的全部紀錄計算(原型未串接篩選條件連動)。</div>
+          <table>
+            <thead><tr>
+              <th>會員帳號</th><th>營運</th><th>活動ID</th><th>任務活動名稱</th><th>任務編號</th><th>任務類型</th>
+              <th>開始時間</th><th>達成時間</th><th>領獎時間</th><th>狀態</th><th>功能</th>
+            </tr></thead>
+            <tbody id="record-tbody"></tbody>
+          </table>
+          <div class="hint" style="margin-top:10px;">說明:欄位精簡為開始 / 達成 / 領獎三個時間點,任務內容與獎勵內容請點「查看詳情」。</div>
+        </div>
+
+        <!-- ---------------- Tab 4: 分析報表 ---------------- -->
+        <div class="tab-panel" id="panel-report">
+          <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <button class="btn btn-mode active" id="report-mode-overall-btn" onclick="setReportMode('overall')">整體</button>
+            <button class="btn btn-mode" id="report-mode-single-btn" onclick="setReportMode('single')">單一活動</button>
+          </div>
+
+          <div class="filter-bar" id="report-overall-filter-bar">
+            <input type="date" value="2026-07-01">
+            <span class="arrow">→</span>
+            <input type="date" value="2026-07-13">
+            <input type="number" id="report-rate-filter" placeholder="達成率 ≤ %" min="0" max="100" style="width:120px;" oninput="renderReportPanel()">
+            <button class="btn btn-primary" onclick="renderReportPanel()">搜尋</button>
+          </div>
+          <div class="hint" id="report-overall-filter-hint" style="margin-bottom:14px;">說明:「達成率 ≤ %」用來快速抓出達成率過低的任務,設定後只會顯示符合條件的任務並自動展開所屬活動;此模式為跨活動的整體彙總,不含每日趨勢,如需查看單一活動的每日拆分請切到「單一活動」。</div>
+
+          <div class="filter-bar" id="report-single-filter-bar" style="display:none;">
+            <input type="text" id="report-single-id-input" placeholder="輸入任務活動ID" style="width:220px;" oninput="renderReportPanel()">
+            <input type="date" value="2026-07-01">
+            <span class="arrow">→</span>
+            <input type="date" value="2026-07-13">
+            <button class="btn btn-primary" onclick="renderReportPanel()">搜尋</button>
+          </div>
+          <div class="hint" id="report-single-filter-hint" style="margin-bottom:14px;display:none;">說明:輸入完整的任務活動ID 進行精準查詢(不支援模糊名稱搜尋),下方會顯示該活動的統計、任務明細與每日趨勢。</div>
+
+          <div class="stat-cards" id="report-stats"></div>
+          <div class="hint" style="margin-bottom:16px;">說明:「參與人數」為不重複玩家數(同一人不管玩幾天都只算一次);此活動每天會重置累積,同一位玩家每天都能重新接取/達成/領獎,因此其餘「次數」皆可重複計入(同一人在不同天都會再次累計);總達成率 = 總達成次數 ÷ 總參與次數,總領獎率 = 總領獎次數 ÷ 總達成次數(因任務達成後獎勵仍需玩家手動領取)。此頁數據為示意用假資料。</div>
+
+          <div class="sec-title" style="font-size:14px;font-weight:700;margin-bottom:10px;padding-left:10px;border-left:3px solid var(--accent);">任務達成率分析</div>
+          <div class="hint" style="margin-bottom:8px;">說明:點擊任務活動列可展開/收合,展開後可看到該活動底下任務1、任務2…各自的達成率與領取率明細。因活動每天重置,以下皆為「次數」(同一人可重複計入);領取率 = 領獎次數 ÷ 達成次數,因任務達成後獎勵仍需玩家手動領取,此欄可觀察達成後有沒有確實去領獎。</div>
+          <table style="margin-bottom:24px;">
+            <thead><tr>
+              <th>活動ID</th><th>任務活動 / 任務</th><th>任務類型</th><th class="num">門檻</th>
+              <th class="num">參與次數</th><th class="num">達成次數</th><th class="num">達成率</th><th class="num">領獎次數</th><th class="num">領取率</th>
+            </tr></thead>
+            <tbody id="report-task-tbody"></tbody>
+          </table>
+
+          <div id="report-daily-section" style="display:none;">
+            <div class="sec-title" style="font-size:14px;font-weight:700;margin-bottom:10px;padding-left:10px;border-left:3px solid var(--accent);">每日趨勢</div>
+            <div class="hint" style="margin-bottom:8px;">說明:活動每天重置累積,單看整個活動期間的加總數字無法看出是「每天都偏低」還是「只有某幾天特別低」;示意近 5 天資料。點擊日期列可展開/收合,展開後可看到當天各任務的明細。</div>
+            <table style="margin-bottom:24px;">
+              <thead><tr>
+                <th>日期 / 任務</th><th>任務類型</th>
+                <th class="num">參與次數</th><th class="num">達成次數</th><th class="num">達成率</th><th class="num">領獎次數</th><th class="num">領取率</th>
+              </tr></thead>
+              <tbody id="report-daily-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="sec-title" style="font-size:14px;font-weight:700;margin-bottom:10px;padding-left:10px;border-left:3px solid var(--accent);">獎勵支出明細</div>
+          <div class="hint" style="margin-bottom:8px;">說明:發放次數為該獎勵已派發的總次數,使用次數為玩家實際有使用(如實際打出)的次數,兩者差額可視為過期未用;統計中獎金額為玩家使用該獎勵所產生的中獎金額加總,依活動幣別分別呈現,不跨幣別加總。點擊活動列可展開/收合,展開後可看到該活動底下各任務的獎勵明細。</div>
+          <table>
+            <thead><tr>
+              <th>任務編號</th><th>任務類型</th><th>獎勵內容</th><th class="num">發放次數</th><th class="num">使用次數</th><th>幣別</th><th class="num">統計中獎金額</th>
+            </tr></thead>
+            <tbody id="report-cost-tbody"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Modal: 新增/編輯 任務活動 或 樣板 ============ -->
+<div class="modal-overlay" id="mission-modal-overlay">
+  <div class="modal" id="mission-modal">
+    <div class="modal-header">
+      <h3 id="mission-modal-title">新增任務活動</h3>
+      <span class="modal-close" onclick="closeMissionModal()" data-icon="close"></span>
+    </div>
+    <div class="modal-body">
+
+      <div id="template-warning-banner" class="banner" style="display:none;">
+        <span data-icon="alert"></span>
+        <span>提醒:編輯樣板不會回溯影響已經使用此樣板建立的任務活動,如需調整既有活動,請至「任務」頁籤個別編輯。</span>
+      </div>
+
+      <div id="partial-lock-banner" class="banner" style="display:none;">
+        <span data-icon="alert"></span>
+        <span>提醒:活動已過開始時間(進行中),僅開放調整「活動名稱」與「結束時間」(可提前結束或延長);開始時間、幣別、營運、任務與獎勵內容維持鎖定。尚未到開始時間的活動(草稿/準備開始)仍可完整編輯所有欄位。</span>
+      </div>
+
+      <div class="form-section" id="basic-section">
+        <div class="sec-title">基本設定</div>
+        <div class="form-row">
+          <div class="form-item" style="flex:2;">
+            <label id="name-field-label">活動名稱 <span style="color:var(--danger);">*</span></label>
+            <input type="text" id="mission-name" placeholder="例如:台幣任務" value="台幣任務">
+          </div>
+        </div>
+        <div class="form-row" id="time-row">
+          <div class="form-item">
+            <label>開始時間 <span style="color:var(--danger);">*</span></label>
+            <div style="display:flex;gap:6px;"><input type="date" id="mission-start-date" value="2026-07-13"><input type="time" id="mission-start-time" value="00:00" lang="en-GB"></div>
+          </div>
+          <div class="form-item">
+            <label>結束時間 <span style="color:var(--danger);">*</span></label>
+            <div style="display:flex;gap:6px;"><input type="date" id="mission-end-date" value="2026-07-31"><input type="time" id="mission-end-time" value="23:59" lang="en-GB"></div>
+          </div>
+        </div>
+        <div class="form-row" id="currency-operator-row" style="flex-direction:column;">
+          <div class="form-item">
+            <label>目標幣別 <span style="color:var(--danger);">*</span>(單選)</label>
+            <div class="ms" id="currency-ms">
+              <div class="ms-control" onclick="toggleDropdown('currency')">
+                <span class="ms-summary" id="currency-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="currency-panel"></div>
+            </div>
+          </div>
+          <div class="form-item">
+            <label>高級營運(可複選,選填;選擇後自動勾選底下所有營運)</label>
+            <div class="ms" id="master-ms">
+              <div class="ms-control" onclick="toggleDropdown('master')">
+                <span class="ms-summary" id="master-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="master-panel"></div>
+            </div>
+          </div>
+          <div class="form-item">
+            <label>營運 <span style="color:var(--danger);">*</span>(必選,可複選;依已選幣別篩選)</label>
+            <div class="ms" id="operator-ms">
+              <div class="ms-control" onclick="toggleDropdown('operator')">
+                <span class="ms-summary" id="operator-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="operator-panel"></div>
+            </div>
+            <div id="operator-preset-chips" style="margin-top:8px;"></div>
+            <div id="operator-quick-select-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="applyQuickSelect('test')">選取測試營運</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="applyQuickSelect('prod')">選取正式營運</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="applyQuickSelect('all')">選取全部</button>
+              <button type="button" class="btn-add-preset" title="將目前營運選擇存為快速選取" onclick="savePresetPrompt()">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="toolbar-row">
+          <div class="sec-title" id="tr-section-title" style="margin:0;">任務與獎勵設定(最少 1 組)</div>
+          <div id="template-apply-wrap">
+            <label style="font-size:12.5px;color:var(--text-secondary);margin-right:6px;">套用樣板:</label>
+            <select class="template-select" id="template-apply-select" onchange="applyTemplateToBlocks(this.value)">
+              <option value="">請選擇樣板</option>
+            </select>
+          </div>
+        </div>
+        <div id="tr-block-list"></div>
+        <button class="btn btn-outline" id="add-task-block-btn" onclick="addTaskBlock()"><span class="icon" data-icon="plus"></span> 新增任務(第 <span id="next-no">4</span> 組)</button>
+        <div class="empty-note" id="min-hint" style="margin-top:6px;"></div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="mission-cancel-btn" onclick="closeMissionModal()">取消</button>
+      <button class="btn btn-primary" id="mission-save-btn" onclick="saveMission()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Modal: 儲存為樣板詢問 ============ -->
+<div class="modal-overlay" id="save-template-overlay">
+  <div class="modal small">
+    <div class="modal-header">
+      <h3>儲存為樣板</h3>
+      <span class="modal-close" onclick="closeSaveTemplateModal()" data-icon="close"></span>
+    </div>
+    <div class="modal-body">
+      <p style="margin-top:0;">任務活動已儲存。是否要將這次的「任務與獎勵設定」另存為樣板,方便下次快速套用?</p>
+      <div class="form-item">
+        <label>樣板名稱</label>
+        <input type="text" id="new-template-name" placeholder="例如:新手三日任務豪禮">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeSaveTemplateModal()">不儲存</button>
+      <button class="btn btn-primary" onclick="confirmSaveTemplate()">儲存為樣板</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Modal: 紀錄詳情 ============ -->
+<div class="modal-overlay" id="record-detail-overlay">
+  <div class="modal small">
+    <div class="modal-header">
+      <h3>紀錄詳情</h3>
+      <span class="modal-close" onclick="closeRecordDetail()" data-icon="close"></span>
+    </div>
+    <div class="modal-body" id="record-detail-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeRecordDetail()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Modal: 補派獎勵確認 ============ -->
+<div class="modal-overlay" id="resend-confirm-overlay">
+  <div class="modal small">
+    <div class="modal-header">
+      <h3>補派獎勵</h3>
+      <span class="modal-close" onclick="closeResendConfirm()" data-icon="close"></span>
+    </div>
+    <div class="modal-body">
+      <p style="margin-top:0;">是否確定補派獎勵給玩家「<b id="resend-confirm-member"></b>」?</p>
+      <p style="color:var(--text-secondary);">補派成功後,獎勵將直接存入玩家背包。</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeResendConfirm()">取消</button>
+      <button class="btn btn-primary" onclick="confirmResend()">確認補派</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Modal: 補派獎勵結果 ============ -->
+<div class="modal-overlay" id="resend-success-overlay">
+  <div class="modal small">
+    <div class="modal-header">
+      <h3>補派獎成功</h3>
+      <span class="modal-close" onclick="closeResendSuccess()" data-icon="close"></span>
+    </div>
+    <div class="modal-body">
+      <p style="margin-top:0;">已完成補派獎,交易單號:<span class="scope-link" id="resend-success-tx"></span></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeResendSuccess()">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Modal: 參與幣別與營運(任務列表 +N 點擊) ============ -->
+<div class="modal-overlay" id="scope-modal-overlay">
+  <div class="modal small">
+    <div class="modal-header">
+      <h3 id="scope-modal-title">參與幣別與營運</h3>
+      <span class="modal-close" onclick="closeScopeModal()" data-icon="close"></span>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px;">
+        <input type="text" id="scope-search-input" placeholder="搜尋營運名稱" oninput="onScopeSearch(this.value)" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;">
+      </div>
+      <div id="scope-modal-body"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeScopeModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Icon 系統:以 inline SVG 取代 emoji,維持風格一致
+   ============================================================ */
+const ICON_PATHS = {
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  eye:'<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>',
+  trash:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>',
+  close:'<path d="M18 6L6 18"/><path d="M6 6l12 12"/>',
+  chevronDown:'<path d="M6 9l6 6 6-6"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>',
+  alert:'<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86L1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  download:'<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/>'
+};
+function iconSvg(name, size){
+  size = size || 16;
+  return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]||''}</svg>`;
+}
+// 實心藍底圓圈「?」說明圖示(區別於其他描邊圖示,專用於欄位旁的滑鼠移入說明提示)
+function helpCircleIcon(size){
+  size = size || 14;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="vertical-align:middle;">
+    <circle cx="12" cy="12" r="11" fill="var(--accent)"/>
+    <text x="12" y="16.5" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff" font-family="Arial, Helvetica, sans-serif">?</text>
+  </svg>`;
+}
+function mountIcons(){
+  document.querySelectorAll('[data-icon]').forEach(el=>{
+    const name = el.getAttribute('data-icon');
+    if(ICON_PATHS[name]) el.innerHTML = iconSvg(name, el.classList.contains('icon-action')?15:16);
+  });
+}
+
+/* ============================================================
+   資料模型 Data Model
+   ============================================================ */
+const CURRENCIES = [
+  {code:'TWD', name:'新台幣 / TWD'},
+  {code:'HKD', name:'港幣 / HKD'},
+  {code:'MYR', name:'馬幣 / MYR'},
+  {code:'USD', name:'美元 / USD'},
+  {code:'CNY', name:'人民幣 / CNY'},
+  {code:'THB', name:'泰銖 / THB'}
+];
+
+// 模擬約 1000 筆營運資料,依高級營運分組,並各自帶有幣別歸屬
+const operatorTreeData = (function(){
+  const PARENT_COUNT = 10, CHILD_PER_PARENT = 100;
+  const list = [];
+  let seq = 1;
+  for(let p=0;p<PARENT_COUNT;p++){
+    const parentId = 'op'+p;
+    const children = [];
+    for(let c=0;c<CHILD_PER_PARENT;c++){
+      const currency = CURRENCIES[(p*CHILD_PER_PARENT+c) % CURRENCIES.length].code;
+      const env = c < 20 ? 'test' : 'prod'; // 模擬資料:每個高級營運底下前 20 筆為測試營運,其餘為正式營運
+      children.push({ id: parentId+'_c'+c, name: 'vip'+String(seq).padStart(4,'0'), currency, env });
+      seq++;
+    }
+    list.push({ id:parentId, name:'高級營運 '+String.fromCharCode(65+p), children });
+  }
+  return list;
+})();
+
+// 任務類型 -> 對應輸入欄位設定 (label + 單位)
+const TASK_TYPES = {
+  bet_amount:   { label:'有效投注金額', unit:'元', fieldLabel:'投注金額門檻' },
+  bet_count:    { label:'有效投注次數', unit:'次', fieldLabel:'投注次數門檻' },
+  free_game:    { label:'進免費遊戲次數', unit:'次', fieldLabel:'免費遊戲次數門檻' },
+  super_free:   { label:'進超級免費遊戲次數', unit:'次', fieldLabel:'超級免費遊戲次數門檻' }
+};
+
+// 獎勵類型:目前僅「免費旋轉」,採設定檔驅動渲染,未來新增獎勵類型只需在此擴充 fields,不需改動渲染邏輯
+// 最大贏分倍數判定方式:0~指定倍數(範圍) 或 接近指定倍數(±10%)
+const MAX_WIN_MODE_OPTIONS = [
+  { value:'range', label:'0 ~ 指定倍數' },
+  { value:'near', label:'接近指定倍數(±10%)' }
+];
+
+const REWARD_TYPES = {
+  free_spin: {
+    label:'免費旋轉卡',
+    fields:[
+      { key:'gameId', label:'道具遊戲', type:'gameSelect' },
+      { key:'betLevel', label:'每局投注額', type:'lockedMinBet' },
+      { key:'expireHours', label:'道具時效(小時)', type:'number' },
+      { key:'spinCount', label:'旋轉次數', type:'number' },
+      { key:'maxWinMode', label:'最大贏分倍數判定方式', type:'radio', options: MAX_WIN_MODE_OPTIONS },
+      { key:'maxWinMultiplier', label:'最大贏分倍數', type:'intRange', min:0, max:10000 }
+    ]
+  }
+};
+
+const GAME_LIST = [
+  {id:'g1', name:'戰神賽特2'},
+  {id:'g2', name:'戰神賽特'},
+  {id:'g3', name:'古神巴風特'},
+  {id:'g4', name:'赤三國'},
+  {id:'g5', name:'虎小妹'},
+  {id:'g6', name:'武俠'},
+  {id:'g7', name:'孫行者'}
+];
+
+function mkReward(type, values){
+  return { type, values: Object.assign({}, values) };
+}
+// resetMode:該任務(任務1/2/3...)獨立的前台重置時間設定,'none'=不重置,'utc8_midnight'=每日 UTC+8 00:00 重置
+function mkBlock(taskType, taskValue, gameIds, reward, resetMode){
+  return { taskType, taskValue, gameIds: gameIds||[], reward, resetMode: resetMode || 'utc8_midnight' };
+}
+
+let templates = [
+  { id:'tpl1', name:'新手三日任務豪禮', creator:'yvonne', updatedAt:'2026-04-10 14:20', blocks:[
+      mkBlock('bet_amount','500',[], mkReward('free_spin',{gameId:'g1', betLevel:'1', expireHours:'24', spinCount:'10', maxWinMultiplier:'50'})),
+      mkBlock('bet_count','50',[], mkReward('free_spin',{gameId:'g2', betLevel:'2', expireHours:'24', spinCount:'15', maxWinMultiplier:'80'})),
+      mkBlock('free_game','3',['g3'], mkReward('free_spin',{gameId:'g3', betLevel:'1', expireHours:'48', spinCount:'20', maxWinMultiplier:'100'}))
+  ]},
+  { id:'tpl2', name:'VIP高投注挑戰', creator:'yvonne', updatedAt:'2026-05-02 09:11', blocks:[
+      mkBlock('bet_amount','5000',[], mkReward('free_spin',{gameId:'g4', betLevel:'5', expireHours:'24', spinCount:'10', maxWinMultiplier:'100'})),
+      mkBlock('bet_count','200',[], mkReward('free_spin',{gameId:'g4', betLevel:'5', expireHours:'24', spinCount:'20', maxWinMultiplier:'100'})),
+      mkBlock('super_free','1',[], mkReward('free_spin',{gameId:'g4', betLevel:'5', expireHours:'72', spinCount:'30', maxWinMode:'near', maxWinMultiplier:'200'}))
+  ]}
+];
+
+// taskNo 對應「分析報表」reportData 中同一任務活動底下的任務序號(第幾組任務),
+// 讓紀錄可以回溯是哪一組任務設定觸發的,避免同活動內多組任務類型相同時無法分辨。
+// progress/target:玩家目前累積進度與該任務門檻(數字皆為原型假資料,正式串接應改抓玩家即時累積數值)
+let recordsData = [
+  { member:'test0001', operator:'vip0001', activityId:'12356', activity:'台幣任務', taskNo:1, taskType:'bet_amount',
+    taskContent:'累積有效投注滿 NT$5,000', rewardContent:'免費旋轉 x10(戰神賽特2)', progress:5000, target:5000,
+    claimedAt:'2026-07-12 09:00:15', achievedAt:'2026-07-12 10:22:41', rewardedAt:'2026-07-12 10:30:03', status:'done' },
+  { member:'test0002', operator:'vip0123', activityId:'78987', activity:'其他幣別任務', taskNo:1, taskType:'free_game',
+    taskContent:'累積進入免費遊戲 3 次', rewardContent:'免費旋轉 x5(戰神賽特)', progress:1, target:3,
+    claimedAt:'2026-07-12 08:40:52', achievedAt:'', rewardedAt:'', status:'progress' },
+  { member:'test0003', operator:'vip0456', activityId:'78987', activity:'其他幣別任務', taskNo:2, taskType:'bet_count',
+    taskContent:'累積有效投注滿 200 次', rewardContent:'免費旋轉 x20(所有遊戲)', progress:200, target:200,
+    claimedAt:'2026-07-11 21:15:07', achievedAt:'2026-07-11 22:41:38', rewardedAt:'', status:'pending_reward' },
+  { member:'test0004', operator:'vip0301', activityId:'12356', activity:'台幣任務', taskNo:3, taskType:'super_free',
+    taskContent:'累積進入超級免費遊戲 1 次', rewardContent:'免費旋轉 x30(赤三國)', progress:1, target:1,
+    claimedAt:'2026-07-13 08:02:19', achievedAt:'2026-07-13 09:10:44', rewardedAt:'2026-07-13 09:12:56', status:'done' },
+  { member:'test0005', operator:'vip0777', activityId:'12356', activity:'台幣任務', taskNo:1, taskType:'bet_amount',
+    taskContent:'累積有效投注滿 NT$5,000', rewardContent:'免費旋轉 x10(戰神賽特2)', progress:2500, target:5000,
+    claimedAt:'2026-07-10 08:00:00', achievedAt:'', rewardedAt:'', status:'expired' }
+];
+
+// 任務列表「幣別 / 營運」欄位點擊後彈窗顯示的完整參與範圍(依幣別分組)
+let currentScopeId = null;
+const missionScopeData = {
+  '12356': {
+    currencies:[ {code:'TWD', name:'新台幣 / TWD'} ],
+    operators:[ {name:'bxvip', currency:'TWD'} ]
+  },
+  '78987': {
+    // 幣別已改為單選,一筆任務活動只會對應 1 個幣別;底下營運皆屬同一幣別
+    currencies:[ {code:'HKD', name:'港幣 / HKD'} ],
+    operators:[
+      {name:'bxvip123', currency:'HKD'},
+      {name:'bxvip999', currency:'HKD'},
+      {name:'bxvip456', currency:'HKD'},
+      {name:'kkvip', currency:'HKD'},
+      {name:'kkvip888', currency:'HKD'}
+    ]
+  }
+};
+
+/* ============================================================
+   任務清單:資料驅動 + 啟用/停用鎖定規則
+   規則:
+   1. 是否可完整編輯取決於「活動開始時間」,不是取決於啟用開關本身:
+      已啟用但尚未到開始時間(準備開始)仍可完整編輯所有欄位;
+      一旦過了開始時間(進行中)代表活動已對外生效,為避免中途改規則影響已參加會員,
+      僅能調整「名稱」與「結束時間」,其餘欄位鎖定,不可完整編輯。
+   2. 停用/尚未啟用(從未啟用過,草稿)時,不論 start 欄位為何,一律可完整編輯。
+   3. 停用後即不可重新啟用(一次性開關),但「第一次」預設停用不算數,
+      新增任務活動剛建立、還沒被啟用過之前,仍可正常開啟。
+   4. 活動狀態一旦變成「已結束」(時間到期),啟用開關直接鎖定,不可再變更。
+   5. 「狀態」欄不可手動設定,完全依「啟用」+「起訖時間」自動計算。
+   ============================================================ */
+let missions = [
+  // everActivated:false 代表「從未啟用過」,啟用開關仍可操作(第一次啟用不受一次性限制)
+  { id:'12356', name:'台幣任務', start:'2026-05-01 00:00:00', end:'2026-05-31 23:59:59',
+    currencyHtml:'新台幣 / TWD', operatorHtml:'bxvip', hasScopeModal:true, enabled:false, everActivated:false },
+  { id:'78987', name:'其他幣別任務', start:'2026-07-01 00:00:00', end:'2026-07-31 23:59:59',
+    currencyHtml:'港幣 / HKD', operatorHtml:'bxvip123, bxvip456 <span class="tag">+3</span>', hasScopeModal:true, enabled:true, everActivated:true },
+  { id:'demo-upcoming', name:'港幣新手任務(示意:準備開始)', start:'2026-08-01 00:00:00', end:'2026-08-31 23:59:59',
+    currencyHtml:'港幣 / HKD', operatorHtml:'kkvip888', hasScopeModal:false, enabled:true, everActivated:true },
+  { id:'demo-ended', name:'測試回饋任務(示意:已結束)', start:'2026-06-01 00:00:00', end:'2026-06-30 23:59:59',
+    currencyHtml:'美元 / USD', operatorHtml:'bxvip999', hasScopeModal:false, enabled:true, everActivated:true },
+  { id:'demo-stopped', name:'泰銖任務(示意:曾啟用後停用)', start:'2026-06-10 00:00:00', end:'2026-07-25 23:59:59',
+    currencyHtml:'泰銖 / THB', operatorHtml:'kkvip', hasScopeModal:false, enabled:false, everActivated:true },
+  { id:'demo-draft', name:'港幣新人任務(示意:剛新增,草稿)', start:'2026-08-05 00:00:00', end:'2026-08-20 23:59:59',
+    currencyHtml:'港幣 / HKD', operatorHtml:'kkvip888', hasScopeModal:false, enabled:false, everActivated:false }
+];
+
+// 示意用的「目前時間」,對齊本原型其他頁籤採用的模擬今日日期(2026-07-13);正式串接後端時應改用系統實際時間
+const MISSION_NOW = new Date('2026-07-13T12:00:00');
+
+function computeMissionStatus(m){
+  if(!m.enabled){
+    // 從未啟用過(剛新增、還沒開啟過)顯示「草稿」;曾經啟用過又被停用的才顯示「已停用」
+    return m.everActivated
+      ? { text:'已停用', cls:'pill-danger' }
+      : { text:'草稿', cls:'pill-muted' };
+  }
+  const start = new Date(m.start.replace(' ','T'));
+  const end = new Date(m.end.replace(' ','T'));
+  if(MISSION_NOW < start) return { text:'準備開始', cls:'pill-warning' };
+  if(MISSION_NOW > end) return { text:'已結束', cls:'pill-muted' };
+  return { text:'進行中', cls:'pill-success' };
+}
+
+// 判斷活動是否已經過了開始時間(不論啟用與否,單純比較時間)
+// 用於決定「編輯」彈窗要開放全部欄位,還是只開放名稱/結束時間
+function missionHasStarted(m){
+  const start = new Date(m.start.replace(' ','T'));
+  return MISSION_NOW >= start;
+}
+
+// 判斷「啟用」開關是否應鎖定,以及鎖定原因(用於 tooltip)
+function missionToggleLockInfo(m){
+  const st = computeMissionStatus(m);
+  if(st.text === '已結束') return { locked:true, reason:'活動已結束,無法變更啟用狀態' };
+  if(!m.enabled && m.everActivated) return { locked:true, reason:'已停用,無法重新啟用' };
+  return { locked:false, reason:'' };
+}
+
+function toggleMissionEnabled(id){
+  const m = missions.find(x=>x.id===id);
+  if(!m) return;
+  if(missionToggleLockInfo(m).locked) return; // 防呆:理論上鎖定時 checkbox 本身已 disabled,不會觸發,這裡再擋一次
+  if(!m.enabled){
+    m.enabled = true;
+    m.everActivated = true; // 啟用過一次後,之後停用就不能再重新開啟
+  }else{
+    m.enabled = false;
+  }
+  renderMissionTable();
+}
+
+// 任務清單排序:開始時間 / 結束時間 / 狀態,點擊同一欄再點一次切換升冪/降冪
+let missionSortKey = null;   // null | 'start' | 'end' | 'status'
+let missionSortDir = 'asc';  // 'asc' | 'desc'
+const MISSION_STATUS_SORT_ORDER = { '進行中':1, '準備開始':2, '草稿':3, '已結束':4, '已停用':5 };
+
+function sortMissionsBy(key){
+  if(missionSortKey === key){
+    missionSortDir = missionSortDir === 'asc' ? 'desc' : 'asc';
+  }else{
+    missionSortKey = key;
+    missionSortDir = 'asc';
+  }
+  renderMissionTable();
+}
+
+function getSortedMissions(){
+  if(!missionSortKey) return missions;
+  const list = missions.slice();
+  list.sort((a,b)=>{
+    let av, bv;
+    if(missionSortKey==='start'){
+      av = new Date(a.start.replace(' ','T')).getTime();
+      bv = new Date(b.start.replace(' ','T')).getTime();
+    }else if(missionSortKey==='end'){
+      av = new Date(a.end.replace(' ','T')).getTime();
+      bv = new Date(b.end.replace(' ','T')).getTime();
+    }else{ // status:依業務邏輯排序,不是照文字排序(進行中優先,已停用最後)
+      av = MISSION_STATUS_SORT_ORDER[computeMissionStatus(a).text] || 99;
+      bv = MISSION_STATUS_SORT_ORDER[computeMissionStatus(b).text] || 99;
+    }
+    if(av<bv) return missionSortDir==='asc' ? -1 : 1;
+    if(av>bv) return missionSortDir==='asc' ? 1 : -1;
+    return 0;
+  });
+  return list;
+}
+
+function updateMissionSortIcons(){
+  ['start','end','status'].forEach(key=>{
+    const el = document.getElementById('sort-icon-'+key);
+    if(!el) return;
+    if(missionSortKey===key){
+      el.textContent = missionSortDir==='asc' ? '▲' : '▼';
+      el.classList.add('active');
+    }else{
+      el.textContent = '↕';
+      el.classList.remove('active');
+    }
+  });
+}
+
+function renderMissionTable(){
+  const tbody = document.getElementById('mission-tbody');
+  tbody.innerHTML = getSortedMissions().map(m=>{
+    const st = computeMissionStatus(m);
+    const lockInfo = missionToggleLockInfo(m);
+    const scope = missionScopeData[m.id];
+    // 幣別/營運:有設定多個(依實際筆數,非固定 hasScopeModal)才顯示可點擊藍字,只有一個就純文字呈現
+    const currencyCount = scope ? scope.currencies.length : 1;
+    const operatorCount = scope ? scope.operators.length : 1;
+    const currencyCell = currencyCount > 1 ? `<span class="scope-link" onclick="openScopeModal('${m.id}')">${m.currencyHtml}</span>` : m.currencyHtml;
+    const operatorCell = operatorCount > 1 ? `<span class="scope-link" onclick="openScopeModal('${m.id}')">${m.operatorHtml}</span>` : m.operatorHtml;
+    // 編輯權限:已結束、或曾啟用後停用(已停用)皆為終局狀態,不可編輯,編輯按鈕直接隱藏,只留檢視;
+    // 草稿與啟用中(準備開始/進行中)都保留編輯按鈕,差別只在於彈窗內欄位是否可編輯(見 openMissionModal 的 partial-lock 模式)
+    const canEdit = !(st.text === '已結束' || (!m.enabled && m.everActivated));
+    const editIcon = canEdit
+      ? `<span class="icon-action icon-edit" title="編輯" data-icon="edit" onclick="openMissionModal('mission','${m.id}')"></span>`
+      : '';
+    return `
+    <tr>
+      <td>${m.id}</td><td>${m.name}</td><td>${m.start}</td><td>${m.end}</td>
+      <td>${currencyCell}</td><td>${operatorCell}</td>
+      <td><span class="pill ${st.cls}">${st.text}</span></td>
+      <td><label class="switch" title="${lockInfo.reason}"><input type="checkbox" ${m.enabled?'checked':''} ${lockInfo.locked?'disabled':''} onchange="toggleMissionEnabled('${m.id}')"><span class="slider"></span></label></td>
+      <td><span class="icon-action icon-view" title="檢視" data-icon="eye" onclick="openMissionModal('view','${m.id}')"></span>${editIcon}</td>
+    </tr>`;
+  }).join('');
+  mountIcons();
+  updateMissionSortIcons();
+}
+
+// 依目前勾選的幣別/營運,產生新增任務活動時要寫入清單的顯示文字(不含彈窗,單純文字摘要)
+const operatorNameIndex = (function(){
+  const idx = {};
+  operatorTreeData.forEach(p=>p.children.forEach(c=>{ idx[c.id]=c.name; }));
+  return idx;
+})();
+function summarizeCurrencySelection(){
+  const names = Array.from(selectedCurrencies).map(c=>{
+    const found = CURRENCIES.find(x=>x.code===c);
+    return found ? found.name : c;
+  });
+  if(names.length===0) return '-';
+  return names.length>1 ? `${names[0]} <span class="tag">+${names.length-1}</span>` : names[0];
+}
+function summarizeOperatorSelection(){
+  const names = Array.from(selectedOperators).map(id=>operatorNameIndex[id]||id);
+  if(names.length===0) return '-';
+  return names.length>1 ? `${names[0]} <span class="tag">+${names.length-1}</span>` : names[0];
+}
+let currentBlocks = [];
+let modalMode = 'mission';           // 'mission' | 'template'
+let editingTemplateId = null;
+let editingMissionId = null;
+let missionEditLockMode = 'full';    // 'full' 全部可編輯 | 'partial' 啟用中,僅名稱/結束時間可編輯
+let selectedCurrencies = new Set(['TWD']);
+let selectedOperators = new Set();
+let selectedMasters = new Set();
+let operatorSearch = '';
+let ddOpen = { currency:false, operator:false };
+// 每個任務區塊的遊戲下拉開關狀態
+let gameDdOpen = {};
+
+// 營運快速選取(存起來的營運組合,可重複套用)
+let operatorPresets = [];
+(function(){
+  const demoIds = operatorTreeData[0].children.filter(c=>c.env==='test').slice(0,5).map(c=>c.id);
+  operatorPresets.push({ id:'preset_demo', name:'選取測試用', operatorIds: demoIds });
+})();
+
+/* ============================================================
+   Tabs
+   ============================================================ */
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+/* ============================================================
+   通用多選下拉:開關與外部點擊關閉
+   以 openDropdownId 明確記錄目前開啟的下拉,並改用 mousedown 判斷「點擊外部」,
+   避免與 innerHTML 重繪造成的時序問題導致下拉選單收不起來
+   ============================================================ */
+let openDropdownId = null;
+function closeAllDropdowns(){
+  document.querySelectorAll('.ms.open').forEach(el=>el.classList.remove('open'));
+  openDropdownId = null;
+}
+function toggleDropdownById(id){
+  if(openDropdownId === id){
+    closeAllDropdowns();
+    return;
+  }
+  closeAllDropdowns();
+  const el = document.getElementById(id);
+  if(el){ el.classList.add('open'); openDropdownId = id; }
+}
+function toggleDropdown(key){
+  if((key==='master'||key==='operator') && selectedCurrencies.size===0) return; // 幣別未選前鎖定
+  toggleDropdownById(key+'-ms');
+}
+document.addEventListener('mousedown', function(e){
+  if(!openDropdownId) return;
+  const openEl = document.getElementById(openDropdownId);
+  if(openEl && !openEl.contains(e.target)) closeAllDropdowns();
+});
+
+/* ============================================================
+   幣別單選下拉
+   註:內部仍沿用 selectedCurrencies(Set)儲存,但限制最多只會有 1 筆,
+   這樣營運/高級營運既有的篩選邏輯(selectedCurrencies.has(...))不用重寫。
+   ============================================================ */
+function renderCurrencyControl(){
+  const el = document.getElementById('currency-summary');
+  if(selectedCurrencies.size===0){ el.textContent='請選擇幣別'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  el.textContent = CURRENCIES.filter(c=>selectedCurrencies.has(c.code)).map(c=>c.name).join('、');
+}
+function renderCurrencyPanel(){
+  const panel = document.getElementById('currency-panel');
+  panel.innerHTML = `<div class="ms-list">${CURRENCIES.map(c=>`
+    <label class="ms-option">
+      <input type="radio" name="mission-currency-radio" ${selectedCurrencies.has(c.code)?'checked':''} onchange="selectCurrency('${c.code}')"> ${c.name}
+    </label>`).join('')}</div>`;
+}
+function selectCurrency(code){
+  selectedCurrencies = new Set([code]); // 單選:每次選擇直接取代,不疊加
+  // 幣別變動後,移除不再符合篩選條件的已選營運/高級營運
+  pruneInvalidOperators();
+  updateCurrencyDependentFieldsState();
+  renderCurrencyControl();
+  renderOperatorControl();
+  renderOperatorPanel();
+  renderMasterControl();
+  renderMasterPanel();
+  closeAllDropdowns(); // 單選一旦選定即可直接收合下拉,不需像複選一樣停留讓使用者繼續勾選
+}
+function updateCurrencyDependentFieldsState(){
+  const enabled = selectedCurrencies.size > 0;
+  document.getElementById('master-ms').classList.toggle('disabled', !enabled);
+  document.getElementById('operator-ms').classList.toggle('disabled', !enabled);
+}
+
+/* ============================================================
+   營運多選下拉(依幣別篩選 + 搜尋 + 高級營運分級)
+   ============================================================ */
+function getCurrencyFilteredGroups(){
+  return operatorTreeData.map(parent=>{
+    const children = parent.children.filter(c=>selectedCurrencies.has(c.currency));
+    return { parent, children };
+  }).filter(g=>g.children.length>0);
+}
+function getFilteredOperatorGroups(){
+  const kw = operatorSearch.trim().toLowerCase();
+  return getCurrencyFilteredGroups().map(g=>({
+    parent: g.parent,
+    children: g.children.filter(c=> !kw || c.name.toLowerCase().includes(kw))
+  })).filter(g=>g.children.length>0);
+}
+function pruneInvalidOperators(){
+  const validIds = new Set();
+  operatorTreeData.forEach(parent=>parent.children.forEach(c=>{
+    if(selectedCurrencies.has(c.currency)) validIds.add(c.id);
+  }));
+  Array.from(selectedOperators).forEach(id=>{ if(!validIds.has(id)) selectedOperators.delete(id); });
+  // 高級營運勾選狀態也一併清理:若底下已無符合目前幣別的營運,移除該高級營運的選取標記
+  Array.from(selectedMasters).forEach(pid=>{
+    const parent = operatorTreeData.find(p=>p.id===pid);
+    const hasValidChild = parent && parent.children.some(c=>selectedCurrencies.has(c.currency));
+    if(!hasValidChild) selectedMasters.delete(pid);
+  });
+}
+function renderOperatorControl(){
+  const el = document.getElementById('operator-summary');
+  if(selectedCurrencies.size===0){ el.textContent='請先選擇幣別'; el.classList.add('placeholder'); return; }
+  if(selectedOperators.size===0){ el.textContent='請選擇營運(共 1,000 筆)'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  const names = [];
+  operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(selectedOperators.has(c.id)) names.push(c.name); }));
+  const shown = names.slice(0,3).join('、');
+  el.textContent = `已選 ${names.length} 個營運${names.length>3? '('+shown+' 等)':''}`;
+}
+function renderOperatorPanel(){
+  const panel = document.getElementById('operator-panel');
+  if(selectedCurrencies.size===0){
+    panel.innerHTML = `<div class="ms-empty">請先於左側選擇幣別,才會列出對應營運</div>`;
+    return;
+  }
+  // 搜尋框只在此處(整個面板重建時)產生一次,輸入時只更新下方清單,避免輸入中失焦
+  panel.innerHTML = `
+    <div class="ms-search"><input type="text" id="operator-search-input" placeholder="搜尋營運名稱(共約 1,000 筆)" value="${operatorSearch}" oninput="onOperatorSearch(this.value)"></div>
+    <div class="ms-list" id="operator-ms-list"></div>`;
+  renderOperatorList();
+}
+function renderOperatorList(){
+  const list = document.getElementById('operator-ms-list');
+  if(!list) return;
+  const groups = getFilteredOperatorGroups();
+  list.innerHTML = groups.length===0 ? '<div class="ms-empty">查無符合的營運</div>' : groups.map(g=>`
+    <div class="ms-group-title" style="cursor:default;">${g.parent.name}<span class="tag" style="margin-left:6px;">${g.children.length} 筆</span></div>
+    ${g.children.map(c=>`
+      <label class="ms-option">
+        <input type="checkbox" ${selectedOperators.has(c.id)?'checked':''} onchange="toggleOperator('${c.id}', this.checked)"> ${c.name}
+        <span class="tag">${c.currency}</span>
+        <span class="tag" style="background:${c.env==='test'?'var(--warning-bg)':'var(--success-bg)'};color:${c.env==='test'?'var(--warning)':'var(--success)'};">${c.env==='test'?'測試':'正式'}</span>
+      </label>`).join('')}
+  `).join('');
+}
+function onOperatorSearch(val){
+  operatorSearch = val;
+  renderOperatorList();
+}
+function toggleOperator(id, checked){
+  if(checked) selectedOperators.add(id); else selectedOperators.delete(id);
+  renderOperatorControl();
+  renderOperatorList();
+  renderMasterControl();
+  renderMasterPanel();
+}
+
+/* ============================================================
+   高級營運(選填,快速勾選底下所有營運)
+   ============================================================ */
+function renderMasterControl(){
+  const el = document.getElementById('master-summary');
+  if(selectedCurrencies.size===0){ el.textContent='請先選擇幣別'; el.classList.add('placeholder'); return; }
+  if(selectedMasters.size===0){ el.textContent='請選擇高級營運(選填)'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  el.textContent = operatorTreeData.filter(p=>selectedMasters.has(p.id)).map(p=>p.name).join('、');
+}
+function renderMasterPanel(){
+  const panel = document.getElementById('master-panel');
+  if(selectedCurrencies.size===0){
+    panel.innerHTML = `<div class="ms-empty">請先選擇幣別</div>`;
+    return;
+  }
+  const groups = getCurrencyFilteredGroups();
+  panel.innerHTML = `<div class="ms-list">
+    ${groups.map(g=>{
+      const allChecked = g.children.every(c=>selectedOperators.has(c.id));
+      const someChecked = g.children.some(c=>selectedOperators.has(c.id));
+      return `<label class="ms-option" style="padding-left:8px;">
+        <input type="checkbox" ${allChecked?'checked':''} data-indeterminate="${someChecked && !allChecked}" onchange="toggleMaster('${g.parent.id}', this.checked)">
+        ${g.parent.name}<span class="tag" style="margin-left:6px;">${g.children.length} 筆</span>
+      </label>`;
+    }).join('')}
+  </div>`;
+  panel.querySelectorAll('[data-indeterminate]').forEach(chk=>{
+    chk.indeterminate = chk.getAttribute('data-indeterminate')==='true';
+  });
+}
+function toggleMaster(parentId, checked){
+  const groups = getCurrencyFilteredGroups();
+  const g = groups.find(x=>x.parent.id===parentId);
+  if(!g) return;
+  g.children.forEach(c=>{ if(checked) selectedOperators.add(c.id); else selectedOperators.delete(c.id); });
+  if(checked) selectedMasters.add(parentId); else selectedMasters.delete(parentId);
+  renderMasterControl();
+  renderMasterPanel();
+  renderOperatorControl();
+  renderOperatorList();
+}
+
+/* ============================================================
+   營運快速選取:測試/正式/全部按鈕 + 可存取的快速選取清單
+   ============================================================ */
+function applyQuickSelect(kind){
+  if(selectedCurrencies.size===0){ alert('請先選擇幣別'); return; }
+  const groups = getCurrencyFilteredGroups();
+  groups.forEach(g=>g.children.forEach(c=>{
+    if(kind==='all' || c.env===kind) selectedOperators.add(c.id);
+  }));
+  renderOperatorControl(); renderOperatorList();
+  renderMasterControl(); renderMasterPanel();
+}
+function renderPresetChips(){
+  const box = document.getElementById('operator-preset-chips');
+  if(!box) return;
+  box.innerHTML = operatorPresets.length===0
+    ? '<span class="hint">尚無快速選取,可用下方「+」將目前的營運選擇存起來</span>'
+    : operatorPresets.map(p=>`
+      <span class="preset-chip">
+        <span onclick="applyPreset('${p.id}')">${p.name}</span>
+        <span class="icon-mini" title="重新命名" onclick="renamePreset('${p.id}')">${iconSvg('edit',12)}</span>
+        <span class="icon-mini" title="刪除" onclick="deletePreset('${p.id}')">${iconSvg('close',12)}</span>
+      </span>`).join('');
+}
+function applyPreset(id){
+  if(selectedCurrencies.size===0){ alert('請先選擇幣別'); return; }
+  const p = operatorPresets.find(x=>x.id===id);
+  if(!p) return;
+  const validIds = new Set();
+  operatorTreeData.forEach(parent=>parent.children.forEach(c=>{ if(selectedCurrencies.has(c.currency)) validIds.add(c.id); }));
+  selectedOperators = new Set(p.operatorIds.filter(oid=>validIds.has(oid)));
+  renderOperatorControl(); renderOperatorList();
+  renderMasterControl(); renderMasterPanel();
+}
+function savePresetPrompt(){
+  if(selectedOperators.size===0){ alert('目前尚未選擇任何營運,無法存為快速選取'); return; }
+  const name = prompt('請輸入快速選取名稱', '');
+  if(!name) return;
+  operatorPresets.push({ id:'preset'+Date.now(), name, operatorIds: Array.from(selectedOperators) });
+  renderPresetChips();
+}
+function renamePreset(id){
+  const p = operatorPresets.find(x=>x.id===id);
+  if(!p) return;
+  const name = prompt('重新命名', p.name);
+  if(!name) return;
+  p.name = name;
+  renderPresetChips();
+}
+function deletePreset(id){
+  const p = operatorPresets.find(x=>x.id===id);
+  if(!p) return;
+  if(confirm('確定要刪除快速選取「'+p.name+'」嗎?')){
+    operatorPresets = operatorPresets.filter(x=>x.id!==id);
+    renderPresetChips();
+  }
+}
+
+/* ============================================================
+   任務內文 - 遊戲多選下拉(每個任務區塊各自獨立)
+   ============================================================ */
+function gameSummaryText(block){
+  if(block.gameIds.length===0) return '所有遊戲';
+  const names = GAME_LIST.filter(g=>block.gameIds.includes(g.id)).map(g=>g.name);
+  return `已選 ${names.length} 款(${names.join('、')})`;
+}
+function renderGamePanel(idx){
+  const panel = document.getElementById('game-panel-'+idx);
+  if(!panel) return;
+  const block = currentBlocks[idx];
+  panel.innerHTML = `<div class="ms-list">
+    ${GAME_LIST.map(g=>`
+      <label class="ms-option">
+        <input type="checkbox" ${block.gameIds.includes(g.id)?'checked':''} onchange="toggleBlockGame(${idx}, '${g.id}', this.checked)"> ${g.name}
+      </label>`).join('')}
+  </div>
+  <div style="padding:6px 10px;border-top:1px solid var(--border);"><span class="hint">未勾選任何遊戲代表適用「所有遊戲」</span></div>`;
+}
+function toggleBlockGame(idx, gameId, checked){
+  const block = currentBlocks[idx];
+  if(checked){ if(!block.gameIds.includes(gameId)) block.gameIds.push(gameId); }
+  else { block.gameIds = block.gameIds.filter(g=>g!==gameId); }
+  document.getElementById('game-summary-'+idx).textContent = gameSummaryText(block);
+}
+function toggleGameDropdown(idx){
+  toggleDropdownById('game-ms-'+idx);
+}
+
+/* ============================================================
+   任務與獎勵 Task/Reward Blocks 渲染
+   ============================================================ */
+function renderTemplateOptions(){
+  const sel = document.getElementById('template-apply-select');
+  sel.innerHTML = '<option value="">請選擇樣板套用</option>' +
+    templates.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+}
+
+function taskFieldHtml(block, idx){
+  const t = TASK_TYPES[block.taskType];
+  return `
+    <div class="form-item">
+      <label>${t.fieldLabel} <span style="color:var(--danger);">*</span></label>
+      <input type="number" min="0" value="${block.taskValue}" onchange="currentBlocks[${idx}].taskValue=this.value">
+      <div class="hint">單位:${t.unit}</div>
+    </div>`;
+}
+
+// 前台重置時間:每組任務(任務1/2/3...)各自獨立設定,二選一:不重置 / 每日 UTC+8 00:00 重置
+function resetModeFieldHtml(block, idx){
+  const mode = block.resetMode || 'utc8_midnight';
+  return `
+    <div class="form-item" style="margin-top:10px;">
+      <label>前台重置時間 <span style="cursor:help;display:inline-flex;vertical-align:middle;" title="達重置時間即清空已累積的內容,從0開始">${helpCircleIcon()}</span></label>
+      <div style="display:flex;flex-direction:column;gap:4px;padding-top:2px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;cursor:pointer;">
+          <input type="radio" name="reset-mode-${idx}" value="none" ${mode==='none'?'checked':''} onchange="currentBlocks[${idx}].resetMode=this.value"> 不重置(直到結束時間到)
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;cursor:pointer;">
+          <input type="radio" name="reset-mode-${idx}" value="utc8_midnight" ${mode==='utc8_midnight'?'checked':''} onchange="currentBlocks[${idx}].resetMode=this.value"> 每日0點(UTC+8)
+        </label>
+      </div>
+    </div>`;
+}
+
+function rewardFieldHtml(fieldDef, block, idx){
+  const val = block.reward.values[fieldDef.key];
+  if(fieldDef.type==='gameSelect'){
+    return `<div class="form-item"><label>${fieldDef.label}</label>
+      <select onchange="currentBlocks[${idx}].reward.values.${fieldDef.key}=this.value">
+        ${GAME_LIST.map(g=>`<option value="${g.id}" ${val===g.id?'selected':''}>${g.name}</option>`).join('')}
+      </select></div>`;
+  }
+  if(fieldDef.type==='select'){
+    return `<div class="form-item"><label>${fieldDef.label}</label>
+      <select onchange="currentBlocks[${idx}].reward.values.${fieldDef.key}=this.value">
+        ${fieldDef.options.map(o=>`<option value="${o}" ${val===o?'selected':''}>${o==='unlimited'?'不限':o+' 倍'}</option>`).join('')}
+      </select></div>`;
+  }
+  if(fieldDef.type==='radio'){
+    // 通用單選(目前用於「最大贏分倍數判定方式」),預設取第一個選項,避免舊資料沒有此欄位時 checked 都對不上
+    const current = val===undefined || val===null || val==='' ? fieldDef.options[0].value : val;
+    return `<div class="form-item"><label>${fieldDef.label}</label>
+      <div style="display:flex;flex-direction:column;gap:4px;padding-top:2px;">
+        ${fieldDef.options.map(o=>`
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;cursor:pointer;">
+            <input type="radio" name="reward-${fieldDef.key}-${idx}" value="${o.value}" ${current===o.value?'checked':''} onchange="currentBlocks[${idx}].reward.values.${fieldDef.key}=this.value">
+            ${o.label}
+          </label>`).join('')}
+      </div>
+    </div>`;
+  }
+  if(fieldDef.type==='intRange'){
+    return `<div class="form-item"><label>${fieldDef.label} <span style="color:var(--danger);">*</span></label>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="number" min="${fieldDef.min}" max="${fieldDef.max}" step="1" placeholder="支援整數 0~10000" value="${val}" onchange="currentBlocks[${idx}].reward.values.${fieldDef.key}=this.value" style="flex:1;">
+        <span style="font-size:13px;color:var(--text-secondary);">倍</span>
+      </div>
+    </div>`;
+  }
+  if(fieldDef.type==='lockedMinBet'){
+    // 每局投注額固定為營運最低投注額,不開放使用者選擇或手動輸入(依實際營運設定值,原型無法帶入真實數字)
+    return `<div class="form-item"><label>${fieldDef.label}</label>
+      <input type="text" value="營運最低投注" disabled>
+    </div>`;
+  }
+  return `<div class="form-item"><label>${fieldDef.label} <span style="color:var(--danger);">*</span></label>
+    <input type="number" min="0" value="${val}" onchange="currentBlocks[${idx}].reward.values.${fieldDef.key}=this.value"></div>`;
+}
+
+function renderTaskBlocks(){
+  const list = document.getElementById('tr-block-list');
+  list.innerHTML = currentBlocks.map((block, idx)=>{
+    const rt = REWARD_TYPES[block.reward.type];
+    return `
+    <div class="tr-block">
+      <div class="tr-block-header">
+        <div class="no-wrap"><span class="no-badge">${idx+1}</span><span class="title">任務 ${idx+1}</span></div>
+        <button class="btn btn-outline btn-sm" ${currentBlocks.length<=1?'disabled title="至少需保留 1 組"':''} onclick="removeTaskBlock(${idx})">${iconSvg('trash',14)} 刪除本組</button>
+      </div>
+      <div class="tr-block-body">
+        <div class="tr-col task">
+          <div class="tr-col-title">任務內容</div>
+          <div class="form-item" style="margin-bottom:10px;">
+            <label>任務類型</label>
+            <select onchange="changeTaskType(${idx}, this.value)">
+              ${Object.entries(TASK_TYPES).map(([key,v])=>`<option value="${key}" ${block.taskType===key?'selected':''}>${v.label}</option>`).join('')}
+            </select>
+          </div>
+          <div id="task-field-${idx}">${taskFieldHtml(block, idx)}</div>
+          ${resetModeFieldHtml(block, idx)}
+          <div style="margin-top:10px;">
+            <label style="display:block;font-size:12.5px;color:var(--text-secondary);margin-bottom:5px;font-weight:600;">適用遊戲(可複選,不選代表所有遊戲)</label>
+            <div class="ms drop-up" id="game-ms-${idx}">
+              <div class="ms-control" onclick="toggleGameDropdown(${idx})">
+                <span class="ms-summary" id="game-summary-${idx}">${gameSummaryText(block)}</span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="game-panel-${idx}"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tr-col reward">
+          <div class="tr-col-title">獎勵內容</div>
+          <div class="form-item" style="margin-bottom:10px;">
+            <label>獎勵類型</label>
+            <select onchange="changeRewardType(${idx}, this.value)">
+              ${Object.entries(REWARD_TYPES).map(([key,v])=>`<option value="${key}" ${block.reward.type===key?'selected':''}>${v.label}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-row" style="gap:10px;" id="reward-fields-${idx}">
+            ${rt.fields.map(f=>rewardFieldHtml(f, block, idx)).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;}).join('');
+  document.getElementById('next-no').textContent = currentBlocks.length + 1;
+  const hint = document.getElementById('min-hint');
+  hint.textContent = currentBlocks.length < 1 ? `目前尚未設定任務,至少需設定 1 組任務與獎勵` : '';
+  hint.className = 'empty-note' + (currentBlocks.length < 1 ? ' hint warn' : '');
+  mountIcons();
+  currentBlocks.forEach((b,idx)=>renderGamePanel(idx));
+}
+
+function changeTaskType(idx, newType){
+  currentBlocks[idx].taskType = newType;
+  currentBlocks[idx].taskValue = '';
+  document.getElementById('task-field-'+idx).innerHTML = taskFieldHtml(currentBlocks[idx], idx);
+}
+function changeRewardType(idx, newType){
+  const rt = REWARD_TYPES[newType];
+  const values = {};
+  rt.fields.forEach(f=>{
+    if(f.type==='gameSelect') values[f.key] = GAME_LIST[0].id;
+    else if(f.type==='select') values[f.key] = f.options[0];
+    else if(f.type==='radio') values[f.key] = f.options[0].value;
+    else if(f.type==='lockedMinBet') values[f.key] = 'operator_min';
+    else values[f.key] = '';
+  });
+  currentBlocks[idx].reward = mkReward(newType, values);
+  document.getElementById('reward-fields-'+idx).innerHTML = rt.fields.map(f=>rewardFieldHtml(f, currentBlocks[idx], idx)).join('');
+}
+
+function addTaskBlock(){
+  currentBlocks.push(mkBlock('bet_amount','', [], mkReward('free_spin',{gameId:'g1', betLevel:'1', expireHours:'24', spinCount:'10', maxWinMultiplier:'50'})));
+  renderTaskBlocks();
+}
+function removeTaskBlock(idx){
+  if(currentBlocks.length<=1){ alert('至少需保留 1 組任務與獎勵設定'); return; }
+  currentBlocks.splice(idx,1);
+  renderTaskBlocks();
+}
+
+function applyTemplateToBlocks(templateId){
+  if(!templateId) return;
+  const tpl = templates.find(t=>t.id===templateId);
+  if(!tpl) return;
+  currentBlocks = JSON.parse(JSON.stringify(tpl.blocks));
+  renderTaskBlocks();
+}
+
+/* ============================================================
+   Modal 開關 Open / Close
+   mode: 'mission' (新增/編輯任務活動) | 'template' (新增/編輯樣板) | 'view' (唯讀檢視,僅顯示任務設定內容)
+   ============================================================ */
+function defaultMissionBlocks(){
+  return [
+    mkBlock('bet_amount','1000',[], mkReward('free_spin',{gameId:'g1', betLevel:'1', expireHours:'24', spinCount:'10', maxWinMultiplier:'50'}))
+  ];
+}
+function openMissionModal(mode, arg){
+  modalMode = mode || 'mission';
+  const isTemplate = modalMode==='template';
+  const isView = modalMode==='view';
+  const templateData = isTemplate ? arg : null;
+  // 'view' 與 'mission'(帶 id 代表編輯既有任務活動)兩種情況都用 arg 當作 missionId 查找既有資料
+  const editingMission = (!isTemplate && typeof arg === 'string') ? (missions.find(m=>m.id===arg) || null) : null;
+  editingMissionId = (modalMode==='mission' && editingMission) ? editingMission.id : null;
+  // 是否全欄位可編輯,取決於「活動是否已啟用且已過開始時間」:
+  // 草稿(從未啟用)一律全欄位可編輯,不受 start 欄位當下數值影響;
+  // 已啟用但尚未到開始時間(準備開始)也還是全欄位可編輯;
+  // 已啟用且已過開始時間(進行中)才轉為僅開放名稱/結束時間。
+  const isPartialLock = !!(modalMode==='mission' && editingMission && editingMission.enabled && missionHasStarted(editingMission));
+  missionEditLockMode = isPartialLock ? 'partial' : 'full';
+
+  document.getElementById('mission-modal').classList.toggle('readonly', isView);
+  document.getElementById('mission-modal').classList.toggle('partial-lock', isPartialLock);
+
+  document.getElementById('mission-modal-title').textContent = isView
+    ? '檢視任務活動(唯讀)'
+    : isTemplate ? (templateData ? '編輯任務樣板' : '新增任務樣板')
+    : isPartialLock ? '編輯任務活動(活動已開始,僅開放名稱/結束時間)'
+    : (editingMission ? '編輯任務活動' : '新增任務活動');
+  document.getElementById('tr-section-title').textContent = '任務與獎勵設定(最少 1 組)';
+  document.getElementById('template-warning-banner').style.display = isTemplate ? 'flex' : 'none';
+  document.getElementById('partial-lock-banner').style.display = isPartialLock ? 'flex' : 'none';
+  document.getElementById('time-row').style.display = isTemplate ? 'none' : 'flex';
+  document.getElementById('currency-operator-row').style.display = isTemplate ? 'none' : 'flex';
+  document.getElementById('name-field-label').textContent = isTemplate ? '樣板名稱' : '活動名稱';
+
+  if(isTemplate){
+    document.getElementById('mission-name').value = templateData ? templateData.name : '';
+  }else if(editingMission){
+    // 註:目前編輯既有任務活動時,只會回填名稱與起訖時間;幣別/營運/任務內容尚未串接回填,
+    // 這幾個區塊仍會顯示預設值,是已知待補的限制,請留意。
+    document.getElementById('mission-name').value = editingMission.name;
+    const [sd, stimeRaw] = editingMission.start.split(' ');
+    const [ed, etimeRaw] = editingMission.end.split(' ');
+    document.getElementById('mission-start-date').value = sd;
+    document.getElementById('mission-start-time').value = stimeRaw.slice(0,5);
+    document.getElementById('mission-end-date').value = ed;
+    document.getElementById('mission-end-time').value = etimeRaw.slice(0,5);
+  }else{
+    // 新增任務活動:重置為預設空白狀態,避免殘留上次輸入(既有優化建議項目)
+    document.getElementById('mission-name').value = '';
+    document.getElementById('mission-start-date').value = '2026-07-13';
+    document.getElementById('mission-start-time').value = '00:00';
+    document.getElementById('mission-end-date').value = '2026-07-31';
+    document.getElementById('mission-end-time').value = '23:59';
+  }
+
+  selectedCurrencies = new Set(['TWD']);
+  selectedOperators = new Set();
+  selectedMasters = new Set();
+  operatorSearch = '';
+  updateCurrencyDependentFieldsState();
+  renderCurrencyControl(); renderCurrencyPanel();
+  renderOperatorControl(); renderOperatorPanel();
+  renderMasterControl(); renderMasterPanel();
+  renderPresetChips();
+  renderTemplateOptions();
+
+  editingTemplateId = isTemplate && templateData ? templateData.id : null;
+  currentBlocks = (isTemplate && templateData)
+    ? JSON.parse(JSON.stringify(templateData.blocks))
+    : defaultMissionBlocks();
+  renderTaskBlocks();
+  document.getElementById('mission-save-btn').textContent = isTemplate ? '儲存樣板' : '儲存';
+  document.getElementById('mission-cancel-btn').textContent = isView ? '關閉' : '取消';
+  document.getElementById('mission-modal-overlay').classList.add('open');
+}
+function closeMissionModal(){
+  document.getElementById('mission-modal-overlay').classList.remove('open');
+}
+
+function saveMission(){
+  const name = document.getElementById('mission-name').value.trim();
+  if(!name){
+    alert('請輸入活動名稱(必填)。');
+    return;
+  }
+
+  // 啟用中部分鎖定模式:只驗證/更新「名稱」與「結束時間」,幣別/營運/任務與獎勵內容這次儲存不受影響
+  if(missionEditLockMode==='partial' && editingMissionId){
+    const endDate = document.getElementById('mission-end-date').value;
+    const endTime = document.getElementById('mission-end-time').value;
+    if(!endDate || !endTime){
+      alert('請設定結束時間(必填)。');
+      return;
+    }
+    const m = missions.find(x=>x.id===editingMissionId);
+    if(m){
+      const newEnd = new Date(`${endDate}T${endTime}:00`);
+      const start = new Date(m.start.replace(' ','T'));
+      if(newEnd < start){
+        alert('結束時間不可早於開始時間。');
+        return;
+      }
+      m.name = name;
+      m.end = `${endDate} ${endTime}:59`;
+      renderMissionTable();
+    }
+    closeMissionModal();
+    return;
+  }
+
+  if(modalMode==='mission'){
+    const startDate = document.getElementById('mission-start-date').value;
+    const startTime = document.getElementById('mission-start-time').value;
+    const endDate = document.getElementById('mission-end-date').value;
+    const endTime = document.getElementById('mission-end-time').value;
+    if(!startDate || !startTime){
+      alert('請設定開始時間(必填)。');
+      return;
+    }
+    if(!endDate || !endTime){
+      alert('請設定結束時間(必填)。');
+      return;
+    }
+    if(selectedCurrencies.size===0){
+      alert('請至少選擇一個目標幣別(必填)。');
+      return;
+    }
+    if(selectedOperators.size===0){
+      alert('請至少選擇一個營運(適用營運為必填)。');
+      return;
+    }
+    // 註:高級營運(selectedMasters)為選填,僅作為快速勾選底下營運的捷徑,不需檢查
+  }
+  if(currentBlocks.length < 1){
+    alert('任務與獎勵最少需要 1 組,請新增後再儲存。');
+    return;
+  }
+  for(let i=0;i<currentBlocks.length;i++){
+    const b = currentBlocks[i];
+    if(b.taskValue===''||b.taskValue===null||b.taskValue===undefined){
+      alert(`任務 ${i+1}:「${TASK_TYPES[b.taskType].fieldLabel}」為必填,請輸入數值。`);
+      return;
+    }
+    const rt = REWARD_TYPES[b.reward.type];
+    for(const f of rt.fields){
+      if(f.type==='number'){
+        const v = b.reward.values[f.key];
+        if(v===''||v===null||v===undefined){
+          alert(`任務 ${i+1}:獎勵欄位「${f.label}」為必填,請輸入數值。`);
+          return;
+        }
+      }
+      if(f.type==='intRange'){
+        const v = b.reward.values[f.key];
+        if(v===''||v===null||v===undefined){
+          alert(`任務 ${i+1}:獎勵欄位「${f.label}」為必填,請輸入數值。`);
+          return;
+        }
+        const n = Number(v);
+        if(!Number.isInteger(n) || n<f.min || n>f.max){
+          alert(`任務 ${i+1}:獎勵欄位「${f.label}」請輸入 ${f.min}~${f.max} 之間的整數。`);
+          return;
+        }
+      }
+    }
+  }
+  if(modalMode==='template'){
+    if(editingTemplateId){
+      const tpl = templates.find(t=>t.id===editingTemplateId);
+      tpl.name = name;
+      tpl.blocks = JSON.parse(JSON.stringify(currentBlocks));
+      tpl.updatedAt = new Date().toISOString().slice(0,16).replace('T',' '); // 編輯樣板也要刷新「最後更新時間」
+    }else{
+      templates.push({ id:'tpl'+Date.now(), name, creator:'yvonne', updatedAt:new Date().toISOString().slice(0,16).replace('T',' '), blocks: JSON.parse(JSON.stringify(currentBlocks)) });
+    }
+    renderTemplateTable();
+    closeMissionModal();
+    alert('樣板「'+name+'」已儲存。');
+    return;
+  }
+
+  // 寫入 / 更新任務清單
+  const startDate = document.getElementById('mission-start-date').value;
+  const startTime = document.getElementById('mission-start-time').value;
+  const endDate = document.getElementById('mission-end-date').value;
+  const endTime = document.getElementById('mission-end-time').value;
+  const startStr = `${startDate} ${startTime}:00`;
+  const endStr = `${endDate} ${endTime}:59`;
+
+  if(editingMissionId){
+    // 編輯既有任務活動:目前只更新名稱與起訖時間,啟用狀態不受影響(不會因編輯而自動停用或啟用)
+    const m = missions.find(x=>x.id===editingMissionId);
+    if(m){
+      m.name = name;
+      m.start = startStr;
+      m.end = endStr;
+    }
+  }else{
+    // 新增任務活動:預設 enabled:false,需再手動啟用(雙重確認),避免新建立就直接對外生效
+    missions.push({
+      id: 'm'+Date.now(),
+      name, start: startStr, end: endStr,
+      currencyHtml: summarizeCurrencySelection(),
+      operatorHtml: summarizeOperatorSelection(),
+      hasScopeModal: false,
+      enabled: false,
+      everActivated: false // 尚未啟用過,第一次啟用不受「停用後不可重新啟用」規則限制
+    });
+  }
+  renderMissionTable();
+
+  closeMissionModal();
+  // 需求:儲存任務活動後彈窗詢問是否另存為樣板
+  document.getElementById('new-template-name').value='';
+  document.getElementById('save-template-overlay').classList.add('open');
+}
+function closeSaveTemplateModal(){
+  document.getElementById('save-template-overlay').classList.remove('open');
+}
+function confirmSaveTemplate(){
+  const name = document.getElementById('new-template-name').value.trim() || `未命名樣板 ${templates.length+1}`;
+  templates.push({ id:'tpl'+Date.now(), name, creator:'yvonne', updatedAt: new Date().toISOString().slice(0,16).replace('T',' '), blocks: JSON.parse(JSON.stringify(currentBlocks)) });
+  renderTemplateTable();
+  closeSaveTemplateModal();
+  alert('已儲存為樣板:「'+name+'」');
+}
+
+/* ============================================================
+   任務樣板 Tab 渲染(套用 -> 改為編輯)
+   ============================================================ */
+function renderTemplateTable(){
+  const tbody = document.getElementById('template-tbody');
+  tbody.innerHTML = templates.map(t=>`
+    <tr>
+      <td>${t.name}</td>
+      <td>${t.blocks.length}</td>
+      <td>${t.creator}</td>
+      <td>${t.updatedAt}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="editTemplate('${t.id}')">${iconSvg('edit',13)} 編輯</button>
+        <button class="btn btn-outline btn-sm" onclick="deleteTemplate('${t.id}')">${iconSvg('trash',13)} 刪除</button>
+      </td>
+    </tr>
+  `).join('');
+}
+function editTemplate(templateId){
+  const tpl = templates.find(t=>t.id===templateId);
+  if(!tpl) return;
+  openMissionModal('template', tpl);
+}
+function deleteTemplate(templateId){
+  const tpl = templates.find(t=>t.id===templateId);
+  if(!tpl) return;
+  if(confirm('確定要刪除樣板「'+tpl.name+'」嗎?此動作不會影響已使用此樣板建立的任務活動。')){
+    templates = templates.filter(t=>t.id!==templateId);
+    renderTemplateTable();
+  }
+}
+
+/* ============================================================
+   紀錄頁篩選:營運多選下拉(可複選,不限幣別,供查詢使用)
+   ============================================================ */
+let recordSelectedOperators = new Set();
+let recordOperatorSearch = '';
+function renderRecordOperatorControl(){
+  const el = document.getElementById('record-operator-summary');
+  if(!el) return;
+  if(recordSelectedOperators.size===0){ el.textContent='請選擇營運'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  const names = [];
+  operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(recordSelectedOperators.has(c.id)) names.push(c.name); }));
+  const shown = names.slice(0,2).join('、');
+  el.textContent = `已選 ${names.length} 個營運${names.length>2? '('+shown+' 等)':''}`;
+}
+function renderRecordOperatorPanel(){
+  const panel = document.getElementById('record-operator-panel');
+  if(!panel) return;
+  panel.innerHTML = `
+    <div class="ms-search"><input type="text" id="record-operator-search-input" placeholder="搜尋營運名稱" value="${recordOperatorSearch}" oninput="onRecordOperatorSearch(this.value)"></div>
+    <div class="ms-list" id="record-operator-ms-list"></div>`;
+  renderRecordOperatorList();
+}
+function renderRecordOperatorList(){
+  const list = document.getElementById('record-operator-ms-list');
+  if(!list) return;
+  const kw = recordOperatorSearch.trim().toLowerCase();
+  const groups = operatorTreeData.map(parent=>({
+    parent, children: parent.children.filter(c=> !kw || c.name.toLowerCase().includes(kw))
+  })).filter(g=>g.children.length>0);
+  list.innerHTML = groups.length===0 ? '<div class="ms-empty">查無符合的營運</div>' : groups.map(g=>`
+    <div class="ms-group-title" style="cursor:default;">${g.parent.name}<span class="tag" style="margin-left:6px;">${g.children.length} 筆</span></div>
+    ${g.children.map(c=>`
+      <label class="ms-option">
+        <input type="checkbox" ${recordSelectedOperators.has(c.id)?'checked':''} onchange="toggleRecordOperator('${c.id}', this.checked)"> ${c.name} <span class="tag">${c.currency}</span>
+      </label>`).join('')}
+  `).join('');
+}
+function onRecordOperatorSearch(val){
+  recordOperatorSearch = val;
+  renderRecordOperatorList();
+}
+function toggleRecordOperator(id, checked){
+  if(checked) recordSelectedOperators.add(id); else recordSelectedOperators.delete(id);
+  renderRecordOperatorControl();
+  renderRecordOperatorList();
+}
+
+/* ============================================================
+   紀錄 Tab 渲染:統計卡 + 精簡表格 + 詳情彈窗
+   ============================================================ */
+const STATUS_LABEL = {
+  progress:{ text:'進行中', cls:'pill-warning' },
+  pending_reward:{ text:'未領獎', cls:'pill-muted' },
+  done:{ text:'已完成', cls:'pill-success' },
+  expired:{ text:'未達成', cls:'pill-danger' }
+};
+function renderRecordTable(){
+  const tbody = document.getElementById('record-tbody');
+  tbody.innerHTML = recordsData.map((r, idx)=>{
+    const st = STATUS_LABEL[r.status];
+    const statusCell = r.status === 'pending_reward'
+      ? `<button class="btn-resend" title="用於原本未成功領取、活動已過期的情況,點擊後可補派獎勵給玩家" onclick="openResendConfirm(${idx})">› ${st.text}</button>`
+      : `<span class="pill ${st.cls}">${st.text}</span>`;
+    return `
+    <tr>
+      <td>${r.member}</td><td>${r.operator}</td><td>${r.activityId}</td><td>${r.activity}</td>
+      <td class="num">${r.taskNo}</td>
+      <td><span class="badge-fixed">${TASK_TYPES[r.taskType].label}</span></td>
+      <td>${r.claimedAt || '-'}</td><td>${r.achievedAt || '-'}</td><td>${r.rewardedAt || '-'}</td>
+      <td>${statusCell}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="openRecordDetail(${idx})">${iconSvg('eye',13)} 查看詳情</button></td>
+    </tr>`;
+  }).join('');
+  renderRecordStats();
+}
+// 紀錄頁上方統計卡:目前依 recordsData 目前全部筆數計算(原型尚未串接篩選條件連動篩選後再統計)
+function renderRecordStats(){
+  const el = document.getElementById('record-stats');
+  if(!el) return;
+  const uniqueMembers = new Set(recordsData.map(r=>r.member)).size;
+  const participantCount = recordsData.length;
+  const achievedCount = recordsData.filter(r=>!!r.achievedAt).length;
+  const rewardedCount = recordsData.filter(r=>!!r.rewardedAt).length;
+  el.innerHTML = `
+    <div class="stat-card"><div class="label">參與玩家不重複數量</div><div class="value">${uniqueMembers.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">參與次數</div><div class="value">${participantCount.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">達成次數</div><div class="value">${achievedCount.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">領獎次數</div><div class="value">${rewardedCount.toLocaleString()}</div></div>`;
+}
+// 匯出紀錄:將目前紀錄清單匯出為 CSV(示意用,欄位對齊表格欄位;加 BOM 避免 Excel 開啟中文亂碼)
+function exportRecords(){
+  const headers = ['會員帳號','營運','活動ID','任務活動名稱','任務編號','任務類型','累積進度','開始時間','達成時間','領獎時間','狀態'];
+  const rows = recordsData.map(r=>[
+    r.member, r.operator, r.activityId, r.activity, r.taskNo, TASK_TYPES[r.taskType].label,
+    `${r.progress.toLocaleString()}/${r.target.toLocaleString()}`,
+    r.claimedAt||'', r.achievedAt||'', r.rewardedAt||'', STATUS_LABEL[r.status].text
+  ]);
+  const escapeCell = v=>{
+    const s = String(v);
+    return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
+  const csvText = [headers, ...rows].map(cols=>cols.map(escapeCell).join(',')).join('\r\n');
+  const blob = new Blob(['﻿'+csvText], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `任務紀錄_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function openRecordDetail(idx){
+  const r = recordsData[idx];
+  const st = STATUS_LABEL[r.status];
+  const statusHtml = r.status === 'pending_reward'
+    ? `<button class="btn-resend" onclick="openResendConfirm(${idx})">› ${st.text}</button>`
+    : `<span class="pill ${st.cls}">${st.text}</span>${r.manualResend ? ' <span class="pill pill-muted">人工補派</span>' : ''}${r.resendTxId ? ` <span style="color:var(--text-secondary);font-size:12.5px;">(交易單號 <span class="scope-link">${r.resendTxId}</span>)</span>` : ''}`;
+  document.getElementById('record-detail-body').innerHTML = `
+    <div class="detail-row"><span class="k">會員帳號</span><span class="v">${r.member}</span></div>
+    <div class="detail-row"><span class="k">營運</span><span class="v">${r.operator}</span></div>
+    <div class="detail-row"><span class="k">活動ID</span><span class="v">${r.activityId}</span></div>
+    <div class="detail-row"><span class="k">任務活動</span><span class="v">${r.activity}</span></div>
+    <div class="detail-row"><span class="k">任務編號</span><span class="v">${r.taskNo}</span></div>
+    <div class="detail-row"><span class="k">任務類型</span><span class="v">${TASK_TYPES[r.taskType].label}</span></div>
+    <div class="detail-row"><span class="k">任務內容</span><span class="v">${r.taskContent}</span></div>
+    <div class="detail-row"><span class="k">累積進度</span><span class="v">${r.progress.toLocaleString()} / ${r.target.toLocaleString()}&nbsp;&nbsp;${rateBarHtml(r.progress/r.target*100)}</span></div>
+    <div class="detail-row"><span class="k">獎勵內容</span><span class="v">${r.rewardContent}</span></div>
+    <div class="detail-row"><span class="k">開始時間</span><span class="v">${r.claimedAt||'-'}</span></div>
+    <div class="detail-row"><span class="k">達成時間</span><span class="v">${r.achievedAt||'-'}</span></div>
+    <div class="detail-row"><span class="k">領獎時間</span><span class="v">${r.rewardedAt||'-'}</span></div>
+    <div class="detail-row"><span class="k">狀態</span><span class="v">${statusHtml}</span></div>
+  `;
+  document.getElementById('record-detail-overlay').classList.add('open');
+}
+// 補派獎勵:用於「未領獎」且活動已過期、玩家原本沒有成功領取的情況,讓操作者手動重新觸發發放
+// 流程分兩段彈窗:先確認補派對象,確認後才真正送出並顯示交易單號
+let resendConfirmIdx = null;
+
+function openResendConfirm(idx){
+  const r = recordsData[idx];
+  if(!r || r.status !== 'pending_reward') return;
+  resendConfirmIdx = idx;
+  document.getElementById('resend-confirm-member').textContent = r.member;
+  document.getElementById('resend-confirm-overlay').classList.add('open');
+}
+function closeResendConfirm(){
+  document.getElementById('resend-confirm-overlay').classList.remove('open');
+  resendConfirmIdx = null;
+}
+function confirmResend(){
+  const idx = resendConfirmIdx;
+  const r = recordsData[idx];
+  if(!r || r.status !== 'pending_reward'){ closeResendConfirm(); return; }
+  r.rewardedAt = '2026-07-13 12:00:00'; // 示意用補派時間,對齊本原型模擬的今日時間
+  r.status = 'done';
+  r.manualResend = true; // 標記此筆為人工補派,供詳情頁與稽核使用
+  r.resendTxId = String(Math.floor(100000 + Math.random()*900000)); // 示意用交易單號,正式串接應改為後端實際回傳的單號
+  renderRecordTable();
+  closeResendConfirm();
+  document.getElementById('resend-success-tx').textContent = r.resendTxId;
+  document.getElementById('resend-success-overlay').classList.add('open');
+  const detailOverlay = document.getElementById('record-detail-overlay');
+  if(detailOverlay.classList.contains('open')) openRecordDetail(idx); // 若詳情彈窗開著,重新整理內容以顯示最新狀態
+}
+function closeResendSuccess(){
+  document.getElementById('resend-success-overlay').classList.remove('open');
+}
+function closeRecordDetail(){
+  document.getElementById('record-detail-overlay').classList.remove('open');
+}
+
+/* ============================================================
+   分析報表 Tab:給辦活動的部門看成效/支出/參與人數/任務達成率
+   資料為示意用假資料,正式串接時應改由後端統計 API 提供
+   ============================================================ */
+const reportData = {
+  '12356': {
+    name:'台幣任務', currency:'TWD',
+    uniqueParticipants: 460, participants: 3200, achievedMembers: 2688, rewardedMembers: 2554,
+    tasks: [
+      { no:1, taskType:'bet_amount', threshold:'5,000', claimed:3200, achieved:2560 },
+      { no:2, taskType:'bet_count', threshold:'200', claimed:3200, achieved:1120 },
+      { no:3, taskType:'super_free', threshold:'1', claimed:2400, achieved:2208 }
+    ],
+    // usedCount:玩家實際有使用(打出)的次數,恆小於等於 count(差額視為過期未用);winAmount:使用該獎勵產生的中獎金額統計(依活動幣別)
+    rewardCostItems: [
+      { taskNo:1, rewardContent:'免費旋轉 x10(戰神賽特2)', count:2432, usedCount:2210, winAmount:186540 },
+      { taskNo:2, rewardContent:'免費旋轉 x15(戰神賽特)', count:1075, usedCount:968, winAmount:82150 },
+      { taskNo:3, rewardContent:'免費旋轉 x30(赤三國)', count:2140, usedCount:1987, winAmount:452800 }
+    ]
+  },
+  '78987': {
+    name:'其他幣別任務', currency:'HKD',
+    uniqueParticipants: 280, participants: 1800, achievedMembers: 1350, rewardedMembers: 1290,
+    tasks: [
+      { no:1, taskType:'free_game', threshold:'3', claimed:1800, achieved:1530 },
+      { no:2, taskType:'bet_count', threshold:'200', claimed:1800, achieved:720 }
+    ],
+    rewardCostItems: [
+      { taskNo:1, rewardContent:'免費旋轉 x5(戰神賽特)', count:1470, usedCount:1305, winAmount:58200 },
+      { taskNo:2, rewardContent:'免費旋轉 x20(所有遊戲)', count:690, usedCount:612, winAmount:71400 }
+    ]
+  }
+};
+
+// 每日趨勢:活動每天重置累積,以下為近 5 天的示意拆分數據(正式串接應改為依日期區間查詢的後端 API)
+// 結構:第一層為活動當日總計(達成次數採「達成至少一項任務」的次數),展開後為當日各任務的參與/達成/領獎次數
+const dailyReportData = {
+  '12356': [
+    { date:'2026-07-09', claimed:115, achieved:96, rewarded:90, tasks:[
+      {no:1, claimed:115, achieved:92, rewarded:87}, {no:2, claimed:115, achieved:40, rewarded:38}, {no:3, claimed:90, achieved:83, rewarded:80}
+    ]},
+    { date:'2026-07-10', claimed:122, achieved:101, rewarded:95, tasks:[
+      {no:1, claimed:122, achieved:98, rewarded:93}, {no:2, claimed:122, achieved:43, rewarded:41}, {no:3, claimed:92, achieved:85, rewarded:82}
+    ]},
+    { date:'2026-07-11', claimed:108, achieved:90, rewarded:85, tasks:[
+      {no:1, claimed:108, achieved:86, rewarded:82}, {no:2, claimed:108, achieved:38, rewarded:36}, {no:3, claimed:81, achieved:75, rewarded:72}
+    ]},
+    { date:'2026-07-12', claimed:131, achieved:109, rewarded:103, tasks:[
+      {no:1, claimed:131, achieved:105, rewarded:100}, {no:2, claimed:131, achieved:46, rewarded:44}, {no:3, claimed:98, achieved:90, rewarded:87}
+    ]},
+    { date:'2026-07-13', claimed:119, achieved:99, rewarded:94, tasks:[
+      {no:1, claimed:119, achieved:95, rewarded:90}, {no:2, claimed:119, achieved:42, rewarded:40}, {no:3, claimed:89, achieved:82, rewarded:79}
+    ]}
+  ],
+  '78987': [
+    { date:'2026-07-09', claimed:68, achieved:60, rewarded:57, tasks:[
+      {no:1, claimed:68, achieved:58, rewarded:55}, {no:2, claimed:68, achieved:27, rewarded:26}
+    ]},
+    { date:'2026-07-10', claimed:75, achieved:66, rewarded:63, tasks:[
+      {no:1, claimed:75, achieved:64, rewarded:61}, {no:2, claimed:75, achieved:30, rewarded:29}
+    ]},
+    { date:'2026-07-11', claimed:61, achieved:54, rewarded:51, tasks:[
+      {no:1, claimed:61, achieved:52, rewarded:49}, {no:2, claimed:61, achieved:24, rewarded:23}
+    ]},
+    { date:'2026-07-12', claimed:79, achieved:70, rewarded:66, tasks:[
+      {no:1, claimed:79, achieved:67, rewarded:64}, {no:2, claimed:79, achieved:32, rewarded:31}
+    ]},
+    { date:'2026-07-13', claimed:70, achieved:62, rewarded:59, tasks:[
+      {no:1, claimed:70, achieved:60, rewarded:57}, {no:2, claimed:70, achieved:28, rewarded:27}
+    ]}
+  ]
+};
+
+// 每日趨勢:記錄哪些日期目前是展開狀態
+let expandedDailyDates = new Set();
+function toggleDailyDateExpand(dateKey){
+  if(expandedDailyDates.has(dateKey)) expandedDailyDates.delete(dateKey);
+  else expandedDailyDates.add(dateKey);
+  renderReportPanel();
+}
+
+// 任務達成率分析表:記錄哪些任務活動目前是展開狀態(預設全部收合,只看整體狀況)
+let expandedReportMissions = new Set();
+function toggleReportMissionExpand(id){
+  if(expandedReportMissions.has(id)) expandedReportMissions.delete(id);
+  else expandedReportMissions.add(id);
+  renderReportPanel();
+}
+
+// 獎勵支出明細表:獨立一組展開狀態,與上面的任務達成率分析表互不影響
+let expandedReportCostMissions = new Set();
+function toggleReportCostMissionExpand(id){
+  if(expandedReportCostMissions.has(id)) expandedReportCostMissions.delete(id);
+  else expandedReportCostMissions.add(id);
+  renderReportPanel();
+}
+
+// 依達成率算長條圖顏色,純視覺分級,不附難度標籤文字
+function rateBarClass(rate){
+  return rate>=70 ? 'bar-good' : rate>=40 ? 'bar-warn' : 'bar-bad';
+}
+function rateBarHtml(rate){
+  return `<div class="rate-bar-wrap"><div class="rate-bar ${rateBarClass(rate)}" style="width:${Math.min(100,rate).toFixed(0)}%;"></div></div><span class="rate-text">${rate.toFixed(1)}%</span>`;
+}
+
+let reportMode = 'overall'; // 'overall' 跨活動整體彙總 | 'single' 指定單一任務活動ID
+function setReportMode(mode){
+  reportMode = mode;
+  document.getElementById('report-mode-overall-btn').classList.toggle('active', mode==='overall');
+  document.getElementById('report-mode-single-btn').classList.toggle('active', mode==='single');
+  document.getElementById('report-overall-filter-bar').style.display = mode==='overall' ? 'flex' : 'none';
+  document.getElementById('report-overall-filter-hint').style.display = mode==='overall' ? 'block' : 'none';
+  document.getElementById('report-single-filter-bar').style.display = mode==='single' ? 'flex' : 'none';
+  document.getElementById('report-single-filter-hint').style.display = mode==='single' ? 'block' : 'none';
+  document.getElementById('report-daily-section').style.display = mode==='single' ? 'block' : 'none';
+  renderReportPanel();
+}
+
+function renderReportPanel(){
+  let ids, rateFilter = null;
+  const isSingle = reportMode === 'single';
+
+  if(isSingle){
+    const idQuery = document.getElementById('report-single-id-input').value.trim();
+    ids = (idQuery && reportData[idQuery]) ? [idQuery] : [];
+  }else{
+    const rateFilterRaw = document.getElementById('report-rate-filter').value;
+    rateFilter = rateFilterRaw !== '' ? parseFloat(rateFilterRaw) : null;
+    ids = Object.keys(reportData);
+  }
+
+  if(isSingle && ids.length===0){
+    document.getElementById('report-stats').innerHTML = `<div style="grid-column:1/-1;color:var(--text-secondary);padding:12px;">請輸入有效的任務活動ID以查看統計</div>`;
+  }else{
+    let uniqueParticipants=0, participants=0, achievedMembers=0, rewardedMembers=0;
+    ids.forEach(id=>{
+      const m = reportData[id];
+      uniqueParticipants += m.uniqueParticipants;
+      participants += m.participants;
+      achievedMembers += m.achievedMembers;
+      rewardedMembers += m.rewardedMembers;
+    });
+    const overallAchieveRate = participants>0 ? (achievedMembers/participants*100).toFixed(1)+'%' : '-';
+    const overallClaimRate = achievedMembers>0 ? (rewardedMembers/achievedMembers*100).toFixed(1)+'%' : '-';
+    document.getElementById('report-stats').innerHTML = `
+      <div class="stat-card"><div class="label">參與人數</div><div class="value">${uniqueParticipants.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="label">總參與次數</div><div class="value">${participants.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="label">總達成次數</div><div class="value">${achievedMembers.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="label">總達成率</div><div class="value">${overallAchieveRate}</div></div>
+      <div class="stat-card accent"><div class="label">總領獎次數</div><div class="value">${rewardedMembers.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="label">總領獎率</div><div class="value">${overallClaimRate}</div></div>
+    `;
+  }
+
+  // 任務達成率分析表:低一層(任務活動列)顯示整體狀況,點擊展開才顯示任務1/2/3各自明細
+  // 整體模式:若有設定「達成率 ≤ %」篩選,只保留有符合條件任務的活動,並自動展開,方便快速抓出過低任務
+  // 單一活動模式:只有一筆活動,直接強制展開
+  const taskTbody = document.getElementById('report-task-tbody');
+  let rowsHtml = '';
+  ids.forEach(id=>{
+    const m = reportData[id];
+    const missionRate = m.participants>0 ? (m.achievedMembers/m.participants*100) : 0;
+    const missionClaimRate = m.achievedMembers>0 ? (m.rewardedMembers/m.achievedMembers*100) : 0;
+
+    let tasksToShow = m.tasks;
+    let forceOpen = isSingle;
+    if(!isSingle && rateFilter !== null){
+      tasksToShow = m.tasks.filter(t=>{
+        const rate = t.claimed>0 ? (t.achieved/t.claimed*100) : 0;
+        return rate <= rateFilter;
+      });
+      if(tasksToShow.length===0) return; // 這個活動沒有任何任務達成率符合門檻,略過不顯示
+      forceOpen = true;
+    }
+    const isOpen = forceOpen || expandedReportMissions.has(id);
+
+    rowsHtml += `
+    <tr class="report-mission-row" onclick="toggleReportMissionExpand('${id}')">
+      <td>${id}</td>
+      <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${isOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${m.name}</td>
+      <td>-</td>
+      <td class="num">-</td>
+      <td class="num">${m.participants.toLocaleString()}</td>
+      <td class="num">${m.achievedMembers.toLocaleString()}</td>
+      <td class="num">${missionRate.toFixed(1)}%</td>
+      <td class="num">${m.rewardedMembers.toLocaleString()}</td>
+      <td class="num">${missionClaimRate.toFixed(1)}%</td>
+    </tr>`;
+
+    if(isOpen){
+      tasksToShow.forEach(t=>{
+        const rate = t.claimed>0 ? (t.achieved/t.claimed*100) : 0;
+        const costItem = m.rewardCostItems.find(it=>it.taskNo===t.no);
+        const taskRewarded = costItem ? costItem.count : 0;
+        const claimRate = t.achieved>0 ? (taskRewarded/t.achieved*100) : 0;
+        rowsHtml += `
+        <tr class="report-task-row">
+          <td>-</td>
+          <td>任務 ${t.no}</td>
+          <td>${TASK_TYPES[t.taskType].label}</td>
+          <td class="num">${t.threshold}</td>
+          <td class="num">${t.claimed.toLocaleString()}</td>
+          <td class="num">${t.achieved.toLocaleString()}</td>
+          <td class="num">${rateBarHtml(rate)}</td>
+          <td class="num">${taskRewarded.toLocaleString()}</td>
+          <td class="num">${rateBarHtml(claimRate)}</td>
+        </tr>`;
+      });
+    }
+  });
+  taskTbody.innerHTML = rowsHtml || `<tr><td colspan="9" style="text-align:center;color:var(--text-secondary);padding:20px;">查無符合條件的資料</td></tr>`;
+
+  // 每日趨勢:活動每天重置,只有鎖定單一活動(以ID或名稱搜尋)時才有意義,避免不同活動的天數混在一起
+  const dailyTbody = document.getElementById('report-daily-tbody');
+  if(ids.length === 1 && dailyReportData[ids[0]]){
+    const mid = ids[0];
+    const m = reportData[mid];
+    let dailyHtml = '';
+    dailyReportData[mid].forEach(d=>{
+      const dateKey = mid+'_'+d.date;
+      const rate = d.claimed>0 ? (d.achieved/d.claimed*100) : 0;
+      const claimRate = d.achieved>0 ? (d.rewarded/d.achieved*100) : 0;
+      const isOpen = expandedDailyDates.has(dateKey);
+      dailyHtml += `
+      <tr class="report-mission-row" onclick="toggleDailyDateExpand('${dateKey}')">
+        <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${isOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${d.date}</td>
+        <td>-</td>
+        <td class="num">${d.claimed.toLocaleString()}</td>
+        <td class="num">${d.achieved.toLocaleString()}</td>
+        <td class="num">${rate.toFixed(1)}%</td>
+        <td class="num">${d.rewarded.toLocaleString()}</td>
+        <td class="num">${claimRate.toFixed(1)}%</td>
+      </tr>`;
+      if(isOpen){
+        d.tasks.forEach(t=>{
+          const tRate = t.claimed>0 ? (t.achieved/t.claimed*100) : 0;
+          const tClaimRate = t.achieved>0 ? (t.rewarded/t.achieved*100) : 0;
+          const taskDef = m.tasks.find(x=>x.no===t.no);
+          dailyHtml += `
+          <tr class="report-task-row">
+            <td class="report-daily-indent">任務 ${t.no}</td>
+            <td>${taskDef ? TASK_TYPES[taskDef.taskType].label : '-'}</td>
+            <td class="num">${t.claimed.toLocaleString()}</td>
+            <td class="num">${t.achieved.toLocaleString()}</td>
+            <td class="num">${rateBarHtml(tRate)}</td>
+            <td class="num">${t.rewarded.toLocaleString()}</td>
+            <td class="num">${rateBarHtml(tClaimRate)}</td>
+          </tr>`;
+        });
+      }
+    });
+    dailyTbody.innerHTML = dailyHtml;
+  }else{
+    dailyTbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">請於上方輸入有效的任務活動ID,即可查看每日趨勢</td></tr>`;
+  }
+
+  // 獎勵支出明細:比照任務達成率表,第一層為單一活動ID的總計,展開才顯示各任務的獎勵明細
+  const costTbody = document.getElementById('report-cost-tbody');
+  let costHtml = '';
+  ids.forEach(id=>{
+    const m = reportData[id];
+    const items = m.rewardCostItems;
+    if(items.length===0) return;
+    const missionCount = items.reduce((s,it)=>s+it.count,0);
+    const missionUsed = items.reduce((s,it)=>s+it.usedCount,0);
+    const missionWinAmount = items.reduce((s,it)=>s+it.winAmount,0);
+    const isOpen = isSingle || expandedReportCostMissions.has(id);
+
+    costHtml += `
+    <tr class="report-mission-row" onclick="toggleReportCostMissionExpand('${id}')">
+      <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${isOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${id} - ${m.name}</td>
+      <td>共 ${items.length} 項獎勵,點擊展開</td>
+      <td>-</td>
+      <td class="num">${missionCount.toLocaleString()}</td>
+      <td class="num">${missionUsed.toLocaleString()}</td>
+      <td>${m.currency}</td>
+      <td class="num">${missionWinAmount.toLocaleString()}</td>
+    </tr>`;
+
+    if(isOpen){
+      items.forEach(it=>{
+        const taskDef = m.tasks.find(t=>t.no===it.taskNo);
+        const typeLabel = taskDef ? TASK_TYPES[taskDef.taskType].label : '-';
+        costHtml += `
+        <tr class="report-task-row">
+          <td class="report-name-cell">任務 ${it.taskNo}</td>
+          <td>${typeLabel}</td>
+          <td>${it.rewardContent}</td>
+          <td class="num">${it.count.toLocaleString()}</td>
+          <td class="num">${it.usedCount.toLocaleString()}</td>
+          <td>${m.currency}</td>
+          <td class="num">${it.winAmount.toLocaleString()}</td>
+        </tr>`;
+      });
+    }
+  });
+  costTbody.innerHTML = costHtml || `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">查無符合條件的資料</td></tr>`;
+}
+
+/* ============================================================
+   參與幣別與營運彈窗(任務列表 幣別/營運 欄位 +N 點擊)
+   ============================================================ */
+function openScopeModal(missionId){
+  currentScopeId = missionId;
+  document.getElementById('scope-modal-title').textContent = '參與幣別與營運 - ' + missionId;
+  document.getElementById('scope-search-input').value = '';
+  renderScopeModalBody('');
+  document.getElementById('scope-modal-overlay').classList.add('open');
+}
+function renderScopeModalBody(kw){
+  const data = missionScopeData[currentScopeId];
+  if(!data) return;
+  kw = (kw||'').trim().toLowerCase();
+  const groups = data.currencies.map(cur=>{
+    const ops = data.operators.filter(o=>o.currency===cur.code && (!kw || o.name.toLowerCase().includes(kw)));
+    return { cur, ops };
+  }).filter(g=> !kw || g.ops.length>0);
+  const body = document.getElementById('scope-modal-body');
+  body.innerHTML = groups.length===0 ? '<div class="ms-empty">查無符合的營運</div>' : groups.map(g=>`
+    <div style="margin-bottom:14px;">
+      <div class="ms-group-title" style="margin-bottom:6px;">${g.cur.name}<span class="tag" style="margin-left:6px;">${g.ops.length} 個營運</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;padding-left:4px;">
+        ${g.ops.length ? g.ops.map(o=>`<span class="chip">${o.name}</span>`).join('') : '<span class="hint">無符合營運</span>'}
+      </div>
+    </div>
+  `).join('');
+}
+function onScopeSearch(val){
+  renderScopeModalBody(val);
+}
+function closeScopeModal(){
+  document.getElementById('scope-modal-overlay').classList.remove('open');
+}
+
+/* ============================================================
+   初始化 Init
+   ============================================================ */
+renderMissionTable();
+renderTemplateTable();
+renderRecordTable();
+renderRecordOperatorControl();
+renderRecordOperatorPanel();
+renderReportPanel();
+mountIcons();
+</script>
+</body>
+</html>
