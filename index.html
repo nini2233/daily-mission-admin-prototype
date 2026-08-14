@@ -220,6 +220,25 @@
   .preset-chip .icon-mini:hover{opacity:1;}
   .btn-add-preset{width:30px;height:30px;border-radius:50%;background:var(--success);color:#fff;border:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1;flex:0 0 auto;}
   .btn-add-preset:hover{background:#128a4a;}
+  /* ---------- 日期選擇器(行事曆+快捷側欄整合式) ---------- */
+  .date-picker .ms-control{min-width:140px;}
+  .date-picker .ms-panel{right:auto;width:auto;max-height:none;}
+  .dp-body{display:flex;}
+  .dp-shortcuts{display:flex;flex-direction:column;padding:8px;border-right:1px solid var(--border);min-width:84px;}
+  .dp-shortcut-item{padding:8px 10px;font-size:13px;border-radius:6px;cursor:pointer;color:var(--text);white-space:nowrap;}
+  .dp-shortcut-item:hover{background:#f4f6fb;color:var(--accent);}
+  .dp-calendar{padding:10px 14px;width:260px;}
+  .dp-cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:13.5px;font-weight:700;gap:2px;}
+  .dp-cal-nav{cursor:pointer;color:var(--text-secondary);padding:2px 7px;border-radius:4px;user-select:none;}
+  .dp-cal-nav:hover{background:#f0f1f5;color:var(--accent);}
+  .dp-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+  .dp-cal-dow{text-align:center;font-size:12px;color:var(--text-secondary);padding:4px 0;font-weight:600;}
+  .dp-cal-day{text-align:center;font-size:13px;padding:6px 0;border-radius:6px;cursor:pointer;color:var(--text);}
+  .dp-cal-day:hover{background:#f0f1f5;}
+  .dp-cal-day.out{color:#c7cbd3;cursor:default;}
+  .dp-cal-day.out:hover{background:none;}
+  .dp-cal-day.selected{background:var(--accent);color:#fff;font-weight:700;}
+  .dp-cal-day.today:not(.selected){outline:1px solid var(--accent);outline-offset:-1px;}
 </style>
 </head>
 <body>
@@ -272,20 +291,55 @@
 
         <!-- ---------------- Tab 1: 限時任務 ---------------- -->
         <div class="tab-panel active" id="panel-mission">
-          <div class="filter-bar">
-            <input type="date" value="2026-07-13">
-            <input type="time" value="00:00" lang="en-GB">
-            <span class="arrow">→</span>
-            <input type="date" value="2026-07-13">
-            <input type="time" value="23:59" lang="en-GB">
-            <input type="text" placeholder="搜尋營運">
-            <select><option>幣別:請選擇</option><option>新台幣/TWD</option><option>港幣/HKD</option></select>
-            <select><option>狀態:請選擇</option><option>進行中</option><option>未開始</option><option>已停用</option></select>
-            <button class="btn btn-primary">搜尋</button>
+          <div class="filter-bar" style="align-items:flex-start;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div class="ms date-picker" id="mission-filter-start-dp">
+                <div class="ms-control" onclick="toggleDatePicker('mission-filter','start')">
+                  <span class="ms-summary" id="mission-filter-start-date-label"></span>
+                  <span class="chevron" data-icon="calendar"></span>
+                </div>
+                <input type="hidden" id="mission-filter-start-date">
+                <div class="ms-panel" id="mission-filter-start-date-panel"></div>
+              </div>
+              <input type="time" id="mission-filter-start-time" step="1" lang="en-GB">
+              <span class="arrow">→</span>
+              <div class="ms date-picker" id="mission-filter-end-dp">
+                <div class="ms-control" onclick="toggleDatePicker('mission-filter','end')">
+                  <span class="ms-summary" id="mission-filter-end-date-label"></span>
+                  <span class="chevron" data-icon="calendar"></span>
+                </div>
+                <input type="hidden" id="mission-filter-end-date">
+                <div class="ms-panel" id="mission-filter-end-date-panel"></div>
+              </div>
+              <input type="time" id="mission-filter-end-time" step="1" lang="en-GB">
+            </div>
+            <input type="text" id="mission-filter-name" placeholder="搜尋名稱" style="align-self:flex-start;">
+            <div class="ms" id="mission-filter-currency-ms" style="width:190px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleDropdownById('mission-filter-currency-ms')">
+                <span class="ms-summary" id="mission-filter-currency-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="mission-filter-currency-panel"></div>
+            </div>
+            <div class="ms" id="mission-filter-operator-ms" style="width:220px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleDropdownById('mission-filter-operator-ms')">
+                <span class="ms-summary" id="mission-filter-operator-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="mission-filter-operator-panel"></div>
+            </div>
+            <div class="ms" id="mission-filter-status-ms" style="width:230px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleDropdownById('mission-filter-status-ms')">
+                <span class="ms-summary" id="mission-filter-status-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="mission-filter-status-panel"></div>
+            </div>
+            <button class="btn btn-primary" onclick="applyMissionFilter()" style="align-self:flex-start;">搜尋</button>
+            <button class="btn btn-outline" onclick="resetMissionFilter()" style="align-self:flex-start;">重置</button>
             <div class="spacer-flex"></div>
-            <button class="btn btn-primary" onclick="openMissionModal('mission')"><span class="icon" data-icon="plus"></span> 新增</button>
+            <button class="btn btn-primary" onclick="openMissionModal('mission')" style="align-self:flex-start;"><span class="icon" data-icon="plus"></span> 新增</button>
           </div>
-
           <table>
             <thead><tr>
               <th>ID</th><th>名稱</th>
@@ -297,7 +351,6 @@
             </tr></thead>
             <tbody id="mission-tbody"></tbody>
           </table>
-          <div class="hint" style="margin-top:10px;">說明:「啟用」後即代表活動已對外生效,為避免中途誤改任務規則影響已參加的會員,啟用中僅能調整「名稱」與「結束時間」(可提前結束或延長),開始時間、幣別、營運、任務與獎勵內容維持鎖定,如需完整修改請先停用。「狀態」欄由啟用狀態與活動起訖時間自動計算,不可手動設定:新增後從未啟用過顯示「草稿」;啟用後依起訖時間顯示「準備開始/進行中/已結束」;曾啟用後停用則顯示「已停用」。啟用開關規則:停用後即不可重新啟用(僅新增後、從未啟用過的第一次啟用不受此限);活動狀態變成「已結束」後,啟用開關與名稱/結束時間調整功能皆會鎖定,無法再變更。</div>
         </div>
 
         <!-- ---------------- Tab 2: 任務樣板 ---------------- -->
@@ -314,41 +367,80 @@
 
         <!-- ---------------- Tab 3: 紀錄 ---------------- -->
         <div class="tab-panel" id="panel-record">
-          <div class="filter-bar">
-            <select id="record-time-type-select" title="搜尋的時間類型">
+          <div class="filter-bar" style="align-items:flex-start;">
+            <select id="record-filter-time-type-select" title="搜尋的時間類型" style="align-self:flex-start;">
               <option value="claimedAt">開始時間</option>
               <option value="achievedAt">達成時間</option>
-              <option value="rewardedAt">領獎時間</option>
+              <option value="rewardedAt">派獎時間</option>
             </select>
-            <input type="date" value="2026-07-13">
-            <input type="time" value="00:00:00" step="1" lang="en-GB">
-            <span class="arrow">→</span>
-            <input type="date" value="2026-07-13">
-            <input type="time" value="23:59:59" step="1" lang="en-GB">
-            <input type="text" placeholder="搜尋會員帳號">
-            <div class="ms" id="record-operator-ms" style="width:220px;">
-              <div class="ms-control" onclick="toggleDropdownById('record-operator-ms')">
-                <span class="ms-summary" id="record-operator-summary">請選擇營運</span>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div class="ms date-picker" id="record-filter-start-dp">
+                <div class="ms-control" onclick="toggleDatePicker('record-filter','start')">
+                  <span class="ms-summary" id="record-filter-start-date-label"></span>
+                  <span class="chevron" data-icon="calendar"></span>
+                </div>
+                <input type="hidden" id="record-filter-start-date">
+                <div class="ms-panel" id="record-filter-start-date-panel"></div>
+              </div>
+              <input type="time" id="record-filter-start-time" step="1" lang="en-GB">
+              <span class="arrow">→</span>
+              <div class="ms date-picker" id="record-filter-end-dp">
+                <div class="ms-control" onclick="toggleDatePicker('record-filter','end')">
+                  <span class="ms-summary" id="record-filter-end-date-label"></span>
+                  <span class="chevron" data-icon="calendar"></span>
+                </div>
+                <input type="hidden" id="record-filter-end-date">
+                <div class="ms-panel" id="record-filter-end-date-panel"></div>
+              </div>
+              <input type="time" id="record-filter-end-time" step="1" lang="en-GB">
+            </div>
+            <input type="text" id="record-filter-name" placeholder="搜尋活動名稱" style="align-self:flex-start;">
+            <input type="text" id="record-filter-member" placeholder="搜尋用戶賬號" style="align-self:flex-start;">
+            <div class="ms" id="record-filter-currency-ms" style="width:190px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleDropdownById('record-filter-currency-ms')">
+                <span class="ms-summary" id="record-filter-currency-summary"></span>
                 <span class="chevron" data-icon="chevronDown"></span>
               </div>
-              <div class="ms-panel" id="record-operator-panel"></div>
+              <div class="ms-panel" id="record-filter-currency-panel"></div>
             </div>
-            <select><option>任務類型:請選擇</option><option>有效投注金額</option><option>有效投注次數</option><option>進免費遊戲次數</option><option>進超級免費遊戲次數</option></select>
-            <select><option>狀態:請選擇</option><option>進行中</option><option>未領獎</option><option>已完成</option><option>未達成</option></select>
-            <button class="btn btn-primary">搜尋</button>
+            <div class="ms" id="record-filter-operator-ms" style="width:220px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleDropdownById('record-filter-operator-ms')">
+                <span class="ms-summary" id="record-filter-operator-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="record-filter-operator-panel"></div>
+            </div>
+            <select id="record-filter-tasktype-select" style="align-self:flex-start;">
+              <option value="">任務類型:不限</option>
+              <option value="bet_amount">有效投注金額</option>
+              <option value="bet_count">有效投注次數</option>
+              <option value="free_game">進免費遊戲次數</option>
+              <option value="super_free">進超級免費遊戲次數</option>
+            </select>
+            <div class="ms" id="record-filter-status-ms" style="width:200px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleDropdownById('record-filter-status-ms')">
+                <span class="ms-summary" id="record-filter-status-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="record-filter-status-panel"></div>
+            </div>
+            <button class="btn btn-primary" onclick="applyRecordFilter()" style="align-self:flex-start;">搜尋</button>
+            <button class="btn btn-outline" onclick="resetRecordFilter()" style="align-self:flex-start;">重置</button>
             <div class="spacer-flex"></div>
-            <button class="btn btn-outline" onclick="exportRecords()"><span class="icon" data-icon="download"></span> 匯出</button>
+            <button class="btn btn-outline" onclick="exportRecords()" style="align-self:flex-start;"><span class="icon" data-icon="download"></span> 匯出</button>
           </div>
           <div class="stat-cards" id="record-stats"></div>
-          <div class="hint" style="margin-bottom:10px;">說明:時間搜尋可切換依「開始 / 達成 / 領獎」時間查詢,並支援到時分秒;營運可複選。統計卡皆依目前清單內的全部紀錄計算(原型未串接篩選條件連動)。</div>
           <table>
             <thead><tr>
-              <th>會員帳號</th><th>營運</th><th>活動ID</th><th>任務活動名稱</th><th>任務編號</th><th>任務類型</th>
-              <th>開始時間</th><th>達成時間</th><th>領獎時間</th><th>狀態</th><th>功能</th>
+              <th>活動ID</th><th>任務名稱</th><th>營運</th><th>用戶賬號</th><th>任務類型</th>
+              <th class="sortable" onclick="sortRecordsBy('claimedAt')">開始時間<span class="sort-icon" id="record-sort-icon-claimedAt"></span></th>
+              <th class="sortable" onclick="sortRecordsBy('achievedAt')">達成時間<span class="sort-icon" id="record-sort-icon-achievedAt"></span></th>
+              <th class="sortable" onclick="sortRecordsBy('rewardedAt')">派獎時間<span class="sort-icon" id="record-sort-icon-rewardedAt"></span></th>
+              <th class="sortable" onclick="sortRecordsBy('status')">狀態<span class="sort-icon" id="record-sort-icon-status"></span></th>
+              <th>功能</th>
             </tr></thead>
             <tbody id="record-tbody"></tbody>
           </table>
-          <div class="hint" style="margin-top:10px;">說明:欄位精簡為開始 / 達成 / 領獎三個時間點,任務內容與獎勵內容請點「查看詳情」。</div>
         </div>
 
         <!-- ---------------- Tab 4: 分析報表 ---------------- -->
@@ -536,6 +628,23 @@
   </div>
 </div>
 
+<!-- ============ Modal: 啟用/停用確認 ============ -->
+<div class="modal-overlay" id="toggle-confirm-overlay">
+  <div class="modal small">
+    <div class="modal-header">
+      <h3 id="toggle-confirm-title">啟用/停用任務活動</h3>
+      <span class="modal-close" onclick="closeToggleConfirm()" data-icon="close"></span>
+    </div>
+    <div class="modal-body">
+      <p style="margin-top:0;" id="toggle-confirm-text"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeToggleConfirm()">取消</button>
+      <button class="btn btn-primary" onclick="confirmToggleMission()">確認</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ Modal: 補派獎勵確認 ============ -->
 <div class="modal-overlay" id="resend-confirm-overlay">
   <div class="modal small">
@@ -600,6 +709,7 @@ const ICON_PATHS = {
   trash:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>',
   close:'<path d="M18 6L6 18"/><path d="M6 6l12 12"/>',
   copy:'<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  calendar:'<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
   chevronDown:'<path d="M6 9l6 6 6-6"/>',
   search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>',
   alert:'<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86L1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0z"/>',
@@ -680,19 +790,20 @@ const REWARD_TYPES = {
       { key:'expireHours', label:'道具時效(小時)', type:'number' },
       { key:'spinCount', label:'旋轉次數', type:'number' },
       { key:'maxWinMode', label:'最大贏分倍數判定方式', type:'radio', options: MAX_WIN_MODE_OPTIONS },
-      { key:'maxWinMultiplier', label:'最大贏分倍數', type:'intRange', min:0, max:10000 }
+      { key:'maxWinMultiplier', label:'最大贏分倍數', type:'multiplierSelect', options:[5,10,15,20,25,30,35,40,45,50,100,150,200,250,300] }
     ]
   }
 };
 
 const GAME_LIST = [
-  {id:'g1', name:'戰神賽特2'},
-  {id:'g2', name:'戰神賽特'},
-  {id:'g3', name:'古神巴風特'},
-  {id:'g4', name:'赤三國'},
+  {id:'g1', name:'戰神賽特'},
+  {id:'g2', name:'戰神賽特2:覺醒之力'},
+  {id:'g3', name:'赤三國'},
+  {id:'g4', name:'古神巴風特'},
   {id:'g5', name:'虎小妹'},
-  {id:'g6', name:'武俠'},
-  {id:'g7', name:'孫行者'}
+  {id:'g6', name:'惡魔血域'},
+  {id:'g7', name:'金蓮三缺一'},
+  {id:'g8', name:'暴風獵手'}
 ];
 
 function mkReward(type, values){
@@ -706,7 +817,7 @@ function mkBlock(taskType, taskValue, gameIds, reward, resetMode){
 let templates = [
   { id:'tpl1', name:'新手三日任務豪禮', creator:'yvonne', updatedAt:'2026-04-10 14:20', blocks:[
       mkBlock('bet_amount','500',[], mkReward('free_spin',{gameId:'g1', betLevel:'1', expireHours:'24', spinCount:'10', maxWinMultiplier:'50'})),
-      mkBlock('bet_count','50',[], mkReward('free_spin',{gameId:'g2', betLevel:'2', expireHours:'24', spinCount:'15', maxWinMultiplier:'80'})),
+      mkBlock('bet_count','50',[], mkReward('free_spin',{gameId:'g2', betLevel:'2', expireHours:'24', spinCount:'15', maxWinMultiplier:'150'})),
       mkBlock('free_game','3',['g3'], mkReward('free_spin',{gameId:'g3', betLevel:'1', expireHours:'48', spinCount:'20', maxWinMultiplier:'100'}))
   ]},
   { id:'tpl2', name:'VIP高投注挑戰', creator:'yvonne', updatedAt:'2026-05-02 09:11', blocks:[
@@ -731,22 +842,24 @@ function pickOperatorIdsByCurrency(currencyCode, count){
 // taskNo 對應「分析報表」reportData 中同一任務活動底下的任務序號(第幾組任務),
 // 讓紀錄可以回溯是哪一組任務設定觸發的,避免同活動內多組任務類型相同時無法分辨。
 // progress/target:玩家目前累積進度與該任務門檻(數字皆為原型假資料,正式串接應改抓玩家即時累積數值)
+// currencyCode:對應該筆紀錄所屬任務活動之幣別(供紀錄頁「幣別」篩選使用,依 activityId 對應 missions 內的 currencyCode);
+// backpackTxId:玩家實際獲得獎勵時,後台背包異動的單號(僅「已完成」狀態才會有值;人工補派後由 confirmResend() 一併寫入)
 let recordsData = [
-  { member:'test0001', operator:'vip0001', activityId:'12356', activity:'台幣任務', taskNo:1, taskType:'bet_amount',
+  { member:'test0001', operator:'vip0001', activityId:'12356', activity:'台幣任務', taskNo:1, taskType:'bet_amount', currencyCode:'TWD',
     taskContent:'累積有效投注滿 NT$5,000', rewardContent:'免費旋轉 x10(戰神賽特2)', progress:5000, target:5000,
-    claimedAt:'2026-07-12 09:00:15', achievedAt:'2026-07-12 10:22:41', rewardedAt:'2026-07-12 10:30:03', status:'done' },
-  { member:'test0002', operator:'vip0123', activityId:'78987', activity:'其他幣別任務', taskNo:1, taskType:'free_game',
+    claimedAt:'2026-07-12 09:00:15', achievedAt:'2026-07-12 10:22:41', rewardedAt:'2026-07-12 10:30:03', status:'done', backpackTxId:'BP20260712103003001' },
+  { member:'test0002', operator:'vip0123', activityId:'78987', activity:'其他幣別任務', taskNo:1, taskType:'free_game', currencyCode:'HKD',
     taskContent:'累積進入免費遊戲 3 次', rewardContent:'免費旋轉 x5(戰神賽特)', progress:1, target:3,
-    claimedAt:'2026-07-12 08:40:52', achievedAt:'', rewardedAt:'', status:'progress' },
-  { member:'test0003', operator:'vip0456', activityId:'78987', activity:'其他幣別任務', taskNo:2, taskType:'bet_count',
+    claimedAt:'2026-07-12 08:40:52', achievedAt:'', rewardedAt:'', status:'progress', backpackTxId:'' },
+  { member:'test0003', operator:'vip0456', activityId:'78987', activity:'其他幣別任務', taskNo:2, taskType:'bet_count', currencyCode:'HKD',
     taskContent:'累積有效投注滿 200 次', rewardContent:'免費旋轉 x20(所有遊戲)', progress:200, target:200,
-    claimedAt:'2026-07-11 21:15:07', achievedAt:'2026-07-11 22:41:38', rewardedAt:'', status:'pending_reward' },
-  { member:'test0004', operator:'vip0301', activityId:'12356', activity:'台幣任務', taskNo:3, taskType:'super_free',
+    claimedAt:'2026-07-11 21:15:07', achievedAt:'2026-07-11 22:41:38', rewardedAt:'', status:'pending_reward', backpackTxId:'' },
+  { member:'test0004', operator:'vip0301', activityId:'12356', activity:'台幣任務', taskNo:3, taskType:'super_free', currencyCode:'TWD',
     taskContent:'累積進入超級免費遊戲 1 次', rewardContent:'免費旋轉 x30(赤三國)', progress:1, target:1,
-    claimedAt:'2026-07-13 08:02:19', achievedAt:'2026-07-13 09:10:44', rewardedAt:'2026-07-13 09:12:56', status:'done' },
-  { member:'test0005', operator:'vip0777', activityId:'12356', activity:'台幣任務', taskNo:1, taskType:'bet_amount',
+    claimedAt:'2026-07-13 08:02:19', achievedAt:'2026-07-13 09:10:44', rewardedAt:'2026-07-13 09:12:56', status:'done', backpackTxId:'BP20260713091256004' },
+  { member:'test0005', operator:'vip0777', activityId:'12356', activity:'台幣任務', taskNo:1, taskType:'bet_amount', currencyCode:'TWD',
     taskContent:'累積有效投注滿 NT$5,000', rewardContent:'免費旋轉 x10(戰神賽特2)', progress:2500, target:5000,
-    claimedAt:'2026-07-10 08:00:00', achievedAt:'', rewardedAt:'', status:'expired' }
+    claimedAt:'2026-07-10 08:00:00', achievedAt:'', rewardedAt:'', status:'expired', backpackTxId:'' }
 ];
 
 // 任務列表「幣別 / 營運」欄位點擊後彈窗顯示的完整參與範圍(依幣別分組)
@@ -786,7 +899,7 @@ const missionScopeData = {
 // 這批假資料為原型示意用,operatorIds 是依幣別從 operatorTreeData 隨機挑選,與 operatorHtml 顯示的假名稱(bxvip/kkvip等)不強制對應。
 let missions = [
   // everActivated:false 代表「從未啟用過」,啟用開關仍可操作(第一次啟用不受一次性限制)
-  { id:'12356', name:'台幣任務', start:'2026-05-01 00:00:00', end:'2026-05-31 23:59:59',
+  { id:'12356', name:'台幣任務', start:'2026-07-10 00:00:00', end:'2026-07-22 23:59:59',
     currencyHtml:'新台幣 / TWD', operatorHtml:'bxvip', hasScopeModal:true, enabled:false, everActivated:false,
     currencyCode:'TWD', operatorIds:pickOperatorIdsByCurrency('TWD',2), masterIds:[],
     blocks:[ mkBlock('bet_amount','5000',[], mkReward('free_spin',{gameId:'g1', betLevel:'1', expireHours:'24', spinCount:'10', maxWinMultiplier:'50'})) ] },
@@ -797,16 +910,16 @@ let missions = [
       mkBlock('free_game','3',['g2'], mkReward('free_spin',{gameId:'g2', betLevel:'1', expireHours:'24', spinCount:'5', maxWinMultiplier:'50'})),
       mkBlock('bet_count','200',[], mkReward('free_spin',{gameId:'g1', betLevel:'1', expireHours:'24', spinCount:'20', maxWinMultiplier:'50'}))
     ] },
-  { id:'demo-upcoming', name:'港幣新手任務(示意:準備開始)', start:'2026-08-01 00:00:00', end:'2026-08-31 23:59:59',
+  { id:'demo-upcoming', name:'港幣新手任務(示意:準備開始)', start:'2026-07-15 00:00:00', end:'2026-07-28 23:59:59',
     currencyHtml:'港幣 / HKD', operatorHtml:'kkvip888', hasScopeModal:false, enabled:true, everActivated:true,
     currencyCode:'HKD', operatorIds:pickOperatorIdsByCurrency('HKD',1), masterIds:[], blocks:defaultMissionBlocks() },
-  { id:'demo-ended', name:'測試回饋任務(示意:已結束)', start:'2026-06-01 00:00:00', end:'2026-06-30 23:59:59',
+  { id:'demo-ended', name:'測試回饋任務(示意:已結束)', start:'2026-07-05 00:00:00', end:'2026-07-13 08:00:00',
     currencyHtml:'美元 / USD', operatorHtml:'bxvip999', hasScopeModal:false, enabled:true, everActivated:true,
     currencyCode:'USD', operatorIds:pickOperatorIdsByCurrency('USD',1), masterIds:[], blocks:defaultMissionBlocks() },
   { id:'demo-stopped', name:'泰銖任務(示意:曾啟用後停用)', start:'2026-06-10 00:00:00', end:'2026-07-25 23:59:59',
     currencyHtml:'泰銖 / THB', operatorHtml:'kkvip', hasScopeModal:false, enabled:false, everActivated:true,
     currencyCode:'THB', operatorIds:pickOperatorIdsByCurrency('THB',1), masterIds:[], blocks:defaultMissionBlocks() },
-  { id:'demo-draft', name:'港幣新人任務(示意:剛新增,草稿)', start:'2026-08-05 00:00:00', end:'2026-08-20 23:59:59',
+  { id:'demo-draft', name:'港幣新人任務(示意:剛新增,草稿)', start:'2026-07-14 00:00:00', end:'2026-07-16 23:59:59',
     currencyHtml:'港幣 / HKD', operatorHtml:'kkvip888', hasScopeModal:false, enabled:false, everActivated:false,
     currencyCode:'HKD', operatorIds:pickOperatorIdsByCurrency('HKD',1), masterIds:[], blocks:defaultMissionBlocks() }
 ];
@@ -843,6 +956,7 @@ function missionToggleLockInfo(m){
   return { locked:false, reason:'' };
 }
 
+// 實際變更啟用/停用狀態(只在使用者於確認彈窗按下「確認」後才會呼叫,不會由 checkbox 直接觸發)
 function toggleMissionEnabled(id){
   const m = missions.find(x=>x.id===id);
   if(!m) return;
@@ -853,6 +967,67 @@ function toggleMissionEnabled(id){
   }else{
     m.enabled = false;
   }
+  renderMissionTable();
+}
+
+// 啟用/停用二次確認:checkbox 點擊當下瀏覽器已先切換視覺勾選狀態,但實際資料(m.enabled)尚未變更,
+// 需等使用者在確認彈窗按下「確認」才會真的呼叫 toggleMissionEnabled 寫入狀態;若按「取消」則呼叫 renderMissionTable()
+// 依既有資料重繪整張表,checkbox 會自動還原成變更前的正確勾選狀態。
+// 文案對齊規格:標題「啟用任務/停用任務」,內容帶活動ID且較精簡。
+let pendingToggleMissionId = null;
+let pendingToggleTurningOn = false; // 記錄開啟確認彈窗當下,這次操作是要「啟用」還是「停用」,供確認時的並發檢查判斷用哪一種文案
+function onMissionTogglePreview(id){
+  const m = missions.find(x=>x.id===id);
+  if(!m) return;
+  pendingToggleMissionId = id;
+  const turningOn = !m.enabled; // 目前資料尚未變更,!m.enabled 代表這次操作是要「啟用」還是「停用」
+  pendingToggleTurningOn = turningOn;
+  document.getElementById('toggle-confirm-title').textContent = turningOn ? '啟用任務' : '停用任務';
+  document.getElementById('toggle-confirm-text').textContent = turningOn
+    ? `確定要啟用「${m.name}(${m.id})」嗎？`
+    : `停用後即無法再啟用，確定要停用「${m.name}(${m.id})」嗎？`;
+  document.getElementById('toggle-confirm-overlay').classList.add('open');
+}
+function closeToggleConfirm(){
+  document.getElementById('toggle-confirm-overlay').classList.remove('open');
+  pendingToggleMissionId = null;
+  renderMissionTable(); // 取消:資料未變更,重繪即可讓 checkbox 還原成原本狀態
+}
+// 狀態變更並發檢查:確認彈窗開啟後、按下確認前,若活動狀態已經變化到不再允許這個操作
+// (例如另一個分頁/操作者搶先變更了狀態),則不繼續執行,改為提示並刷新清單。
+// 依規格:啟用時若已無法啟用(通常是結束時間已過期)顯示「任務結束時間已過期」;停用時若已無法停用則顯示「任務狀態變更」。
+function confirmToggleMission(){
+  const id = pendingToggleMissionId;
+  const turningOn = pendingToggleTurningOn;
+  document.getElementById('toggle-confirm-overlay').classList.remove('open');
+  pendingToggleMissionId = null;
+  if(!id) return;
+  const m = missions.find(x=>x.id===id);
+  if(!m){ renderMissionTable(); return; }
+  if(missionToggleLockInfo(m).locked){
+    alert(turningOn ? '任務結束時間已過期，請重新操作' : '任務狀態變更，請重新操作');
+    renderMissionTable();
+    return;
+  }
+  toggleMissionEnabled(id); // 內部已包含 renderMissionTable()
+}
+
+// 刪除任務活動:僅「草稿」(從未啟用過)與「準備開始」(已啟用但尚未到開始時間)可刪除,
+// 「進行中/已結束/已停用」皆已對外曝光過或曾對外生效,為避免刪除後造成紀錄/報表資料不一致或影響已參加會員,不提供刪除。
+// 文案與並發檢查對齊規格:確認彈窗內容帶活動ID;確認後、實際刪除前再檢查一次狀態是否被異動過。
+function deleteMission(id){
+  const m = missions.find(x=>x.id===id);
+  if(!m) return;
+  const snapshotStatus = computeMissionStatus(m).text;
+  if(!confirm(`刪除後即無法復原，確定要刪除「${m.name}(${m.id})」嗎？`)) return;
+  const mNow = missions.find(x=>x.id===id);
+  if(!mNow || computeMissionStatus(mNow).text !== snapshotStatus){
+    alert('任務狀態變更，請重新操作');
+    renderMissionTable();
+    return;
+  }
+  missions = missions.filter(x=>x.id!==id);
+  delete missionScopeData[id]; // 一併清除該筆對應的幣別/營運範圍資料(若有)
   renderMissionTable();
 }
 
@@ -906,9 +1081,299 @@ function sortMissionsBy(key){
   renderMissionTable();
 }
 
+/* ============================================================
+   限時任務:搜尋條件(日期時間重疊/名稱模糊/幣別複選/營運複選/狀態複選,AND交集)
+   ============================================================ */
+const MISSION_STATUS_OPTIONS = ['草稿','準備開始','進行中','已結束','已停用'];
+
+function formatYmd(d){
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+// 預設:當天 00:00:00 ~ 當天+7 的 23:59:59;狀態預設全選(草稿/準備開始/進行中/已結束/已停用),
+// 讓原型預設載入時就能完整示意所有狀態的呈現方式;其餘條件預設不限(空)
+function defaultMissionFilterState(){
+  const start = new Date(MISSION_NOW); start.setHours(0,0,0,0);
+  const end = new Date(start); end.setDate(end.getDate()+7);
+  return {
+    startDate: formatYmd(start), startTime:'00:00:00',
+    endDate: formatYmd(end), endTime:'23:59:59',
+    name:'',
+    currencies: new Set(),
+    operators: new Set(),
+    statuses: new Set(MISSION_STATUS_OPTIONS)
+  };
+}
+let missionFilterState = defaultMissionFilterState();
+let missionFilterOperatorSearch = '';
+
+function renderMissionFilterCurrencyControl(){
+  const el = document.getElementById('mission-filter-currency-summary');
+  if(missionFilterState.currencies.size===0){ el.textContent='幣別:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  el.textContent = '幣別:'+CURRENCIES.filter(c=>missionFilterState.currencies.has(c.code)).map(c=>c.code).join('、');
+}
+function renderMissionFilterCurrencyPanel(){
+  const panel = document.getElementById('mission-filter-currency-panel');
+  panel.innerHTML = `<div class="ms-list">${CURRENCIES.map(c=>`
+    <label class="ms-option">
+      <input type="checkbox" ${missionFilterState.currencies.has(c.code)?'checked':''} onchange="toggleMissionFilterCurrency('${c.code}', this.checked)"> ${c.name}
+    </label>`).join('')}</div>`;
+}
+function toggleMissionFilterCurrency(code, checked){
+  if(checked) missionFilterState.currencies.add(code); else missionFilterState.currencies.delete(code);
+  // 幣別變動後,移除不再符合篩選條件的已選營運(與新增彈窗的邏輯一致)
+  if(missionFilterState.currencies.size>0){
+    const validIds = new Set();
+    operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(missionFilterState.currencies.has(c.currency)) validIds.add(c.id); }));
+    Array.from(missionFilterState.operators).forEach(id=>{ if(!validIds.has(id)) missionFilterState.operators.delete(id); });
+  }
+  renderMissionFilterCurrencyControl();
+  renderMissionFilterOperatorControl();
+  renderMissionFilterOperatorPanel();
+}
+
+function getMissionFilterOperatorGroups(){
+  const kw = missionFilterOperatorSearch.trim().toLowerCase();
+  return operatorTreeData.map(parent=>{
+    const children = parent.children.filter(c=>{
+      if(missionFilterState.currencies.size>0 && !missionFilterState.currencies.has(c.currency)) return false;
+      if(kw && !c.name.toLowerCase().includes(kw)) return false;
+      return true;
+    });
+    return { parent, children };
+  }).filter(g=>g.children.length>0);
+}
+function renderMissionFilterOperatorControl(){
+  const el = document.getElementById('mission-filter-operator-summary');
+  if(missionFilterState.operators.size===0){ el.textContent='營運:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  const names = [];
+  operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(missionFilterState.operators.has(c.id)) names.push(c.name); }));
+  const shown = names.slice(0,2).join('、');
+  el.textContent = `營運:已選 ${names.length} 個${names.length>2? '('+shown+' 等)':''}`;
+}
+function renderMissionFilterOperatorPanel(){
+  const panel = document.getElementById('mission-filter-operator-panel');
+  panel.innerHTML = `
+    <div class="ms-search"><input type="text" placeholder="搜尋營運名稱" value="${missionFilterOperatorSearch}" oninput="onMissionFilterOperatorSearch(this.value)"></div>
+    <div class="ms-list" id="mission-filter-operator-ms-list"></div>`;
+  renderMissionFilterOperatorList();
+}
+function renderMissionFilterOperatorList(){
+  const list = document.getElementById('mission-filter-operator-ms-list');
+  if(!list) return;
+  const groups = getMissionFilterOperatorGroups();
+  list.innerHTML = groups.length===0 ? '<div class="ms-empty">查無符合的營運</div>' : groups.map(g=>`
+    <div class="ms-group-title" style="cursor:default;">${g.parent.name}<span class="tag" style="margin-left:6px;">${g.children.length} 筆</span></div>
+    ${g.children.map(c=>`
+      <label class="ms-option">
+        <input type="checkbox" ${missionFilterState.operators.has(c.id)?'checked':''} onchange="toggleMissionFilterOperator('${c.id}', this.checked)"> ${c.name} <span class="tag">${c.currency}</span>
+      </label>`).join('')}
+  `).join('');
+}
+function onMissionFilterOperatorSearch(val){
+  missionFilterOperatorSearch = val;
+  renderMissionFilterOperatorList();
+}
+function toggleMissionFilterOperator(id, checked){
+  if(checked) missionFilterState.operators.add(id); else missionFilterState.operators.delete(id);
+  renderMissionFilterOperatorControl();
+  renderMissionFilterOperatorList();
+}
+
+function renderMissionFilterStatusControl(){
+  const el = document.getElementById('mission-filter-status-summary');
+  if(missionFilterState.statuses.size===0){ el.textContent='狀態:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  el.textContent = '狀態:'+Array.from(missionFilterState.statuses).join('、');
+}
+function renderMissionFilterStatusPanel(){
+  const panel = document.getElementById('mission-filter-status-panel');
+  panel.innerHTML = `<div class="ms-list">${MISSION_STATUS_OPTIONS.map(s=>`
+    <label class="ms-option">
+      <input type="checkbox" ${missionFilterState.statuses.has(s)?'checked':''} onchange="toggleMissionFilterStatus('${s}', this.checked)"> ${s}
+    </label>`).join('')}</div>`;
+}
+function toggleMissionFilterStatus(status, checked){
+  if(checked) missionFilterState.statuses.add(status); else missionFilterState.statuses.delete(status);
+  renderMissionFilterStatusControl();
+}
+
+// 日期選擇器:行事曆+快捷側欄整合式(僅「開始日期」欄位附快捷側欄,「結束日期」欄位為單純月曆)
+// 通用引擎,以 ns(namespace)區分不同頁籤的日期搜尋(例如「mission-filter」限時任務、「record-filter」紀錄),
+// 對應的 DOM id 需固定為:${ns}-start-dp / ${ns}-start-date / ${ns}-start-date-label / ${ns}-start-date-panel(end 同理)
+const DATE_SHORTCUTS = [
+  {key:'today', label:'今天'},
+  {key:'3d', label:'3天'},
+  {key:'7d', label:'7天'},
+  {key:'thisMonth', label:'本月'},
+  {key:'lastMonth', label:'上個月'}
+];
+// 每個 ns 底下的 start/end 各自獨立記錄目前月曆檢視中的年月,切換其中一個的月份不影響另一個,也不影響其他 ns
+let datePickerView = {};
+
+function getDatePickerValue(ns, key){
+  const el = document.getElementById(ns+'-'+key+'-date');
+  return el ? el.value : '';
+}
+function setDatePickerValue(ns, key, ymd){
+  document.getElementById(ns+'-'+key+'-date').value = ymd;
+  syncDatePickerLabel(ns, key);
+}
+function syncDatePickerLabel(ns, key){
+  const val = getDatePickerValue(ns, key);
+  const label = document.getElementById(ns+'-'+key+'-date-label');
+  if(label) label.textContent = val || '請選擇日期';
+}
+// 點擊日期欄位開啟/關閉月曆彈窗;開啟時預設帶入目前欄位值(若無值則帶入今天)所在的年月
+function toggleDatePicker(ns, key){
+  const wrapperId = ns+'-'+key+'-dp';
+  const wasOpen = document.getElementById(wrapperId).classList.contains('open');
+  toggleDropdownById(wrapperId);
+  if(!wasOpen){
+    const val = getDatePickerValue(ns, key);
+    const base = val ? new Date(val+'T00:00:00') : new Date(MISSION_NOW);
+    if(!datePickerView[ns]) datePickerView[ns] = {};
+    datePickerView[ns][key] = { year: base.getFullYear(), month: base.getMonth() };
+    renderDatePickerPanel(ns, key);
+  }
+}
+// 月份導覽:delta 為 -12(上一年)/-1(上月)/1(下月)/12(下一年)
+function navDatePickerMonth(ns, key, delta){
+  const view = datePickerView[ns][key];
+  let m = view.month + delta, y = view.year;
+  while(m<0){ m+=12; y--; }
+  while(m>11){ m-=12; y++; }
+  datePickerView[ns][key] = { year:y, month:m };
+  renderDatePickerPanel(ns, key);
+}
+function renderDatePickerPanel(ns, key){
+  const panel = document.getElementById(ns+'-'+key+'-date-panel');
+  if(!panel) return;
+  const view = datePickerView[ns][key];
+  const selectedVal = getDatePickerValue(ns, key);
+  const todayStr = formatYmd(new Date(MISSION_NOW));
+
+  const first = new Date(view.year, view.month, 1);
+  const startWeekday = first.getDay(); // 0=日
+  const daysInMonth = new Date(view.year, view.month+1, 0).getDate();
+  const daysInPrevMonth = new Date(view.year, view.month, 0).getDate();
+
+  const cells = [];
+  for(let i=startWeekday-1;i>=0;i--) cells.push({day:daysInPrevMonth-i, out:true});
+  for(let d=1; d<=daysInMonth; d++){
+    const ymd = `${view.year}-${String(view.month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    cells.push({day:d, out:false, ymd});
+  }
+  let nextDay=1;
+  while(cells.length % 7 !== 0) cells.push({day:nextDay++, out:true});
+
+  const dowLabels = ['日','一','二','三','四','五','六'];
+  const shortcutsHtml = key==='start' ? `
+    <div class="dp-shortcuts">
+      ${DATE_SHORTCUTS.map(it=>`<div class="dp-shortcut-item" onclick="applyDateShortcut('${ns}','${it.key}')">${it.label}</div>`).join('')}
+    </div>` : '';
+
+  panel.innerHTML = `<div class="dp-body">
+    ${shortcutsHtml}
+    <div class="dp-calendar">
+      <div class="dp-cal-header">
+        <span class="dp-cal-nav" onclick="navDatePickerMonth('${ns}','${key}', -12)">&laquo;</span>
+        <span class="dp-cal-nav" onclick="navDatePickerMonth('${ns}','${key}', -1)">&lsaquo;</span>
+        <span>${view.year} 年 ${view.month+1} 月</span>
+        <span class="dp-cal-nav" onclick="navDatePickerMonth('${ns}','${key}', 1)">&rsaquo;</span>
+        <span class="dp-cal-nav" onclick="navDatePickerMonth('${ns}','${key}', 12)">&raquo;</span>
+      </div>
+      <div class="dp-cal-grid">
+        ${dowLabels.map(l=>`<div class="dp-cal-dow">${l}</div>`).join('')}
+        ${cells.map(c=>{
+          if(c.out) return `<div class="dp-cal-day out">${c.day}</div>`;
+          const cls = ['dp-cal-day'];
+          if(c.ymd===selectedVal) cls.push('selected');
+          if(c.ymd===todayStr) cls.push('today');
+          return `<div class="${cls.join(' ')}" onclick="pickDate('${ns}','${key}','${c.ymd}')">${c.day}</div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+function pickDate(ns, key, ymd){
+  setDatePickerValue(ns, key, ymd);
+  closeAllDropdowns();
+}
+// 今天/3天/7天皆以「當天 00:00:00」為起點往後推算;本月/上個月則抓當月/上月的第一天~最後一天
+function applyDateShortcut(ns, kind){
+  const today = new Date(MISSION_NOW); today.setHours(0,0,0,0);
+  let start = new Date(today), end;
+  if(kind==='today'){ end = new Date(today); }
+  else if(kind==='3d'){ end = new Date(today); end.setDate(end.getDate()+3); }
+  else if(kind==='7d'){ end = new Date(today); end.setDate(end.getDate()+7); }
+  else if(kind==='thisMonth'){ start = new Date(today.getFullYear(), today.getMonth(), 1); end = new Date(today.getFullYear(), today.getMonth()+1, 0); }
+  else if(kind==='lastMonth'){ start = new Date(today.getFullYear(), today.getMonth()-1, 1); end = new Date(today.getFullYear(), today.getMonth(), 0); }
+  else { end = new Date(today); }
+  setDatePickerValue(ns, 'start', formatYmd(start));
+  document.getElementById(ns+'-start-time').value = '00:00:00';
+  setDatePickerValue(ns, 'end', formatYmd(end));
+  document.getElementById(ns+'-end-time').value = '23:59:59';
+  closeAllDropdowns(); // 選完就收合下拉,不需要另外點擊關閉
+}
+
+// 依目前 missionFilterState 判斷單筆任務活動是否符合(所有條件皆為 AND 交集)
+function missionMatchesFilter(m){
+  const st = computeMissionStatus(m).text;
+  if(missionFilterState.statuses.size>0 && !missionFilterState.statuses.has(st)) return false;
+  const kw = (missionFilterState.name||'').trim().toLowerCase();
+  if(kw && !m.name.toLowerCase().includes(kw)) return false;
+  if(missionFilterState.currencies.size>0 && !(m.currencyCode && missionFilterState.currencies.has(m.currencyCode))) return false;
+  if(missionFilterState.operators.size>0){
+    const ids = m.operatorIds || [];
+    if(!ids.some(id=>missionFilterState.operators.has(id))) return false;
+  }
+  // 日期時間重疊判斷:任務起訖與搜尋起訖只要有交集即命中
+  const mStart = new Date(m.start.replace(' ','T'));
+  const mEnd = new Date(m.end.replace(' ','T'));
+  const fStart = new Date(`${missionFilterState.startDate}T${missionFilterState.startTime}`);
+  const fEnd = new Date(`${missionFilterState.endDate}T${missionFilterState.endTime}`);
+  if(mEnd < fStart || mStart > fEnd) return false;
+  return true;
+}
+function getFilteredMissions(){
+  return missions.filter(missionMatchesFilter);
+}
+
+// 將目前的搜尋列 DOM 輸入值同步進 missionFilterState,並重新渲染清單(由「搜尋」按鈕觸發)
+function applyMissionFilter(){
+  missionFilterState.startDate = document.getElementById('mission-filter-start-date').value;
+  missionFilterState.startTime = document.getElementById('mission-filter-start-time').value || '00:00:00';
+  missionFilterState.endDate = document.getElementById('mission-filter-end-date').value;
+  missionFilterState.endTime = document.getElementById('mission-filter-end-time').value || '23:59:59';
+  missionFilterState.name = document.getElementById('mission-filter-name').value;
+  renderMissionTable();
+}
+// 將搜尋列所有欄位與下拉重繪回目前的 missionFilterState(初始渲染 / 重置後都會呼叫)
+function renderMissionFilterControls(){
+  setDatePickerValue('mission-filter','start', missionFilterState.startDate);
+  document.getElementById('mission-filter-start-time').value = missionFilterState.startTime;
+  setDatePickerValue('mission-filter','end', missionFilterState.endDate);
+  document.getElementById('mission-filter-end-time').value = missionFilterState.endTime;
+  document.getElementById('mission-filter-name').value = missionFilterState.name;
+  renderMissionFilterCurrencyControl(); renderMissionFilterCurrencyPanel();
+  renderMissionFilterOperatorControl(); renderMissionFilterOperatorPanel();
+  renderMissionFilterStatusControl(); renderMissionFilterStatusPanel();
+}
+// 重置:所有搜尋條件恢復預設值,並重新套用(重繪清單)
+function resetMissionFilter(){
+  missionFilterState = defaultMissionFilterState();
+  missionFilterOperatorSearch = '';
+  renderMissionFilterControls();
+  renderMissionTable();
+}
+
 function getSortedMissions(){
-  if(!missionSortKey) return missions;
-  const list = missions.slice();
+  const filtered = getFilteredMissions();
+  if(!missionSortKey) return filtered;
+  const list = filtered.slice();
   list.sort((a,b)=>{
     let av, bv;
     if(missionSortKey==='start'){
@@ -959,13 +1424,18 @@ function renderMissionTable(){
     const editIcon = canEdit
       ? `<span class="icon-action icon-edit" title="編輯" data-icon="edit" onclick="openMissionModal('mission','${m.id}')"></span>`
       : '';
+    // 刪除:僅「草稿」與「準備開始」狀態可刪除,避免刪除已對外曝光過(進行中/已結束/已停用)的活動造成紀錄不一致或影響已參加會員
+    const canDelete = (st.text === '草稿' || st.text === '準備開始');
+    const deleteIcon = canDelete
+      ? `<span class="icon-action icon-del" title="刪除" data-icon="trash" onclick="deleteMission('${m.id}')"></span>`
+      : '';
     return `
     <tr>
       <td>${m.id}</td><td>${m.name}</td><td>${m.start}</td><td>${m.end}</td>
       <td>${currencyCell}</td><td>${operatorCell}</td>
       <td><span class="pill ${st.cls}">${st.text}</span></td>
-      <td><label class="switch" title="${lockInfo.reason}"><input type="checkbox" ${m.enabled?'checked':''} ${lockInfo.locked?'disabled':''} onchange="toggleMissionEnabled('${m.id}')"><span class="slider"></span></label></td>
-      <td><span class="icon-action icon-view" title="檢視" data-icon="eye" onclick="openMissionModal('view','${m.id}')"></span>${editIcon}<span class="icon-action icon-copy" title="複製" data-icon="copy" onclick="copyMission('${m.id}')"></span></td>
+      <td><label class="switch" title="${lockInfo.reason}"><input type="checkbox" ${m.enabled?'checked':''} ${lockInfo.locked?'disabled':''} onchange="onMissionTogglePreview('${m.id}')"><span class="slider"></span></label></td>
+      <td><span class="icon-action icon-view" title="檢視" data-icon="eye" onclick="openMissionModal('view','${m.id}')"></span>${editIcon}<span class="icon-action icon-copy" title="複製" data-icon="copy" onclick="copyMission('${m.id}')"></span>${deleteIcon}</td>
     </tr>`;
   }).join('');
   mountIcons();
@@ -995,6 +1465,7 @@ let currentBlocks = [];
 let modalMode = 'mission';           // 'mission' | 'template'
 let editingTemplateId = null;
 let editingMissionId = null;
+let editingMissionOpenStatus = null; // 開啟編輯彈窗當下的任務狀態快照,供儲存時做「狀態變更並發檢查」用
 let missionEditLockMode = 'full';    // 'full' 全部可編輯 | 'partial' 啟用中,僅名稱/結束時間可編輯
 let selectedCurrencies = new Set(['TWD']);
 let selectedOperators = new Set();
@@ -1269,8 +1740,11 @@ function deletePreset(id){
 /* ============================================================
    任務內文 - 遊戲多選下拉(每個任務區塊各自獨立)
    ============================================================ */
+// gameIds 為 [] 代表「尚未選擇」(預設狀態);gameIds 含 'ALL' 這個特殊值代表使用者已明確勾選「所有遊戲」選項;
+// 兩者的差異只在畫面顯示文字與是否已完成設定,實際「不限定特定遊戲」的意義相同。
 function gameSummaryText(block){
-  if(block.gameIds.length===0) return '所有遊戲';
+  if(block.gameIds.length===0) return '請選擇適用遊戲';
+  if(block.gameIds.includes('ALL')) return '所有遊戲';
   const names = GAME_LIST.filter(g=>block.gameIds.includes(g.id)).map(g=>g.name);
   return `已選 ${names.length} 款(${names.join('、')})`;
 }
@@ -1278,19 +1752,33 @@ function renderGamePanel(idx){
   const panel = document.getElementById('game-panel-'+idx);
   if(!panel) return;
   const block = currentBlocks[idx];
+  const allChecked = block.gameIds.includes('ALL');
   panel.innerHTML = `<div class="ms-list">
+    <label class="ms-option" style="font-weight:700;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:4px;">
+      <input type="checkbox" ${allChecked?'checked':''} onchange="toggleBlockAllGames(${idx}, this.checked)"> 所有遊戲
+    </label>
     ${GAME_LIST.map(g=>`
       <label class="ms-option">
-        <input type="checkbox" ${block.gameIds.includes(g.id)?'checked':''} onchange="toggleBlockGame(${idx}, '${g.id}', this.checked)"> ${g.name}
+        <input type="checkbox" ${block.gameIds.includes(g.id)?'checked':''} ${allChecked?'disabled':''} onchange="toggleBlockGame(${idx}, '${g.id}', this.checked)"> ${g.name}
       </label>`).join('')}
   </div>
-  <div style="padding:6px 10px;border-top:1px solid var(--border);"><span class="hint">未勾選任何遊戲代表適用「所有遊戲」</span></div>`;
+  <div style="padding:6px 10px;border-top:1px solid var(--border);"><span class="hint">勾選最上方的「所有遊戲」代表此任務/獎勵不限定特定遊戲;或改為勾選一款以上的個別遊戲。</span></div>`;
+}
+// 勾選「所有遊戲」:清空個別遊戲選擇,gameIds 改為僅含 'ALL';取消勾選則回到空陣列(尚未選擇)
+function toggleBlockAllGames(idx, checked){
+  const block = currentBlocks[idx];
+  block.gameIds = checked ? ['ALL'] : [];
+  document.getElementById('game-summary-'+idx).textContent = gameSummaryText(block);
+  renderGamePanel(idx);
 }
 function toggleBlockGame(idx, gameId, checked){
   const block = currentBlocks[idx];
+  // 勾選個別遊戲時,若原本是「所有遊戲」狀態要先清除,兩者互斥
+  block.gameIds = block.gameIds.filter(id=>id!=='ALL');
   if(checked){ if(!block.gameIds.includes(gameId)) block.gameIds.push(gameId); }
   else { block.gameIds = block.gameIds.filter(g=>g!==gameId); }
   document.getElementById('game-summary-'+idx).textContent = gameSummaryText(block);
+  renderGamePanel(idx);
 }
 function toggleGameDropdown(idx){
   toggleDropdownById('game-ms-'+idx);
@@ -1359,12 +1847,14 @@ function rewardFieldHtml(fieldDef, block, idx){
       </div>
     </div>`;
   }
-  if(fieldDef.type==='intRange'){
+  if(fieldDef.type==='multiplierSelect'){
+    // 固定倍數選項下拉,預設未選(空字串),不開放手動輸入其他數字
+    const current = (val===undefined || val===null) ? '' : String(val);
     return `<div class="form-item"><label>${fieldDef.label} <span style="color:var(--danger);">*</span></label>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <input type="number" min="${fieldDef.min}" max="${fieldDef.max}" step="1" placeholder="支援整數 0~10000" value="${val}" onchange="currentBlocks[${idx}].reward.values.${fieldDef.key}=this.value" style="flex:1;">
-        <span style="font-size:13px;color:var(--text-secondary);">倍</span>
-      </div>
+      <select onchange="currentBlocks[${idx}].reward.values.${fieldDef.key}=this.value">
+        <option value="" ${current===''?'selected':''}>請選擇倍數</option>
+        ${fieldDef.options.map(o=>`<option value="${o}" ${current===String(o)?'selected':''}>${o} 倍</option>`).join('')}
+      </select>
     </div>`;
   }
   if(fieldDef.type==='lockedMinBet'){
@@ -1399,7 +1889,7 @@ function renderTaskBlocks(){
           <div id="task-field-${idx}">${taskFieldHtml(block, idx)}</div>
           ${resetModeFieldHtml(block, idx)}
           <div style="margin-top:10px;">
-            <label style="display:block;font-size:12.5px;color:var(--text-secondary);margin-bottom:5px;font-weight:600;">適用遊戲(可複選,不選代表所有遊戲)</label>
+            <label style="display:block;font-size:12.5px;color:var(--text-secondary);margin-bottom:5px;font-weight:600;">適用遊戲(可複選,或勾選「所有遊戲」)</label>
             <div class="ms drop-up" id="game-ms-${idx}">
               <div class="ms-control" onclick="toggleGameDropdown(${idx})">
                 <span class="ms-summary" id="game-summary-${idx}">${gameSummaryText(block)}</span>
@@ -1452,7 +1942,8 @@ function changeRewardType(idx, newType){
 }
 
 function addTaskBlock(){
-  currentBlocks.push(mkBlock('bet_amount','', [], mkReward('free_spin',{gameId:'g1', betLevel:'1', expireHours:'24', spinCount:'10', maxWinMultiplier:'50'})));
+  // 最大贏分倍數預設未選(空字串),需使用者自行從下拉選單選擇
+  currentBlocks.push(mkBlock('bet_amount','', [], mkReward('free_spin',{gameId:'g1', betLevel:'1', expireHours:'24', spinCount:'10', maxWinMultiplier:''})));
   renderTaskBlocks();
 }
 function removeTaskBlock(idx){
@@ -1474,8 +1965,9 @@ function applyTemplateToBlocks(templateId){
    mode: 'mission' (新增/編輯任務活動) | 'template' (新增/編輯樣板) | 'view' (唯讀檢視,僅顯示任務設定內容)
    ============================================================ */
 function defaultMissionBlocks(){
+  // 最大贏分倍數預設未選(空字串),需使用者自行從下拉選單選擇
   return [
-    mkBlock('bet_amount','1000',[], mkReward('free_spin',{gameId:'g1', betLevel:'1', expireHours:'24', spinCount:'10', maxWinMultiplier:'50'}))
+    mkBlock('bet_amount','1000',[], mkReward('free_spin',{gameId:'g1', betLevel:'1', expireHours:'24', spinCount:'10', maxWinMultiplier:''}))
   ];
 }
 function openMissionModal(mode, arg){
@@ -1486,6 +1978,7 @@ function openMissionModal(mode, arg){
   // 'view' 與 'mission'(帶 id 代表編輯既有任務活動)兩種情況都用 arg 當作 missionId 查找既有資料
   const editingMission = (!isTemplate && typeof arg === 'string') ? (missions.find(m=>m.id===arg) || null) : null;
   editingMissionId = (modalMode==='mission' && editingMission) ? editingMission.id : null;
+  editingMissionOpenStatus = editingMission ? computeMissionStatus(editingMission).text : null; // 快照:供儲存時比對狀態是否被異動過
   // 是否全欄位可編輯,取決於「活動是否已啟用且已過開始時間」:
   // 草稿(從未啟用)一律全欄位可編輯,不受 start 欄位當下數值影響;
   // 已啟用但尚未到開始時間(準備開始)也還是全欄位可編輯;
@@ -1507,6 +2000,8 @@ function openMissionModal(mode, arg){
   document.getElementById('copy-info-banner').style.display = 'none'; // 每次開啟彈窗先重置,複製流程會在之後另外開啟
   document.getElementById('time-row').style.display = isTemplate ? 'none' : 'flex';
   document.getElementById('currency-operator-row').style.display = isTemplate ? 'none' : 'flex';
+  // 新增/編輯「任務樣板」時不提供「套用樣板」(套用另一份樣板來建立/編輯目前這份樣板沒有意義),僅在新增/編輯任務活動時才顯示
+  document.getElementById('template-apply-wrap').style.display = isTemplate ? 'none' : '';
   document.getElementById('name-field-label').textContent = isTemplate ? '樣板名稱' : '活動名稱';
 
   if(isTemplate){
@@ -1559,6 +2054,18 @@ function saveMission(){
   if(!name){
     alert('請輸入活動名稱(必填)。');
     return;
+  }
+
+  // 狀態變更並發檢查:編輯既有任務活動時,若開啟彈窗後、儲存前活動狀態已經被異動(例如另一分頁/操作者搶先變更),
+  // 則不繼續儲存,改為提示並刷新清單,依規格文案:「任務狀態變更，請重新操作」
+  if(editingMissionId){
+    const mCheck = missions.find(x=>x.id===editingMissionId);
+    if(!mCheck || computeMissionStatus(mCheck).text !== editingMissionOpenStatus){
+      alert('任務狀態變更，請重新操作');
+      closeMissionModal();
+      renderMissionTable();
+      return;
+    }
   }
 
   // 啟用中部分鎖定模式:只驗證/更新「名稱」與「結束時間」,幣別/營運/任務與獎勵內容這次儲存不受影響
@@ -1627,15 +2134,10 @@ function saveMission(){
           return;
         }
       }
-      if(f.type==='intRange'){
+      if(f.type==='multiplierSelect'){
         const v = b.reward.values[f.key];
         if(v===''||v===null||v===undefined){
-          alert(`任務 ${i+1}:獎勵欄位「${f.label}」為必填,請輸入數值。`);
-          return;
-        }
-        const n = Number(v);
-        if(!Number.isInteger(n) || n<f.min || n>f.max){
-          alert(`任務 ${i+1}:獎勵欄位「${f.label}」請輸入 ${f.min}~${f.max} 之間的整數。`);
+          alert(`任務 ${i+1}:獎勵欄位「${f.label}」為必填,請選擇一個倍數。`);
           return;
         }
       }
@@ -1729,51 +2231,186 @@ function deleteTemplate(templateId){
 }
 
 /* ============================================================
-   紀錄頁篩選:營運多選下拉(可複選,不限幣別,供查詢使用)
+   紀錄頁篩選:日期(套用限時任務同款行事曆+快捷元件,ns='record-filter')/
+   活動名稱模糊搜尋/用戶賬號模糊搜尋/幣別複選(連動營運)/營運複選/任務類型單選/狀態複選,AND交集
    ============================================================ */
-let recordSelectedOperators = new Set();
-let recordOperatorSearch = '';
-function renderRecordOperatorControl(){
-  const el = document.getElementById('record-operator-summary');
+const RECORD_STATUS_OPTIONS = ['progress','pending_reward','done','expired'];
+// 預設區間刻意涵蓋原型假資料的時間跨度(2026-07-10 ~ 07-13),讓紀錄列表預設就能示意所有狀態;
+// 與限時任務頁一致,這是我這邊自行決定的示意用預設值,並非規格指定,若不合適請告訴我再調整
+function defaultRecordFilterState(){
+  return {
+    timeType:'claimedAt',
+    startDate:'2026-07-01', startTime:'00:00:00',
+    endDate:'2026-07-20', endTime:'23:59:59',
+    name:'', member:'',
+    currencies: new Set(),
+    operators: new Set(),
+    taskType:'',
+    statuses: new Set(RECORD_STATUS_OPTIONS)
+  };
+}
+let recordFilterState = defaultRecordFilterState();
+let recordFilterOperatorSearch = '';
+
+function renderRecordFilterCurrencyControl(){
+  const el = document.getElementById('record-filter-currency-summary');
   if(!el) return;
-  if(recordSelectedOperators.size===0){ el.textContent='請選擇營運'; el.classList.add('placeholder'); return; }
+  if(recordFilterState.currencies.size===0){ el.textContent='幣別:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  el.textContent = '幣別:'+CURRENCIES.filter(c=>recordFilterState.currencies.has(c.code)).map(c=>c.code).join('、');
+}
+function renderRecordFilterCurrencyPanel(){
+  const panel = document.getElementById('record-filter-currency-panel');
+  if(!panel) return;
+  panel.innerHTML = `<div class="ms-list">${CURRENCIES.map(c=>`
+    <label class="ms-option">
+      <input type="checkbox" ${recordFilterState.currencies.has(c.code)?'checked':''} onchange="toggleRecordFilterCurrency('${c.code}', this.checked)"> ${c.name}
+    </label>`).join('')}</div>`;
+}
+function toggleRecordFilterCurrency(code, checked){
+  if(checked) recordFilterState.currencies.add(code); else recordFilterState.currencies.delete(code);
+  // 幣別變動後,移除不再符合篩選條件的已選營運(與限時任務搜尋列邏輯一致)
+  if(recordFilterState.currencies.size>0){
+    const validIds = new Set();
+    operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(recordFilterState.currencies.has(c.currency)) validIds.add(c.id); }));
+    Array.from(recordFilterState.operators).forEach(id=>{ if(!validIds.has(id)) recordFilterState.operators.delete(id); });
+  }
+  renderRecordFilterCurrencyControl();
+  renderRecordFilterOperatorControl();
+  renderRecordFilterOperatorPanel();
+}
+
+function getRecordFilterOperatorGroups(){
+  const kw = recordFilterOperatorSearch.trim().toLowerCase();
+  return operatorTreeData.map(parent=>{
+    const children = parent.children.filter(c=>{
+      if(recordFilterState.currencies.size>0 && !recordFilterState.currencies.has(c.currency)) return false;
+      if(kw && !c.name.toLowerCase().includes(kw)) return false;
+      return true;
+    });
+    return { parent, children };
+  }).filter(g=>g.children.length>0);
+}
+function renderRecordFilterOperatorControl(){
+  const el = document.getElementById('record-filter-operator-summary');
+  if(!el) return;
+  if(recordFilterState.operators.size===0){ el.textContent='營運:不限'; el.classList.add('placeholder'); return; }
   el.classList.remove('placeholder');
   const names = [];
-  operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(recordSelectedOperators.has(c.id)) names.push(c.name); }));
+  operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(recordFilterState.operators.has(c.id)) names.push(c.name); }));
   const shown = names.slice(0,2).join('、');
-  el.textContent = `已選 ${names.length} 個營運${names.length>2? '('+shown+' 等)':''}`;
+  el.textContent = `營運:已選 ${names.length} 個${names.length>2? '('+shown+' 等)':''}`;
 }
-function renderRecordOperatorPanel(){
-  const panel = document.getElementById('record-operator-panel');
+function renderRecordFilterOperatorPanel(){
+  const panel = document.getElementById('record-filter-operator-panel');
   if(!panel) return;
   panel.innerHTML = `
-    <div class="ms-search"><input type="text" id="record-operator-search-input" placeholder="搜尋營運名稱" value="${recordOperatorSearch}" oninput="onRecordOperatorSearch(this.value)"></div>
-    <div class="ms-list" id="record-operator-ms-list"></div>`;
-  renderRecordOperatorList();
+    <div class="ms-search"><input type="text" placeholder="搜尋營運名稱" value="${recordFilterOperatorSearch}" oninput="onRecordFilterOperatorSearch(this.value)"></div>
+    <div class="ms-list" id="record-filter-operator-ms-list"></div>`;
+  renderRecordFilterOperatorList();
 }
-function renderRecordOperatorList(){
-  const list = document.getElementById('record-operator-ms-list');
+function renderRecordFilterOperatorList(){
+  const list = document.getElementById('record-filter-operator-ms-list');
   if(!list) return;
-  const kw = recordOperatorSearch.trim().toLowerCase();
-  const groups = operatorTreeData.map(parent=>({
-    parent, children: parent.children.filter(c=> !kw || c.name.toLowerCase().includes(kw))
-  })).filter(g=>g.children.length>0);
+  const groups = getRecordFilterOperatorGroups();
   list.innerHTML = groups.length===0 ? '<div class="ms-empty">查無符合的營運</div>' : groups.map(g=>`
     <div class="ms-group-title" style="cursor:default;">${g.parent.name}<span class="tag" style="margin-left:6px;">${g.children.length} 筆</span></div>
     ${g.children.map(c=>`
       <label class="ms-option">
-        <input type="checkbox" ${recordSelectedOperators.has(c.id)?'checked':''} onchange="toggleRecordOperator('${c.id}', this.checked)"> ${c.name} <span class="tag">${c.currency}</span>
+        <input type="checkbox" ${recordFilterState.operators.has(c.id)?'checked':''} onchange="toggleRecordFilterOperator('${c.id}', this.checked)"> ${c.name} <span class="tag">${c.currency}</span>
       </label>`).join('')}
   `).join('');
 }
-function onRecordOperatorSearch(val){
-  recordOperatorSearch = val;
-  renderRecordOperatorList();
+function onRecordFilterOperatorSearch(val){
+  recordFilterOperatorSearch = val;
+  renderRecordFilterOperatorList();
 }
-function toggleRecordOperator(id, checked){
-  if(checked) recordSelectedOperators.add(id); else recordSelectedOperators.delete(id);
-  renderRecordOperatorControl();
-  renderRecordOperatorList();
+function toggleRecordFilterOperator(id, checked){
+  if(checked) recordFilterState.operators.add(id); else recordFilterState.operators.delete(id);
+  renderRecordFilterOperatorControl();
+  renderRecordFilterOperatorList();
+}
+
+function renderRecordFilterStatusControl(){
+  const el = document.getElementById('record-filter-status-summary');
+  if(!el) return;
+  if(recordFilterState.statuses.size===0){ el.textContent='狀態:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  el.textContent = '狀態:'+Array.from(recordFilterState.statuses).map(s=>STATUS_LABEL[s].text).join('、');
+}
+function renderRecordFilterStatusPanel(){
+  const panel = document.getElementById('record-filter-status-panel');
+  if(!panel) return;
+  panel.innerHTML = `<div class="ms-list">${RECORD_STATUS_OPTIONS.map(s=>`
+    <label class="ms-option">
+      <input type="checkbox" ${recordFilterState.statuses.has(s)?'checked':''} onchange="toggleRecordFilterStatus('${s}', this.checked)"> ${STATUS_LABEL[s].text}
+    </label>`).join('')}</div>`;
+}
+function toggleRecordFilterStatus(status, checked){
+  if(checked) recordFilterState.statuses.add(status); else recordFilterState.statuses.delete(status);
+  renderRecordFilterStatusControl();
+}
+
+// 依目前 recordFilterState 判斷單筆紀錄是否符合(所有條件皆為 AND 交集)
+function recordMatchesFilter(r){
+  if(recordFilterState.currencies.size>0 && !(r.currencyCode && recordFilterState.currencies.has(r.currencyCode))) return false;
+  if(recordFilterState.operators.size>0){
+    const names = new Set();
+    operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(recordFilterState.operators.has(c.id)) names.add(c.name); }));
+    if(!names.has(r.operator)) return false;
+  }
+  if(recordFilterState.taskType && r.taskType !== recordFilterState.taskType) return false;
+  if(recordFilterState.statuses.size>0 && !recordFilterState.statuses.has(r.status)) return false;
+  const nameKw = (recordFilterState.name||'').trim().toLowerCase();
+  if(nameKw && !r.activity.toLowerCase().includes(nameKw)) return false;
+  const memberKw = (recordFilterState.member||'').trim().toLowerCase();
+  if(memberKw && !r.member.toLowerCase().includes(memberKw)) return false;
+  // 依所選時間類型(開始/達成/派獎)的時間戳記是否落在搜尋區間內;該欄位尚無時間(該事件尚未發生)則不納入
+  const ts = r[recordFilterState.timeType];
+  if(!ts) return false;
+  const t = new Date(ts.replace(' ','T'));
+  const fStart = new Date(`${recordFilterState.startDate}T${recordFilterState.startTime}`);
+  const fEnd = new Date(`${recordFilterState.endDate}T${recordFilterState.endTime}`);
+  if(t < fStart || t > fEnd) return false;
+  return true;
+}
+// 回傳 [{r, idx}]:idx 為 recordsData 原始索引,供補派/查看詳情等函式沿用原本以索引操作資料的寫法
+function getFilteredRecords(){
+  return recordsData.map((r, idx)=>({ r, idx })).filter(x=>recordMatchesFilter(x.r));
+}
+
+// 將搜尋列 DOM 輸入值同步進 recordFilterState,並重新渲染清單(由「搜尋」按鈕觸發)
+function applyRecordFilter(){
+  recordFilterState.timeType = document.getElementById('record-filter-time-type-select').value;
+  recordFilterState.startDate = document.getElementById('record-filter-start-date').value;
+  recordFilterState.startTime = document.getElementById('record-filter-start-time').value || '00:00:00';
+  recordFilterState.endDate = document.getElementById('record-filter-end-date').value;
+  recordFilterState.endTime = document.getElementById('record-filter-end-time').value || '23:59:59';
+  recordFilterState.name = document.getElementById('record-filter-name').value;
+  recordFilterState.member = document.getElementById('record-filter-member').value;
+  recordFilterState.taskType = document.getElementById('record-filter-tasktype-select').value;
+  renderRecordTable();
+}
+// 將搜尋列所有欄位與下拉重繪回目前的 recordFilterState(初始渲染 / 重置後都會呼叫)
+function renderRecordFilterControls(){
+  document.getElementById('record-filter-time-type-select').value = recordFilterState.timeType;
+  setDatePickerValue('record-filter','start', recordFilterState.startDate);
+  document.getElementById('record-filter-start-time').value = recordFilterState.startTime;
+  setDatePickerValue('record-filter','end', recordFilterState.endDate);
+  document.getElementById('record-filter-end-time').value = recordFilterState.endTime;
+  document.getElementById('record-filter-name').value = recordFilterState.name;
+  document.getElementById('record-filter-member').value = recordFilterState.member;
+  document.getElementById('record-filter-tasktype-select').value = recordFilterState.taskType;
+  renderRecordFilterCurrencyControl(); renderRecordFilterCurrencyPanel();
+  renderRecordFilterOperatorControl(); renderRecordFilterOperatorPanel();
+  renderRecordFilterStatusControl(); renderRecordFilterStatusPanel();
+}
+// 重置:所有搜尋條件恢復預設值,並重新套用(重繪清單)
+function resetRecordFilter(){
+  recordFilterState = defaultRecordFilterState();
+  recordFilterOperatorSearch = '';
+  renderRecordFilterControls();
+  renderRecordTable();
 }
 
 /* ============================================================
@@ -1785,47 +2422,105 @@ const STATUS_LABEL = {
   done:{ text:'已完成', cls:'pill-success' },
   expired:{ text:'未達成', cls:'pill-danger' }
 };
+
+// 紀錄清單排序:開始時間/達成時間/派獎時間/狀態,點擊同一欄再點一次切換升冪/降冪(與限時任務排序邏輯一致)
+let recordSortKey = null;   // null | 'claimedAt' | 'achievedAt' | 'rewardedAt' | 'status'
+let recordSortDir = 'asc';  // 'asc' | 'desc'
+const RECORD_STATUS_SORT_ORDER = { progress:1, pending_reward:2, done:3, expired:4 };
+
+function sortRecordsBy(key){
+  if(recordSortKey === key){
+    recordSortDir = recordSortDir === 'asc' ? 'desc' : 'asc';
+  }else{
+    recordSortKey = key;
+    recordSortDir = 'asc';
+  }
+  renderRecordTable();
+}
+function getSortedRecords(){
+  const filtered = getFilteredRecords(); // [{r, idx}]
+  if(!recordSortKey) return filtered;
+  const list = filtered.slice();
+  list.sort((a, b)=>{
+    let av, bv;
+    if(recordSortKey==='status'){
+      av = RECORD_STATUS_SORT_ORDER[a.r.status] || 99;
+      bv = RECORD_STATUS_SORT_ORDER[b.r.status] || 99;
+    }else{
+      // 時間欄位:該事件尚未發生(空值)一律排到最後,不受升冪/降冪影響
+      const at = a.r[recordSortKey], bt = b.r[recordSortKey];
+      av = at ? new Date(at.replace(' ','T')).getTime() : Infinity;
+      bv = bt ? new Date(bt.replace(' ','T')).getTime() : Infinity;
+    }
+    if(av<bv) return recordSortDir==='asc' ? -1 : 1;
+    if(av>bv) return recordSortDir==='asc' ? 1 : -1;
+    return 0;
+  });
+  return list;
+}
+function updateRecordSortIcons(){
+  ['claimedAt','achievedAt','rewardedAt','status'].forEach(key=>{
+    const el = document.getElementById('record-sort-icon-'+key);
+    if(!el) return;
+    if(recordSortKey===key){
+      el.textContent = recordSortDir==='asc' ? '▲' : '▼';
+      el.classList.add('active');
+    }else{
+      el.textContent = '↕';
+      el.classList.remove('active');
+    }
+  });
+}
+
+// 欄位順序(左至右):活動ID/任務名稱/營運/用戶賬號/任務類型/開始時間/達成時間/派獎時間/狀態/功能
 function renderRecordTable(){
   const tbody = document.getElementById('record-tbody');
-  tbody.innerHTML = recordsData.map((r, idx)=>{
+  const filtered = getSortedRecords();
+  tbody.innerHTML = filtered.map(({r, idx})=>{
     const st = STATUS_LABEL[r.status];
     const statusCell = r.status === 'pending_reward'
       ? `<button class="btn-resend" title="用於原本未成功領取、活動已過期的情況,點擊後可補派獎勵給玩家" onclick="openResendConfirm(${idx})">› ${st.text}</button>`
       : `<span class="pill ${st.cls}">${st.text}</span>`;
     return `
     <tr>
-      <td>${r.member}</td><td>${r.operator}</td><td>${r.activityId}</td><td>${r.activity}</td>
-      <td class="num">${r.taskNo}</td>
+      <td>${r.activityId}</td><td>${r.activity}</td><td>${r.operator}</td><td>${r.member}</td>
       <td><span class="badge-fixed">${TASK_TYPES[r.taskType].label}</span></td>
       <td>${r.claimedAt || '-'}</td><td>${r.achievedAt || '-'}</td><td>${r.rewardedAt || '-'}</td>
       <td>${statusCell}</td>
       <td><button class="btn btn-outline btn-sm" onclick="openRecordDetail(${idx})">${iconSvg('eye',13)} 查看詳情</button></td>
     </tr>`;
   }).join('');
-  renderRecordStats();
+  renderRecordStats(filtered);
+  updateRecordSortIcons();
 }
-// 紀錄頁上方統計卡:目前依 recordsData 目前全部筆數計算(原型尚未串接篩選條件連動篩選後再統計)
-function renderRecordStats(){
+// 紀錄頁上方統計卡:依「目前篩選後」的清單計算(與清單顯示範圍一致)
+function renderRecordStats(filtered){
   const el = document.getElementById('record-stats');
   if(!el) return;
-  const uniqueMembers = new Set(recordsData.map(r=>r.member)).size;
-  const participantCount = recordsData.length;
-  const achievedCount = recordsData.filter(r=>!!r.achievedAt).length;
-  const rewardedCount = recordsData.filter(r=>!!r.rewardedAt).length;
+  const list = (filtered || getFilteredRecords()).map(x=>x.r);
+  const uniqueMembers = new Set(list.map(r=>r.member)).size;
+  const participantCount = list.length;
+  const achievedCount = list.filter(r=>!!r.achievedAt).length;
+  const rewardedCount = list.filter(r=>!!r.rewardedAt).length;
   el.innerHTML = `
     <div class="stat-card"><div class="label">參與玩家不重複數量</div><div class="value">${uniqueMembers.toLocaleString()}</div></div>
     <div class="stat-card"><div class="label">參與次數</div><div class="value">${participantCount.toLocaleString()}</div></div>
     <div class="stat-card"><div class="label">達成次數</div><div class="value">${achievedCount.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">領獎次數</div><div class="value">${rewardedCount.toLocaleString()}</div></div>`;
+    <div class="stat-card"><div class="label">派獎次數</div><div class="value">${rewardedCount.toLocaleString()}</div></div>`;
 }
-// 匯出紀錄:將目前紀錄清單匯出為 CSV(示意用,欄位對齊表格欄位;加 BOM 避免 Excel 開啟中文亂碼)
+// 匯出紀錄:欄位順序與「查看詳情」完全一致(活動ID/任務名稱/營運/用戶賬號/任務編號/任務類型/任務內容/
+// 累積進度/獎勵內容/開始時間/達成時間/派獎時間/結束時間/背包紀錄單號/狀態),且僅匯出「目前篩選後」的清單
+// (示意用,加 BOM 避免 Excel 開啟中文亂碼)
 function exportRecords(){
-  const headers = ['會員帳號','營運','活動ID','任務活動名稱','任務編號','任務類型','累積進度','開始時間','達成時間','領獎時間','狀態'];
-  const rows = recordsData.map(r=>[
-    r.member, r.operator, r.activityId, r.activity, r.taskNo, TASK_TYPES[r.taskType].label,
-    `${r.progress.toLocaleString()}/${r.target.toLocaleString()}`,
-    r.claimedAt||'', r.achievedAt||'', r.rewardedAt||'', STATUS_LABEL[r.status].text
-  ]);
+  const headers = ['活動ID','任務名稱','營運','用戶賬號','任務編號','任務類型','任務內容','累積進度','獎勵內容','開始時間','達成時間','派獎時間','結束時間','背包紀錄單號','狀態'];
+  const rows = getFilteredRecords().map(({r})=>{
+    const missionEndAt = (missions.find(m=>m.id===r.activityId) || {}).end || '';
+    return [
+      r.activityId, r.activity, r.operator, r.member, r.taskNo, TASK_TYPES[r.taskType].label,
+      r.taskContent, `${r.progress.toLocaleString()}/${r.target.toLocaleString()}`, r.rewardContent,
+      r.claimedAt||'', r.achievedAt||'', r.rewardedAt||'', missionEndAt, r.backpackTxId||'', STATUS_LABEL[r.status].text
+    ];
+  });
   const escapeCell = v=>{
     const s = String(v);
     return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
@@ -1847,11 +2542,14 @@ function openRecordDetail(idx){
   const statusHtml = r.status === 'pending_reward'
     ? `<button class="btn-resend" onclick="openResendConfirm(${idx})">› ${st.text}</button>`
     : `<span class="pill ${st.cls}">${st.text}</span>${r.manualResend ? ' <span class="pill pill-muted">人工補派</span>' : ''}${r.resendTxId ? ` <span style="color:var(--text-secondary);font-size:12.5px;">(交易單號 <span class="scope-link">${r.resendTxId}</span>)</span>` : ''}`;
+  // 結束時間:取自該活動(missions)本身設定的結束時間,與下方 claimedAt/achievedAt/rewardedAt 等玩家個人時間點不同
+  const missionEndAt = (missions.find(m=>m.id===r.activityId) || {}).end || '-';
+  // 詳情欄位順序:活動ID/任務名稱/營運/用戶賬號/任務編號/任務類型/任務內容/累積進度/獎勵內容/開始時間/達成時間/派獎時間/結束時間/背包紀錄單號/狀態
   document.getElementById('record-detail-body').innerHTML = `
-    <div class="detail-row"><span class="k">會員帳號</span><span class="v">${r.member}</span></div>
-    <div class="detail-row"><span class="k">營運</span><span class="v">${r.operator}</span></div>
     <div class="detail-row"><span class="k">活動ID</span><span class="v">${r.activityId}</span></div>
-    <div class="detail-row"><span class="k">任務活動</span><span class="v">${r.activity}</span></div>
+    <div class="detail-row"><span class="k">任務名稱</span><span class="v">${r.activity}</span></div>
+    <div class="detail-row"><span class="k">營運</span><span class="v">${r.operator}</span></div>
+    <div class="detail-row"><span class="k">用戶賬號</span><span class="v">${r.member}</span></div>
     <div class="detail-row"><span class="k">任務編號</span><span class="v">${r.taskNo}</span></div>
     <div class="detail-row"><span class="k">任務類型</span><span class="v">${TASK_TYPES[r.taskType].label}</span></div>
     <div class="detail-row"><span class="k">任務內容</span><span class="v">${r.taskContent}</span></div>
@@ -1859,7 +2557,9 @@ function openRecordDetail(idx){
     <div class="detail-row"><span class="k">獎勵內容</span><span class="v">${r.rewardContent}</span></div>
     <div class="detail-row"><span class="k">開始時間</span><span class="v">${r.claimedAt||'-'}</span></div>
     <div class="detail-row"><span class="k">達成時間</span><span class="v">${r.achievedAt||'-'}</span></div>
-    <div class="detail-row"><span class="k">領獎時間</span><span class="v">${r.rewardedAt||'-'}</span></div>
+    <div class="detail-row"><span class="k">派獎時間</span><span class="v">${r.rewardedAt||'-'}</span></div>
+    <div class="detail-row"><span class="k">結束時間</span><span class="v">${missionEndAt}</span></div>
+    <div class="detail-row"><span class="k">背包紀錄單號</span><span class="v">${r.backpackTxId||'-'}</span></div>
     <div class="detail-row"><span class="k">狀態</span><span class="v">${statusHtml}</span></div>
   `;
   document.getElementById('record-detail-overlay').classList.add('open');
@@ -1887,6 +2587,7 @@ function confirmResend(){
   r.status = 'done';
   r.manualResend = true; // 標記此筆為人工補派,供詳情頁與稽核使用
   r.resendTxId = String(Math.floor(100000 + Math.random()*900000)); // 示意用交易單號,正式串接應改為後端實際回傳的單號
+  r.backpackTxId = 'BP'+String(Math.floor(100000000 + Math.random()*900000000)); // 示意用背包異動單號,正式串接應改為後端實際回傳的單號
   renderRecordTable();
   closeResendConfirm();
   document.getElementById('resend-success-tx').textContent = r.resendTxId;
@@ -2238,11 +2939,11 @@ function closeScopeModal(){
 /* ============================================================
    初始化 Init
    ============================================================ */
+renderMissionFilterControls();
 renderMissionTable();
 renderTemplateTable();
+renderRecordFilterControls();
 renderRecordTable();
-renderRecordOperatorControl();
-renderRecordOperatorPanel();
 renderReportPanel();
 mountIcons();
 </script>
