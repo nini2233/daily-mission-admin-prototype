@@ -810,7 +810,7 @@ function mkReward(type, values){
   return { type, values: Object.assign({}, values) };
 }
 // resetMode:該任務(任務1/2/3...)獨立的前台重置時間設定,'none'=不重置,'utc8_daily'=每日固定整點重置
-// resetHour:0~24 的整數,僅在 resetMode==='utc8_daily' 時生效,代表每日重置的整點(時區固定 UTC+8,不可調整),預設 0(即 00:00)
+// resetHour:0~23 的整數,僅在 resetMode==='utc8_daily' 時生效,代表每日重置的整點(時區固定 UTC+8,不可調整),預設 0(即 00:00)
 function mkBlock(taskType, taskValue, gameIds, reward, resetMode, resetHour){
   return { taskType, taskValue, gameIds: gameIds||[], reward, resetMode: resetMode || 'utc8_daily', resetHour: (resetHour!==undefined && resetHour!==null) ? resetHour : 0 };
 }
@@ -1804,11 +1804,11 @@ function taskFieldHtml(block, idx){
     </div>`;
 }
 
-// 前台重置時間:每組任務(任務1/2/3...)各自獨立設定,二選一:不重置 / 每日固定整點重置(時區固定 UTC+8,整點可自選 0~24 點)
+// 前台重置時間:每組任務(任務1/2/3...)各自獨立設定,二選一:不重置 / 每日固定整點重置(時區固定 UTC+8,整點可自選 0~23 點)
 function resetModeFieldHtml(block, idx){
   const mode = block.resetMode || 'utc8_daily';
   const hour = (block.resetHour!==undefined && block.resetHour!==null) ? Number(block.resetHour) : 0;
-  const hourOptions = Array.from({length:25}, (_, h)=>h); // 0~24 點
+  const hourOptions = Array.from({length:24}, (_, h)=>h); // 0~23 點
   return `
     <div class="form-item" style="margin-top:10px;">
       <label>前台重置時間 <span style="cursor:help;display:inline-flex;vertical-align:middle;" title="達重置時間即清空已累積的內容,從0開始">${helpCircleIcon()}</span></label>
