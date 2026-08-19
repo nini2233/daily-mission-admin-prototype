@@ -809,9 +809,10 @@ const GAME_LIST = [
 function mkReward(type, values){
   return { type, values: Object.assign({}, values) };
 }
-// resetMode:該任務(任務1/2/3...)獨立的前台重置時間設定,'none'=不重置,'utc8_midnight'=每日 UTC+8 00:00 重置
-function mkBlock(taskType, taskValue, gameIds, reward, resetMode){
-  return { taskType, taskValue, gameIds: gameIds||[], reward, resetMode: resetMode || 'utc8_midnight' };
+// resetMode:該任務(任務1/2/3...)獨立的前台重置時間設定,'none'=不重置,'utc8_daily'=每日固定整點重置
+// resetHour:0~24 的整數,僅在 resetMode==='utc8_daily' 時生效,代表每日重置的整點(時區固定 UTC+8,不可調整),預設 0(即 00:00)
+function mkBlock(taskType, taskValue, gameIds, reward, resetMode, resetHour){
+  return { taskType, taskValue, gameIds: gameIds||[], reward, resetMode: resetMode || 'utc8_daily', resetHour: (resetHour!==undefined && resetHour!==null) ? resetHour : 0 };
 }
 
 let templates = [
@@ -1803,21 +1804,31 @@ function taskFieldHtml(block, idx){
     </div>`;
 }
 
-// 前台重置時間:每組任務(任務1/2/3...)各自獨立設定,二選一:不重置 / 每日 UTC+8 00:00 重置
+// 前台重置時間:每組任務(任務1/2/3...)各自獨立設定,二選一:不重置 / 每日固定整點重置(時區固定 UTC+8,整點可自選 0~24 點)
 function resetModeFieldHtml(block, idx){
-  const mode = block.resetMode || 'utc8_midnight';
+  const mode = block.resetMode || 'utc8_daily';
+  const hour = (block.resetHour!==undefined && block.resetHour!==null) ? Number(block.resetHour) : 0;
+  const hourOptions = Array.from({length:25}, (_, h)=>h); // 0~24 點
   return `
     <div class="form-item" style="margin-top:10px;">
       <label>前台重置時間 <span style="cursor:help;display:inline-flex;vertical-align:middle;" title="達重置時間即清空已累積的內容,從0開始">${helpCircleIcon()}</span></label>
       <div style="display:flex;flex-direction:column;gap:4px;padding-top:2px;">
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;cursor:pointer;">
-          <input type="radio" name="reset-mode-${idx}" value="none" ${mode==='none'?'checked':''} onchange="currentBlocks[${idx}].resetMode=this.value"> 不重置(直到結束時間到)
+          <input type="radio" name="reset-mode-${idx}" value="none" ${mode==='none'?'checked':''} onchange="changeResetMode(${idx}, this.value)"> 不重置(直到結束時間到)
         </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;cursor:pointer;">
-          <input type="radio" name="reset-mode-${idx}" value="utc8_midnight" ${mode==='utc8_midnight'?'checked':''} onchange="currentBlocks[${idx}].resetMode=this.value"> 每日0點(UTC+8)
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;cursor:pointer;">
+          <input type="radio" name="reset-mode-${idx}" value="utc8_daily" ${mode==='utc8_daily'?'checked':''} onchange="changeResetMode(${idx}, this.value)">
+          <span>每日整點重置(UTC+8)</span>
+          <select ${mode!=='utc8_daily'?'disabled':''} onchange="currentBlocks[${idx}].resetHour=Number(this.value)" style="width:78px;">
+            ${hourOptions.map(h=>`<option value="${h}" ${h===hour?'selected':''}>${h} 點</option>`).join('')}
+          </select>
         </label>
       </div>
     </div>`;
+}
+function changeResetMode(idx, mode){
+  currentBlocks[idx].resetMode = mode;
+  document.getElementById('reset-mode-field-'+idx).innerHTML = resetModeFieldHtml(currentBlocks[idx], idx);
 }
 
 function rewardFieldHtml(fieldDef, block, idx){
@@ -1887,7 +1898,7 @@ function renderTaskBlocks(){
             </select>
           </div>
           <div id="task-field-${idx}">${taskFieldHtml(block, idx)}</div>
-          ${resetModeFieldHtml(block, idx)}
+          <div id="reset-mode-field-${idx}">${resetModeFieldHtml(block, idx)}</div>
           <div style="margin-top:10px;">
             <label style="display:block;font-size:12.5px;color:var(--text-secondary);margin-bottom:5px;font-weight:600;">適用遊戲(可複選,或勾選「所有遊戲」)</label>
             <div class="ms drop-up" id="game-ms-${idx}">
