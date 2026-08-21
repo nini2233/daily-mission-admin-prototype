@@ -56,7 +56,14 @@
   .tabs{display:flex;border-bottom:1px solid var(--border);padding:0 16px;}
   .tab{padding:14px 6px;margin-right:28px;font-size:14px;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;}
   .tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+  .subtabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px;}
+  .subtab{padding:0 6px 12px;margin-right:24px;font-size:13.5px;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;}
+  .subtab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+  .subtab-panel{display:none;}
+  .subtab-panel.active{display:block;}
   .tab-panel{display:none;padding:16px;}
+  .page{display:none;}
+  .page.active{display:block;}
   .tab-panel.active{display:block;}
   /* ---------- Filter bar ---------- */
   .filter-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
@@ -80,7 +87,7 @@
   thead th.sortable:hover{color:var(--accent);}
   .sort-icon{display:inline-block;margin-left:4px;font-size:10px;color:#c7cbd3;}
   .sort-icon.active{color:var(--accent);}
-  tbody td{padding:11px 12px;border-bottom:1px solid #f0f0f2;vertical-align:middle;}
+  tbody td{padding:11px 12px;border-bottom:1px solid #f0f0f2;vertical-align:middle;text-align:center;}
   tbody tr:hover{background:#fafbff;}
   .pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12.5px;font-weight:600;white-space:nowrap;}
   .pill-success{background:var(--success-bg);color:var(--success);}
@@ -101,6 +108,8 @@
   .icon-edit{background:#3fbf6f;}
   .icon-copy{background:#8b5cf6;}
   .icon-del{background:var(--danger);}
+  .icon-pause{background:#f5a623;}
+  .icon-bag{background:#0ea5a4;}
   .btn-resend{background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning);font-weight:600;padding:5px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;}
   .btn-resend:hover{background:var(--warning);color:#fff;}
   /* ---------- Stat cards (紀錄頁統計) ---------- */
@@ -123,7 +132,12 @@
   .report-chevron{display:inline-flex;transition:transform .15s;}
   .report-task-row td:nth-child(2){padding-left:34px;color:var(--text-secondary);}
   .report-daily-indent{padding-left:34px;color:var(--text-secondary);}
-  td.num{text-align:right;}
+  td.num{text-align:center;}
+  .bp-expand-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;transition:transform .15s;}
+  .bp-expand-btn.open{transform:rotate(180deg);}
+  .bp-detail-td{background:#f7f8fa;padding:16px 20px;}
+  .bp-detail-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:10px 28px;}
+  .bp-detail-grid .detail-row{margin:0;}
   .btn-mode{border:1px solid var(--border);background:#fff;color:var(--text-secondary);padding:7px 16px;border-radius:6px;font-size:13.5px;font-weight:600;cursor:pointer;}
   .btn-mode.active{background:var(--accent);border-color:var(--accent);color:#fff;}
   /* ---------- Modal ---------- */
@@ -263,23 +277,26 @@
     <div class="sidebar">
       <div class="item"><span class="dot"></span>系統總覽</div>
       <div class="item"><span class="dot"></span>帳號管理</div>
+      <div class="item sub" data-page="user-account"><span class="dot"></span>用戶帳號</div>
       <div class="item"><span class="dot"></span>權限管理</div>
       <div class="item"><span class="dot"></span>遊戲管理</div>
       <div class="item"><span class="dot"></span>遊戲機率</div>
       <div class="item"><span class="dot"></span>彩池管理</div>
       <div class="item"><span class="dot"></span>彩票管理</div>
       <div class="item"><span class="dot"></span>記錄查詢</div>
+      <div class="item sub" data-page="backpack-history"><span class="dot"></span>背包紀錄</div>
       <div class="item"><span class="dot"></span>消息管理</div>
       <div class="item"><span class="dot"></span>日誌管理</div>
       <div class="item"><span class="dot"></span>系統設定</div>
       <div class="item"><span class="dot"></span>活動模組</div>
       <div class="item sub"><span class="dot"></span>彩金活動</div>
-      <div class="item sub sub2 active"><span class="dot"></span>任務活動</div>
+      <div class="item sub active" data-page="mission-activity"><span class="dot"></span>活動任務</div>
     </div>
 
     <!-- ============ Main ============ -->
     <div class="main">
-      <div class="breadcrumb">活動模組 / 任務活動</div>
+      <div class="page active" id="page-mission-activity">
+      <div class="breadcrumb">活動模組 / 活動任務</div>
 
       <div class="card">
         <div class="tabs">
@@ -460,22 +477,22 @@
           <div class="hint" id="report-overall-filter-hint" style="margin-bottom:14px;">說明:「達成率 ≤ %」用來快速抓出達成率過低的任務,設定後只會顯示符合條件的任務並自動展開所屬活動;此模式為跨活動的整體彙總,不含每日趨勢,如需查看單一活動的每日拆分請切到「單一活動」。</div>
 
           <div class="filter-bar" id="report-single-filter-bar" style="display:none;">
-            <input type="text" id="report-single-id-input" placeholder="輸入任務活動ID" style="width:220px;" oninput="renderReportPanel()">
+            <input type="text" id="report-single-id-input" placeholder="輸入活動任務ID" style="width:220px;" oninput="renderReportPanel()">
             <input type="date" value="2026-07-01">
             <span class="arrow">→</span>
             <input type="date" value="2026-07-13">
             <button class="btn btn-primary" onclick="renderReportPanel()">搜尋</button>
           </div>
-          <div class="hint" id="report-single-filter-hint" style="margin-bottom:14px;display:none;">說明:輸入完整的任務活動ID 進行精準查詢(不支援模糊名稱搜尋),下方會顯示該活動的統計、任務明細與每日趨勢。</div>
+          <div class="hint" id="report-single-filter-hint" style="margin-bottom:14px;display:none;">說明:輸入完整的活動任務ID 進行精準查詢(不支援模糊名稱搜尋),下方會顯示該活動的統計、任務明細與每日趨勢。</div>
 
           <div class="stat-cards" id="report-stats"></div>
           <div class="hint" style="margin-bottom:16px;">說明:「參與人數」為不重複玩家數(同一人不管玩幾天都只算一次);此活動每天會重置累積,同一位玩家每天都能重新接取/達成/領獎,因此其餘「次數」皆可重複計入(同一人在不同天都會再次累計);總達成率 = 總達成次數 ÷ 總參與次數,總領獎率 = 總領獎次數 ÷ 總達成次數(因任務達成後獎勵仍需玩家手動領取)。此頁數據為示意用假資料。</div>
 
           <div class="sec-title" style="font-size:14px;font-weight:700;margin-bottom:10px;padding-left:10px;border-left:3px solid var(--accent);">任務達成率分析</div>
-          <div class="hint" style="margin-bottom:8px;">說明:點擊任務活動列可展開/收合,展開後可看到該活動底下任務1、任務2…各自的達成率與領取率明細。因活動每天重置,以下皆為「次數」(同一人可重複計入);領取率 = 領獎次數 ÷ 達成次數,因任務達成後獎勵仍需玩家手動領取,此欄可觀察達成後有沒有確實去領獎。</div>
+          <div class="hint" style="margin-bottom:8px;">說明:點擊活動任務列可展開/收合,展開後可看到該活動底下任務1、任務2…各自的達成率與領取率明細。因活動每天重置,以下皆為「次數」(同一人可重複計入);領取率 = 領獎次數 ÷ 達成次數,因任務達成後獎勵仍需玩家手動領取,此欄可觀察達成後有沒有確實去領獎。</div>
           <table style="margin-bottom:24px;">
             <thead><tr>
-              <th>活動ID</th><th>任務活動 / 任務</th><th>任務類型</th><th class="num">門檻</th>
+              <th>活動ID</th><th>活動任務 / 任務</th><th>任務類型</th><th class="num">門檻</th>
               <th class="num">參與次數</th><th class="num">達成次數</th><th class="num">達成率</th><th class="num">領獎次數</th><th class="num">領取率</th>
             </tr></thead>
             <tbody id="report-task-tbody"></tbody>
@@ -504,22 +521,92 @@
         </div>
 
       </div>
+      </div>
+
+      <!-- ============ 獨立功能頁:記錄查詢 / 背包紀錄(不屬於活動任務的頁籤,由左側選單獨立進入) ============ -->
+      <!-- 原「當前」子頁籤已依需求移至 帳號管理 / 用戶帳號 頁籤的功能欄「背包」圖示(改用彈窗呈現),此頁僅保留「歷程」 -->
+      <div class="page" id="page-backpack-history">
+        <div class="breadcrumb">記錄查詢 / 背包紀錄</div>
+        <div class="card" style="padding:16px;">
+          <div class="filter-bar" style="align-items:flex-start;">
+            <span style="color:var(--text-secondary);font-size:13px;align-self:center;">建立時間</span>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div class="ms date-picker" id="backpack-filter-start-dp">
+                <div class="ms-control" onclick="toggleDatePicker('backpack-filter','start')">
+                  <span class="ms-summary" id="backpack-filter-start-date-label"></span>
+                  <span class="chevron" data-icon="calendar"></span>
+                </div>
+                <input type="hidden" id="backpack-filter-start-date">
+                <div class="ms-panel" id="backpack-filter-start-date-panel"></div>
+              </div>
+              <input type="time" id="backpack-filter-start-time" step="1" lang="en-GB">
+              <span class="arrow">→</span>
+              <div class="ms date-picker" id="backpack-filter-end-dp">
+                <div class="ms-control" onclick="toggleDatePicker('backpack-filter','end')">
+                  <span class="ms-summary" id="backpack-filter-end-date-label"></span>
+                  <span class="chevron" data-icon="calendar"></span>
+                </div>
+                <input type="hidden" id="backpack-filter-end-date">
+                <div class="ms-panel" id="backpack-filter-end-date-panel"></div>
+              </div>
+              <input type="time" id="backpack-filter-end-time" step="1" lang="en-GB">
+            </div>
+            <input type="text" id="backpack-filter-member" placeholder="搜尋用戶帳號" style="align-self:flex-start;">
+            <input type="text" id="backpack-filter-txid" placeholder="搜尋異動單號" style="align-self:flex-start;">
+            <input type="text" id="backpack-filter-itemid" placeholder="搜尋道具id" style="align-self:flex-start;">
+            <div class="ms" id="backpack-filter-type-ms" style="width:200px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleDropdownById('backpack-filter-type-ms')">
+                <span class="ms-summary" id="backpack-filter-type-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="backpack-filter-type-panel"></div>
+            </div>
+            <button class="btn btn-primary" onclick="applyBackpackFilter()" style="align-self:flex-start;">搜尋</button>
+            <button class="btn btn-outline" onclick="resetBackpackFilter()" style="align-self:flex-start;">重置</button>
+          </div>
+          <table>
+            <thead><tr>
+              <th>異動單號</th><th class="sortable" onclick="sortHistoryBy('createdAt')">建立時間<span class="sort-icon" id="history-sort-icon-createdAt"></span></th><th>交易類型</th><th>道具類型</th><th>道具id</th><th>用戶帳號</th><th>數量</th><th>詳情</th>
+            </tr></thead>
+            <tbody id="backpack-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ============ 獨立功能頁:帳號管理 / 用戶帳號(僅為示意此原型所需的欄位與「背包」功能圖示,非完整用戶帳號規格) ============ -->
+      <div class="page" id="page-user-account">
+        <div class="breadcrumb">帳號管理 / 用戶帳號</div>
+        <div class="card" style="padding:16px;">
+          <div class="filter-bar" style="align-items:flex-start;">
+            <input type="text" id="user-account-search" placeholder="搜尋用戶" style="align-self:flex-start;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);align-self:center;"><input type="checkbox">總筆數</label>
+            <button class="btn btn-primary" style="align-self:flex-start;">搜尋</button>
+          </div>
+          <table>
+            <thead><tr>
+              <th>ID</th><th>建立時間</th><th>營運</th><th>帳戶</th><th>語言</th><th>使用幣別</th><th>用戶時區</th><th>測試</th><th>啟用</th><th>功能</th>
+            </tr></thead>
+            <tbody id="user-account-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
 
-<!-- ============ Modal: 新增/編輯 任務活動 或 樣板 ============ -->
+<!-- ============ Modal: 新增/編輯 活動任務 或 樣板 ============ -->
 <div class="modal-overlay" id="mission-modal-overlay">
   <div class="modal" id="mission-modal">
     <div class="modal-header">
-      <h3 id="mission-modal-title">新增任務活動</h3>
+      <h3 id="mission-modal-title">新增活動任務</h3>
       <span class="modal-close" onclick="closeMissionModal()" data-icon="close"></span>
     </div>
     <div class="modal-body">
 
       <div id="template-warning-banner" class="banner" style="display:none;">
         <span data-icon="alert"></span>
-        <span>提醒:編輯樣板不會回溯影響已經使用此樣板建立的任務活動,如需調整既有活動,請至「限時任務」頁籤個別編輯。</span>
+        <span>提醒:編輯樣板不會回溯影響已經使用此樣板建立的活動任務,如需調整既有活動,請至「限時任務」頁籤個別編輯。</span>
       </div>
 
       <div id="partial-lock-banner" class="banner" style="display:none;">
@@ -632,7 +719,7 @@
 <div class="modal-overlay" id="toggle-confirm-overlay">
   <div class="modal small">
     <div class="modal-header">
-      <h3 id="toggle-confirm-title">啟用/停用任務活動</h3>
+      <h3 id="toggle-confirm-title">啟用/停用活動任務</h3>
       <span class="modal-close" onclick="closeToggleConfirm()" data-icon="close"></span>
     </div>
     <div class="modal-body">
@@ -698,6 +785,30 @@
   </div>
 </div>
 
+<!-- ============ Modal: 玩家目前背包(帳號管理 / 用戶帳號 功能欄「背包」圖示點擊,內容欄位同原「背包紀錄 > 當前」) ============ -->
+<div class="modal-overlay" id="backpack-current-modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="backpack-current-modal-title">玩家目前背包</h3>
+      <span class="modal-close" onclick="closeBackpackCurrentModal()" data-icon="close"></span>
+    </div>
+    <div class="modal-body">
+      <table>
+        <thead><tr>
+          <th class="sortable" onclick="sortCurrentBy('createdAt')">建立時間<span class="sort-icon" id="current-sort-icon-createdAt"></span></th>
+          <th class="sortable" onclick="sortCurrentBy('expiresAt')">道具時效<span class="sort-icon" id="current-sort-icon-expiresAt"></span></th>
+          <th>交易類型</th><th>道具類型</th><th>道具ID</th><th>詳情</th>
+        </tr></thead>
+        <tbody id="backpack-current-tbody"></tbody>
+      </table>
+      <div class="empty-note" id="backpack-current-empty" style="margin-top:10px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeBackpackCurrentModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    Icon 系統:以 inline SVG 取代 emoji,維持風格一致
@@ -714,7 +825,9 @@ const ICON_PATHS = {
   search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>',
   alert:'<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86L1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0z"/>',
   clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-  download:'<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/>'
+  download:'<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/>',
+  pause:'<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+  bag:'<path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/><rect x="4" y="7" width="16" height="14" rx="2"/><path d="M9 12h6"/>'
 };
 function iconSvg(name, size){
   size = size || 16;
@@ -840,10 +953,10 @@ function pickOperatorIdsByCurrency(currencyCode, count){
   return ids;
 }
 
-// taskNo 對應「分析報表」reportData 中同一任務活動底下的任務序號(第幾組任務),
+// taskNo 對應「分析報表」reportData 中同一活動任務底下的任務序號(第幾組任務),
 // 讓紀錄可以回溯是哪一組任務設定觸發的,避免同活動內多組任務類型相同時無法分辨。
 // progress/target:玩家目前累積進度與該任務門檻(數字皆為原型假資料,正式串接應改抓玩家即時累積數值)
-// currencyCode:對應該筆紀錄所屬任務活動之幣別(供紀錄頁「幣別」篩選使用,依 activityId 對應 missions 內的 currencyCode);
+// currencyCode:對應該筆紀錄所屬活動任務之幣別(供紀錄頁「幣別」篩選使用,依 activityId 對應 missions 內的 currencyCode);
 // backpackTxId:玩家實際獲得獎勵時,後台背包異動的單號(僅「已完成」狀態才會有值;人工補派後由 confirmResend() 一併寫入)
 let recordsData = [
   { member:'test0001', operator:'vip0001', activityId:'12356', activity:'台幣任務', taskNo:1, taskType:'bet_amount', currencyCode:'TWD',
@@ -871,7 +984,7 @@ const missionScopeData = {
     operators:[ {name:'bxvip', currency:'TWD'} ]
   },
   '78987': {
-    // 幣別已改為單選,一筆任務活動只會對應 1 個幣別;底下營運皆屬同一幣別
+    // 幣別已改為單選,一筆活動任務只會對應 1 個幣別;底下營運皆屬同一幣別
     currencies:[ {code:'HKD', name:'港幣 / HKD'} ],
     operators:[
       {name:'bxvip123', currency:'HKD'},
@@ -892,7 +1005,7 @@ const missionScopeData = {
       僅能調整「名稱」與「結束時間」,其餘欄位鎖定,不可完整編輯。
    2. 停用/尚未啟用(從未啟用過,草稿)時,不論 start 欄位為何,一律可完整編輯。
    3. 停用後即不可重新啟用(一次性開關),但「第一次」預設停用不算數,
-      新增任務活動剛建立、還沒被啟用過之前,仍可正常開啟。
+      新增活動任務剛建立、還沒被啟用過之前,仍可正常開啟。
    4. 活動狀態一旦變成「已結束」(時間到期),啟用開關直接鎖定,不可再變更。
    5. 「狀態」欄不可手動設定,完全依「啟用」+「起訖時間」自動計算。
    ============================================================ */
@@ -1013,7 +1126,7 @@ function confirmToggleMission(){
   toggleMissionEnabled(id); // 內部已包含 renderMissionTable()
 }
 
-// 刪除任務活動:僅「草稿」(從未啟用過)與「準備開始」(已啟用但尚未到開始時間)可刪除,
+// 刪除活動任務:僅「草稿」(從未啟用過)與「準備開始」(已啟用但尚未到開始時間)可刪除,
 // 「進行中/已結束/已停用」皆已對外曝光過或曾對外生效,為避免刪除後造成紀錄/報表資料不一致或影響已參加會員,不提供刪除。
 // 文案與並發檢查對齊規格:確認彈窗內容帶活動ID;確認後、實際刪除前再檢查一次狀態是否被異動過。
 function deleteMission(id){
@@ -1032,7 +1145,7 @@ function deleteMission(id){
   renderMissionTable();
 }
 
-// 複製任務活動:點擊後開啟「新增任務活動」彈窗,並自動帶入該筆的幣別/高級營運/營運/任務與獎勵設定,
+// 複製活動任務:點擊後開啟「新增活動任務」彈窗,並自動帶入該筆的幣別/高級營運/營運/任務與獎勵設定,
 // 僅「活動名稱」「開始時間」「結束時間」留空,交由使用者重新輸入;儲存時視同全新的一筆(草稿/停用),
 // 不會影響原本被複製的那一筆。
 function copyMission(id){
@@ -1062,7 +1175,7 @@ function copyMission(id){
   renderTaskBlocks();
 
   // 標題與提示banner,讓使用者清楚知道這是從哪一筆複製過來的
-  document.getElementById('mission-modal-title').textContent = '新增任務活動(複製自:「'+m.name+'」)';
+  document.getElementById('mission-modal-title').textContent = '新增活動任務(複製自:「'+m.name+'」)';
   document.getElementById('copy-info-banner-text').textContent = '已自動帶入「'+m.name+'」的幣別、營運與任務/獎勵設定,請重新輸入活動名稱與開始/結束時間後再儲存。';
   document.getElementById('copy-info-banner').style.display = 'flex';
 }
@@ -1320,7 +1433,7 @@ function applyDateShortcut(ns, kind){
   closeAllDropdowns(); // 選完就收合下拉,不需要另外點擊關閉
 }
 
-// 依目前 missionFilterState 判斷單筆任務活動是否符合(所有條件皆為 AND 交集)
+// 依目前 missionFilterState 判斷單筆活動任務是否符合(所有條件皆為 AND 交集)
 function missionMatchesFilter(m){
   const st = computeMissionStatus(m).text;
   if(missionFilterState.statuses.size>0 && !missionFilterState.statuses.has(st)) return false;
@@ -1443,7 +1556,7 @@ function renderMissionTable(){
   updateMissionSortIcons();
 }
 
-// 依目前勾選的幣別/營運,產生新增任務活動時要寫入清單的顯示文字(不含彈窗,單純文字摘要)
+// 依目前勾選的幣別/營運,產生新增活動任務時要寫入清單的顯示文字(不含彈窗,單純文字摘要)
 const operatorNameIndex = (function(){
   const idx = {};
   operatorTreeData.forEach(p=>p.children.forEach(c=>{ idx[c.id]=c.name; }));
@@ -1492,6 +1605,35 @@ document.querySelectorAll('.tab').forEach(tab=>{
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+/* ============================================================
+   子頁籤(subtab):用於單一頁面內再分頁籤的情況(例如背包紀錄的「歷程/當前」),
+   刻意用獨立的 class 名稱與 .tab/.tab-panel 區分,避免互相干擾;
+   切換範圍限定在同一組 .subtabs 底下,不影響其他頁面/其他組的子頁籤
+   ============================================================ */
+document.querySelectorAll('.subtab').forEach(st=>{
+  st.addEventListener('click', ()=>{
+    const group = st.closest('.subtabs');
+    const scope = group.parentElement;
+    group.querySelectorAll('.subtab').forEach(s=>s.classList.remove('active'));
+    scope.querySelectorAll('.subtab-panel').forEach(p=>p.classList.remove('active'));
+    st.classList.add('active');
+    document.getElementById('subpanel-'+st.dataset.subtab).classList.add('active');
+  });
+});
+
+/* ============================================================
+   左側選單獨立頁面切換:目前僅「活動模組 > 彩金活動 > 活動任務」「記錄查詢 > 背包紀錄」
+   「帳號管理 > 用戶帳號」三個頁面是真的可切換的,其餘側邊選單項目僅示意用,尚未串接任何頁面
+   ============================================================ */
+document.querySelectorAll('.sidebar .item[data-page]').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    document.querySelectorAll('.sidebar .item[data-page]').forEach(i=>i.classList.remove('active'));
+    document.querySelectorAll('.main > .page').forEach(p=>p.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('page-'+item.dataset.page).classList.add('active');
   });
 });
 
@@ -1973,7 +2115,7 @@ function applyTemplateToBlocks(templateId){
 
 /* ============================================================
    Modal 開關 Open / Close
-   mode: 'mission' (新增/編輯任務活動) | 'template' (新增/編輯樣板) | 'view' (唯讀檢視,僅顯示任務設定內容)
+   mode: 'mission' (新增/編輯活動任務) | 'template' (新增/編輯樣板) | 'view' (唯讀檢視,僅顯示任務設定內容)
    ============================================================ */
 function defaultMissionBlocks(){
   // 最大贏分倍數預設未選(空字串),需使用者自行從下拉選單選擇
@@ -1986,7 +2128,7 @@ function openMissionModal(mode, arg){
   const isTemplate = modalMode==='template';
   const isView = modalMode==='view';
   const templateData = isTemplate ? arg : null;
-  // 'view' 與 'mission'(帶 id 代表編輯既有任務活動)兩種情況都用 arg 當作 missionId 查找既有資料
+  // 'view' 與 'mission'(帶 id 代表編輯既有活動任務)兩種情況都用 arg 當作 missionId 查找既有資料
   const editingMission = (!isTemplate && typeof arg === 'string') ? (missions.find(m=>m.id===arg) || null) : null;
   editingMissionId = (modalMode==='mission' && editingMission) ? editingMission.id : null;
   editingMissionOpenStatus = editingMission ? computeMissionStatus(editingMission).text : null; // 快照:供儲存時比對狀態是否被異動過
@@ -2001,24 +2143,24 @@ function openMissionModal(mode, arg){
   document.getElementById('mission-modal').classList.toggle('partial-lock', isPartialLock);
 
   document.getElementById('mission-modal-title').textContent = isView
-    ? '檢視任務活動(唯讀)'
+    ? '檢視活動任務(唯讀)'
     : isTemplate ? (templateData ? '編輯任務樣板' : '新增任務樣板')
-    : isPartialLock ? '編輯任務活動(活動已開始,僅開放名稱/結束時間)'
-    : (editingMission ? '編輯任務活動' : '新增任務活動');
+    : isPartialLock ? '編輯活動任務(活動已開始,僅開放名稱/結束時間)'
+    : (editingMission ? '編輯活動任務' : '新增活動任務');
   document.getElementById('tr-section-title').textContent = '任務與獎勵設定(最少 1 組)';
   document.getElementById('template-warning-banner').style.display = isTemplate ? 'flex' : 'none';
   document.getElementById('partial-lock-banner').style.display = isPartialLock ? 'flex' : 'none';
   document.getElementById('copy-info-banner').style.display = 'none'; // 每次開啟彈窗先重置,複製流程會在之後另外開啟
   document.getElementById('time-row').style.display = isTemplate ? 'none' : 'flex';
   document.getElementById('currency-operator-row').style.display = isTemplate ? 'none' : 'flex';
-  // 新增/編輯「任務樣板」時不提供「套用樣板」(套用另一份樣板來建立/編輯目前這份樣板沒有意義),僅在新增/編輯任務活動時才顯示
+  // 新增/編輯「任務樣板」時不提供「套用樣板」(套用另一份樣板來建立/編輯目前這份樣板沒有意義),僅在新增/編輯活動任務時才顯示
   document.getElementById('template-apply-wrap').style.display = isTemplate ? 'none' : '';
   document.getElementById('name-field-label').textContent = isTemplate ? '樣板名稱' : '活動名稱';
 
   if(isTemplate){
     document.getElementById('mission-name').value = templateData ? templateData.name : '';
   }else if(editingMission){
-    // 註:目前編輯既有任務活動時,只會回填名稱與起訖時間;幣別/營運/任務內容尚未串接回填,
+    // 註:目前編輯既有活動任務時,只會回填名稱與起訖時間;幣別/營運/任務內容尚未串接回填,
     // 這幾個區塊仍會顯示預設值,是已知待補的限制,請留意。
     document.getElementById('mission-name').value = editingMission.name;
     const [sd, stimeRaw] = editingMission.start.split(' ');
@@ -2028,7 +2170,7 @@ function openMissionModal(mode, arg){
     document.getElementById('mission-end-date').value = ed;
     document.getElementById('mission-end-time').value = etimeRaw.slice(0,5);
   }else{
-    // 新增任務活動:重置為預設空白狀態,避免殘留上次輸入(既有優化建議項目)
+    // 新增活動任務:重置為預設空白狀態,避免殘留上次輸入(既有優化建議項目)
     document.getElementById('mission-name').value = '';
     document.getElementById('mission-start-date').value = '2026-07-13';
     document.getElementById('mission-start-time').value = '00:00';
@@ -2067,7 +2209,7 @@ function saveMission(){
     return;
   }
 
-  // 狀態變更並發檢查:編輯既有任務活動時,若開啟彈窗後、儲存前活動狀態已經被異動(例如另一分頁/操作者搶先變更),
+  // 狀態變更並發檢查:編輯既有活動任務時,若開啟彈窗後、儲存前活動狀態已經被異動(例如另一分頁/操作者搶先變更),
   // 則不繼續儲存,改為提示並刷新清單,依規格文案:「任務狀態變更，請重新操作」
   if(editingMissionId){
     const mCheck = missions.find(x=>x.id===editingMissionId);
@@ -2178,7 +2320,7 @@ function saveMission(){
   const endStr = `${endDate} ${endTime}:59`;
 
   if(editingMissionId){
-    // 編輯既有任務活動:目前只更新名稱與起訖時間,啟用狀態不受影響(不會因編輯而自動停用或啟用)
+    // 編輯既有活動任務:目前只更新名稱與起訖時間,啟用狀態不受影響(不會因編輯而自動停用或啟用)
     const m = missions.find(x=>x.id===editingMissionId);
     if(m){
       m.name = name;
@@ -2186,7 +2328,7 @@ function saveMission(){
       m.end = endStr;
     }
   }else{
-    // 新增任務活動:預設 enabled:false,需再手動啟用(雙重確認),避免新建立就直接對外生效
+    // 新增活動任務:預設 enabled:false,需再手動啟用(雙重確認),避免新建立就直接對外生效
     // 同時保存 currencyCode/operatorIds/masterIds/blocks 等實際設定資料,供之後「複製」功能回填使用
     missions.push({
       id: 'm'+Date.now(),
@@ -2235,7 +2377,7 @@ function editTemplate(templateId){
 function deleteTemplate(templateId){
   const tpl = templates.find(t=>t.id===templateId);
   if(!tpl) return;
-  if(confirm('確定要刪除樣板「'+tpl.name+'」嗎?此動作不會影響已使用此樣板建立的任務活動。')){
+  if(confirm('確定要刪除樣板「'+tpl.name+'」嗎?此動作不會影響已使用此樣板建立的活動任務。')){
     templates = templates.filter(t=>t.id!==templateId);
     renderTemplateTable();
   }
@@ -2614,6 +2756,391 @@ function closeRecordDetail(){
 }
 
 /* ============================================================
+   背包紀錄 頁面:紀錄背包「新增道具」與「使用道具」兩種方向的進出異動,
+   同一張道具卡(itemId 相同)通常會有 1 筆新增異動,之後再有 1 筆(或多筆)使用異動。
+   目前道具類型僅「免費旋轉卡」一種,itemType 欄位為未來擴充其他道具類型預留。
+   資料為示意用假資料,正式串接時應改由後端背包服務提供。
+   ============================================================ */
+// 交易類型:task=活動任務完成獲得/platform_gift=串接平台API贈送/manual_resend=客服人工補派/use=玩家使用消耗/expired=道具到期失效移除
+// (task/platform_gift/manual_resend 皆為此需求描述的「任務、平台贈送..等」新增類異動,加上「使用」為消耗類異動,「失效」為到期未使用而系統自動移除;
+//  這份分類是我依你的描述推導出來的,不是既有規格,若還有其他新增來源類型要請你補充)
+const TX_TYPE_LABEL = {
+  task: '限時任務',
+  platform_gift: '平台贈送',
+  manual_resend: '人工補派',
+  use: '使用',
+  expired: '道具到期'
+};
+const ITEM_TYPE_LABEL = {
+  free_spin: '免費旋轉卡'
+};
+
+// 模擬一張免費旋轉卡內,每一局(spin)各自獨立的投注ID,從 startSeed 開始遞增
+function mkSpinUsage(count, startSeed){
+  const spins = [];
+  for(let i=1;i<=count;i++){
+    spins.push({ no:i, betId: String(startSeed + i - 1) });
+  }
+  return spins;
+}
+
+let backpackHistoryData = [
+  { txId:'BP20260712103003001', type:'task', itemType:'free_spin', itemId:'FS-0001', createdAt:'2026-07-12 10:30:03', member:'test0001', qty:1, activityId:'12356',
+    detail:{ mode:'add', params:{ gameId:'g2', betLevel:1, expireHours:24, spinCount:10, maxWinMode:'range', maxWinMultiplier:50 } } },
+  { txId:'USE-0001', type:'use', itemType:'free_spin', itemId:'FS-0001', createdAt:'2026-07-12 11:05:20', member:'test0001', qty:-1,
+    detail:{ mode:'use', params:{ gameId:'g2', betLevel:1, expireHours:24, spinCount:10, maxWinMode:'range', maxWinMultiplier:50 }, spins: mkSpinUsage(10, 1549479258339461) } },
+  { txId:'GIFT-0001', type:'platform_gift', itemType:'free_spin', itemId:'FS-0002', createdAt:'2026-07-13 09:00:00', member:'test0002', qty:1,
+    detail:{ mode:'add', params:{ gameId:'g1', betLevel:2, expireHours:48, spinCount:5, maxWinMode:'near', maxWinMultiplier:100 } } },
+  { txId:'EXP-0001', type:'expired', itemType:'free_spin', itemId:'FS-0002', createdAt:'2026-07-15 09:00:00', member:'test0002', qty:-1,
+    detail:{ mode:'expire', params:{ gameId:'g1', betLevel:2, expireHours:48, spinCount:5, maxWinMode:'near', maxWinMultiplier:100 } } },
+  { txId:'BP20260713091256004', type:'task', itemType:'free_spin', itemId:'FS-0003', createdAt:'2026-07-13 09:12:56', member:'test0004', qty:1, activityId:'78987',
+    detail:{ mode:'add', params:{ gameId:'g3', betLevel:1, expireHours:24, spinCount:20, maxWinMode:'range', maxWinMultiplier:100 } } },
+  { txId:'USE-0002', type:'use', itemType:'free_spin', itemId:'FS-0003', createdAt:'2026-07-13 10:40:00', member:'test0004', qty:-1,
+    detail:{ mode:'use', params:{ gameId:'g3', betLevel:1, expireHours:24, spinCount:20, maxWinMode:'range', maxWinMultiplier:100 }, spins: mkSpinUsage(20, 1549480200001001) } },
+  { txId:'RESEND-483920', type:'manual_resend', itemType:'free_spin', itemId:'FS-0004', createdAt:'2026-07-13 12:00:00', member:'test0003', qty:1,
+    detail:{ mode:'add', params:{ gameId:'g4', betLevel:1, expireHours:24, spinCount:20, maxWinMode:'range', maxWinMultiplier:100 } } }
+];
+
+// 預設區間涵蓋以上假資料的時間跨度,讓列表預設就能示意所有交易類型;與前面幾個頁籤的預設值處理方式一致
+function defaultBackpackFilterState(){
+  return {
+    startDate:'2026-07-01', startTime:'00:00:00',
+    endDate:'2026-07-20', endTime:'23:59:59',
+    member:'', txId:'', itemId:'',
+    types: new Set(Object.keys(TX_TYPE_LABEL))
+  };
+}
+let backpackFilterState = defaultBackpackFilterState();
+
+function renderBackpackFilterTypeControl(){
+  const el = document.getElementById('backpack-filter-type-summary');
+  if(!el) return;
+  if(backpackFilterState.types.size===0){ el.textContent='交易類型:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  el.textContent = '交易類型:'+Array.from(backpackFilterState.types).map(t=>TX_TYPE_LABEL[t]).join('、');
+}
+function renderBackpackFilterTypePanel(){
+  const panel = document.getElementById('backpack-filter-type-panel');
+  if(!panel) return;
+  panel.innerHTML = `<div class="ms-list">${Object.keys(TX_TYPE_LABEL).map(t=>`
+    <label class="ms-option">
+      <input type="checkbox" ${backpackFilterState.types.has(t)?'checked':''} onchange="toggleBackpackFilterType('${t}', this.checked)"> ${TX_TYPE_LABEL[t]}
+    </label>`).join('')}</div>`;
+}
+function toggleBackpackFilterType(type, checked){
+  if(checked) backpackFilterState.types.add(type); else backpackFilterState.types.delete(type);
+  renderBackpackFilterTypeControl();
+}
+
+// 依目前 backpackFilterState 判斷單筆背包異動是否符合(所有條件皆為 AND 交集)
+function backpackMatchesFilter(r){
+  if(backpackFilterState.types.size>0 && !backpackFilterState.types.has(r.type)) return false;
+  const memberKw = (backpackFilterState.member||'').trim().toLowerCase();
+  if(memberKw && !r.member.toLowerCase().includes(memberKw)) return false;
+  const txKw = (backpackFilterState.txId||'').trim().toLowerCase();
+  if(txKw && !r.txId.toLowerCase().includes(txKw)) return false;
+  const itemKw = (backpackFilterState.itemId||'').trim().toLowerCase();
+  if(itemKw && !r.itemId.toLowerCase().includes(itemKw)) return false;
+  const t = new Date(r.createdAt.replace(' ','T'));
+  const fStart = new Date(`${backpackFilterState.startDate}T${backpackFilterState.startTime}`);
+  const fEnd = new Date(`${backpackFilterState.endDate}T${backpackFilterState.endTime}`);
+  if(t < fStart || t > fEnd) return false;
+  return true;
+}
+// 回傳 [{r, idx}]:idx 為 backpackHistoryData 原始索引,供「查看詳情」沿用以索引操作資料的寫法
+function getFilteredBackpackHistory(){
+  return backpackHistoryData.map((r, idx)=>({ r, idx })).filter(x=>backpackMatchesFilter(x.r));
+}
+
+// 將搜尋列 DOM 輸入值同步進 backpackFilterState,並重新渲染清單(由「搜尋」按鈕觸發)
+function applyBackpackFilter(){
+  backpackFilterState.startDate = document.getElementById('backpack-filter-start-date').value;
+  backpackFilterState.startTime = document.getElementById('backpack-filter-start-time').value || '00:00:00';
+  backpackFilterState.endDate = document.getElementById('backpack-filter-end-date').value;
+  backpackFilterState.endTime = document.getElementById('backpack-filter-end-time').value || '23:59:59';
+  backpackFilterState.member = document.getElementById('backpack-filter-member').value;
+  backpackFilterState.txId = document.getElementById('backpack-filter-txid').value;
+  backpackFilterState.itemId = document.getElementById('backpack-filter-itemid').value;
+  renderBackpackTable();
+}
+// 將搜尋列所有欄位與下拉重繪回目前的 backpackFilterState(初始渲染 / 重置後都會呼叫)
+function renderBackpackFilterControls(){
+  setDatePickerValue('backpack-filter','start', backpackFilterState.startDate);
+  document.getElementById('backpack-filter-start-time').value = backpackFilterState.startTime;
+  setDatePickerValue('backpack-filter','end', backpackFilterState.endDate);
+  document.getElementById('backpack-filter-end-time').value = backpackFilterState.endTime;
+  document.getElementById('backpack-filter-member').value = backpackFilterState.member;
+  document.getElementById('backpack-filter-txid').value = backpackFilterState.txId;
+  document.getElementById('backpack-filter-itemid').value = backpackFilterState.itemId;
+  renderBackpackFilterTypeControl(); renderBackpackFilterTypePanel();
+}
+// 重置:所有搜尋條件恢復預設值,並重新套用(重繪清單)
+function resetBackpackFilter(){
+  backpackFilterState = defaultBackpackFilterState();
+  renderBackpackFilterControls();
+  renderBackpackTable();
+}
+
+// 詳情改為「點擊往下展開」的呈現方式(不再用彈窗):expandedBackpackRows 記錄目前展開中的
+// backpackHistoryData 索引,「歷程」頁籤與「玩家目前背包」彈窗共用同一組展開狀態(彼此以 idx 對應同一筆原始資料)
+let expandedBackpackRows = new Set();
+function toggleBackpackRow(idx){
+  if(expandedBackpackRows.has(idx)) expandedBackpackRows.delete(idx);
+  else expandedBackpackRows.add(idx);
+  renderBackpackTable();
+  // 「玩家目前背包」彈窗若開啟中,也一併重繪,否則看不到展開後的內容
+  if(document.getElementById('backpack-current-modal-overlay').classList.contains('open')) renderBackpackCurrentModal();
+}
+// 依「建立時間」+「道具時效(小時)」換算實際到期時間,回傳 Date 物件與 yyyy/mm/dd hh:mm:ss 格式字串
+function computeExpiry(createdAt, hours){
+  const d = new Date(createdAt.replace(' ','T'));
+  d.setHours(d.getHours() + Number(hours));
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  const hh=String(d.getHours()).padStart(2,'0'), mm=String(d.getMinutes()).padStart(2,'0'), ss=String(d.getSeconds()).padStart(2,'0');
+  return { date:d, str:`${y}/${m}/${day} ${hh}:${mm}:${ss}` };
+}
+// 最大贏分倍數顯示:不再另外顯示「判定方式」文字,改成直接把判定方式併入倍數的顯示格式;
+// range(0~指定倍數)顯示「0~N」;near(接近指定倍數±10%)顯示「(N×0.9)~(N×1.1)」;未設定倍數則顯示「無限制」
+function formatMaxWinDisplay(mode, multiplier){
+  if(!multiplier && multiplier !== 0) return '無限制';
+  const n = Number(multiplier);
+  if(mode === 'near'){
+    const round1 = v => Math.round(v*10)/10;
+    return `${round1(n*0.9)}~${round1(n*1.1)} 倍`;
+  }
+  // 預設(含 range):0 ~ 指定倍數
+  return `0~${n} 倍`;
+}
+// 詳情內容:只顯示外層列表沒有的資訊(活動ID[限時任務來源限定]/道具參數/使用投注明細),不重複異動單號/交易類型/道具id/道具類型/建立時間/用戶帳號/數量
+function backpackDetailContentHtml(r){
+  // 交易類型為「限時任務」時,詳情需額外提供該獎勵所屬的活動ID(對應限時任務/紀錄頁的活動ID)
+  let activityIdHtml = '';
+  if(r.type === 'task' && r.activityId){
+    activityIdHtml = `<div class="detail-row"><span class="k">活動ID</span><span class="v">${r.activityId}</span></div>`;
+  }
+  let paramsHtml = '';
+  if(r.detail.params){
+    const p = r.detail.params;
+    const gameName = (GAME_LIST.find(g=>g.id===p.gameId) || {}).name || p.gameId;
+    const expiresAt = computeExpiry(r.createdAt, p.expireHours).str;
+    paramsHtml = `
+    <div class="detail-row"><span class="k">道具遊戲</span><span class="v">${gameName}</span></div>
+    <div class="detail-row"><span class="k">每局投注額</span><span class="v">${p.betLevel}</span></div>
+    <div class="detail-row"><span class="k">道具時效</span><span class="v">${expiresAt}</span></div>
+    <div class="detail-row"><span class="k">旋轉次數</span><span class="v">${p.spinCount}</span></div>
+    <div class="detail-row"><span class="k">最大贏分倍數</span><span class="v">${formatMaxWinDisplay(p.maxWinMode, p.maxWinMultiplier)}</span></div>`;
+  }
+  let spinsHtml = '';
+  if(r.detail.mode === 'use'){
+    spinsHtml = `
+    <div style="margin-top:12px;">
+      <div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:6px;font-weight:600;">使用投注明細</div>
+      <table style="width:100%;background:#fff;"><thead><tr><th>局數</th><th>注單ID</th></tr></thead>
+      <tbody>${r.detail.spins.map(s=>`<tr><td class="num">第 ${s.no} 局</td><td>${s.betId}</td></tr>`).join('')}</tbody></table>
+    </div>`;
+  }
+  return `<div class="bp-detail-grid">${activityIdHtml}${paramsHtml}</div>${spinsHtml}`;
+}
+// 展開後插入的詳情列;colspan 需與外層表格欄位數一致(歷程=8欄、當前=6欄),由呼叫端傳入
+function backpackDetailRowHtml(idx, colspan){
+  const r = backpackHistoryData[idx];
+  return `<tr><td class="bp-detail-td" colspan="${colspan}">${backpackDetailContentHtml(r)}</td></tr>`;
+}
+function backpackExpandBtnHtml(idx){
+  const isOpen = expandedBackpackRows.has(idx);
+  return `<button class="bp-expand-btn${isOpen?' open':''}" onclick="toggleBackpackRow(${idx})" title="展開/收合詳情">${iconSvg('chevronDown',14)}</button>`;
+}
+
+// 「歷程」子頁籤排序:目前只提供建立時間(與其他頁籤排序邏輯一致,點擊同一欄再點一次切換升冪/降冪)
+let historySortKey = null;   // null | 'createdAt'
+let historySortDir = 'asc';  // 'asc' | 'desc'
+function sortHistoryBy(key){
+  if(historySortKey === key){
+    historySortDir = historySortDir === 'asc' ? 'desc' : 'asc';
+  }else{
+    historySortKey = key;
+    historySortDir = 'asc';
+  }
+  renderBackpackTable();
+}
+function getSortedBackpackHistory(){
+  const filtered = getFilteredBackpackHistory(); // [{r, idx}]
+  if(!historySortKey) return filtered;
+  const list = filtered.slice();
+  list.sort((a, b)=>{
+    const av = new Date(a.r.createdAt.replace(' ','T')).getTime();
+    const bv = new Date(b.r.createdAt.replace(' ','T')).getTime();
+    if(av<bv) return historySortDir==='asc' ? -1 : 1;
+    if(av>bv) return historySortDir==='asc' ? 1 : -1;
+    return 0;
+  });
+  return list;
+}
+function updateHistorySortIcons(){
+  const el = document.getElementById('history-sort-icon-createdAt');
+  if(!el) return;
+  if(historySortKey==='createdAt'){
+    el.textContent = historySortDir==='asc' ? '▲' : '▼';
+    el.classList.add('active');
+  }else{
+    el.textContent = '↕';
+    el.classList.remove('active');
+  }
+}
+
+function renderBackpackTable(){
+  const tbody = document.getElementById('backpack-tbody');
+  updateHistorySortIcons();
+  const filtered = getSortedBackpackHistory();
+  tbody.innerHTML = filtered.map(({r, idx})=>{
+    let rowHtml = `
+    <tr>
+      <td>${r.txId}</td>
+      <td>${r.createdAt}</td>
+      <td><span class="badge-fixed">${TX_TYPE_LABEL[r.type]}</span></td>
+      <td>${ITEM_TYPE_LABEL[r.itemType]}</td>
+      <td>${r.itemId}</td>
+      <td>${r.member}</td>
+      <td class="num"><span style="color:${r.qty>0?'var(--danger)':'var(--success)'};font-weight:600;">${r.qty}</span></td>
+      <td>${backpackExpandBtnHtml(idx)}</td>
+    </tr>`;
+    if(expandedBackpackRows.has(idx)) rowHtml += backpackDetailRowHtml(idx, 8);
+    return rowHtml;
+  }).join('');
+}
+
+/* ============================================================
+   玩家目前背包(彈窗):查詢某玩家「目前持有(尚未使用/尚未到期)」的道具清單。
+   原為「背包紀錄 > 當前」子頁籤,依需求移至 帳號管理 / 用戶帳號 功能欄「背包」圖示,
+   點擊後直接帶入該筆列表的玩家帳號開啟彈窗,不需另外輸入帳號查詢。
+   判斷邏輯:同一 itemId 若已存在「使用」或「道具到期」的異動紀錄,代表該道具已消耗,不算目前持有。
+   ============================================================ */
+// 回傳該玩家目前持有道具在 backpackHistoryData 內對應「新增」異動的索引陣列(idx 可直接沿用 toggleBackpackRow 展開詳情)
+function getCurrentBackpackIndexes(member){
+  const byItem = {};
+  backpackHistoryData.forEach((r, idx)=>{
+    if(r.member !== member) return;
+    if(!byItem[r.itemId]) byItem[r.itemId] = { addIdx:null, consumed:false };
+    if(r.detail.mode === 'add') byItem[r.itemId].addIdx = idx;
+    if(r.detail.mode === 'use' || r.detail.mode === 'expire') byItem[r.itemId].consumed = true;
+  });
+  return Object.values(byItem).filter(x=>x.addIdx!==null && !x.consumed).map(x=>x.addIdx);
+}
+// 目前開啟中的彈窗所屬玩家帳號(由「用戶帳號」列表功能欄的背包圖示點擊時帶入)
+let backpackCurrentModalMember = '';
+function openBackpackCurrentModal(member){
+  backpackCurrentModalMember = member;
+  document.getElementById('backpack-current-modal-title').textContent = '玩家目前背包 - ' + member;
+  renderBackpackCurrentModal();
+  document.getElementById('backpack-current-modal-overlay').classList.add('open');
+}
+function closeBackpackCurrentModal(){
+  document.getElementById('backpack-current-modal-overlay').classList.remove('open');
+}
+// 排序:建立時間 / 道具時效,點擊同一欄再點一次切換升冪/降冪(與其他頁籤排序邏輯一致)
+let currentBackpackSortKey = null;   // null | 'createdAt' | 'expiresAt'
+let currentBackpackSortDir = 'asc';
+function sortCurrentBy(key){
+  if(currentBackpackSortKey === key){
+    currentBackpackSortDir = currentBackpackSortDir === 'asc' ? 'desc' : 'asc';
+  }else{
+    currentBackpackSortKey = key;
+    currentBackpackSortDir = 'asc';
+  }
+  renderBackpackCurrentModal();
+}
+function updateCurrentBackpackSortIcons(){
+  ['createdAt','expiresAt'].forEach(key=>{
+    const el = document.getElementById('current-sort-icon-'+key);
+    if(!el) return;
+    if(currentBackpackSortKey===key){
+      el.textContent = currentBackpackSortDir==='asc' ? '▲' : '▼';
+      el.classList.add('active');
+    }else{
+      el.textContent = '↕';
+      el.classList.remove('active');
+    }
+  });
+}
+// 欄位順序(左至右):建立時間/道具時效/交易類型/道具類型/道具ID/詳情
+function renderBackpackCurrentModal(){
+  const member = backpackCurrentModalMember;
+  const tbody = document.getElementById('backpack-current-tbody');
+  const empty = document.getElementById('backpack-current-empty');
+  updateCurrentBackpackSortIcons();
+  const idxList = getCurrentBackpackIndexes(member);
+  if(idxList.length === 0){
+    tbody.innerHTML = '';
+    empty.textContent = `查無資料:玩家「${member}」目前背包內沒有任何道具。`;
+    return;
+  }
+  empty.textContent = '';
+  // 先把每一筆的到期時間算好(顯示與排序共用同一份計算結果,避免重複運算或前後不一致)
+  let list = idxList.map(idx=>{
+    const r = backpackHistoryData[idx];
+    const expiry = computeExpiry(r.createdAt, r.detail.params.expireHours);
+    return { idx, r, expiresAtDate:expiry.date, expiresAtStr:expiry.str };
+  });
+  if(currentBackpackSortKey){
+    list.sort((a, b)=>{
+      const av = currentBackpackSortKey==='createdAt' ? new Date(a.r.createdAt.replace(' ','T')).getTime() : a.expiresAtDate.getTime();
+      const bv = currentBackpackSortKey==='createdAt' ? new Date(b.r.createdAt.replace(' ','T')).getTime() : b.expiresAtDate.getTime();
+      if(av<bv) return currentBackpackSortDir==='asc' ? -1 : 1;
+      if(av>bv) return currentBackpackSortDir==='asc' ? 1 : -1;
+      return 0;
+    });
+  }
+  tbody.innerHTML = list.map(({idx, r, expiresAtStr})=>{
+    let rowHtml = `
+    <tr>
+      <td>${r.createdAt}</td>
+      <td>${expiresAtStr}</td>
+      <td><span class="badge-fixed">${TX_TYPE_LABEL[r.type]}</span></td>
+      <td>${ITEM_TYPE_LABEL[r.itemType]}</td>
+      <td>${r.itemId}</td>
+      <td>${backpackExpandBtnHtml(idx)}</td>
+    </tr>`;
+    if(expandedBackpackRows.has(idx)) rowHtml += backpackDetailRowHtml(idx, 6);
+    return rowHtml;
+  }).join('');
+}
+
+/* ============================================================
+   帳號管理 > 用戶帳號:此原型僅示意「功能」欄需要新增背包圖示的整合位置,
+   欄位/資料皆為簡化假資料,非用戶帳號頁面的完整規格(編輯/停用/儲值三個圖示為示意用,未綁定實際功能)。
+   member 沿用「紀錄」頁籤既有的假資料帳號,方便展示點擊背包圖示後串接到同一份背包紀錄。
+   ============================================================ */
+const userAccountData = [
+  { id:'828218', createdAt:'2026-04-17 09:47:06', operator:'vip0001', member:'test0001', lang:'繁體中文', currency:'新台幣', tz:'Asia/Taipei', test:false, enabled:true },
+  { id:'828216', createdAt:'2026-04-16 20:33:23', operator:'vip0123', member:'test0002', lang:'繁體中文', currency:'港幣', tz:'Asia/Taipei', test:false, enabled:true },
+  { id:'828215', createdAt:'2026-04-16 20:27:35', operator:'vip0456', member:'test0003', lang:'繁體中文', currency:'港幣', tz:'Asia/Taipei', test:true, enabled:true },
+  { id:'820114', createdAt:'2025-07-04 14:10:47', operator:'vip0301', member:'test0004', lang:'繁體中文', currency:'新台幣', tz:'Asia/Taipei', test:false, enabled:true },
+  { id:'820110', createdAt:'2025-07-01 12:14:15', operator:'vip0777', member:'test0005', lang:'繁體中文', currency:'新台幣', tz:'Asia/Taipei', test:false, enabled:false }
+];
+function renderUserAccountTable(){
+  const tbody = document.getElementById('user-account-tbody');
+  tbody.innerHTML = userAccountData.map(u=>`
+    <tr>
+      <td>${u.id}</td>
+      <td>${u.createdAt}</td>
+      <td>${u.operator}</td>
+      <td>${u.member} / ${u.member}</td>
+      <td>${u.lang}</td>
+      <td>${u.currency}</td>
+      <td>${u.tz}</td>
+      <td><label class="switch"><input type="checkbox" ${u.test?'checked':''} disabled><span class="slider"></span></label></td>
+      <td><label class="switch"><input type="checkbox" ${u.enabled?'checked':''} disabled><span class="slider"></span></label></td>
+      <td>
+        <span class="icon-action icon-edit" title="編輯(示意,未綁定功能)" data-icon="edit"></span>
+        <span class="icon-action icon-pause" title="停用(示意,未綁定功能)" data-icon="pause"></span>
+        <span class="icon-action icon-del" title="儲值/扣款(示意,未綁定功能)" style="font-weight:700;font-size:13px;">$</span>
+        <span class="icon-action icon-bag" title="目前背包" data-icon="bag" onclick="openBackpackCurrentModal('${u.member}')"></span>
+      </td>
+    </tr>`).join('');
+  mountIcons();
+}
+
+/* ============================================================
    分析報表 Tab:給辦活動的部門看成效/支出/參與人數/任務達成率
    資料為示意用假資料,正式串接時應改由後端統計 API 提供
    ============================================================ */
@@ -2694,7 +3221,7 @@ function toggleDailyDateExpand(dateKey){
   renderReportPanel();
 }
 
-// 任務達成率分析表:記錄哪些任務活動目前是展開狀態(預設全部收合,只看整體狀況)
+// 任務達成率分析表:記錄哪些活動任務目前是展開狀態(預設全部收合,只看整體狀況)
 let expandedReportMissions = new Set();
 function toggleReportMissionExpand(id){
   if(expandedReportMissions.has(id)) expandedReportMissions.delete(id);
@@ -2718,7 +3245,7 @@ function rateBarHtml(rate){
   return `<div class="rate-bar-wrap"><div class="rate-bar ${rateBarClass(rate)}" style="width:${Math.min(100,rate).toFixed(0)}%;"></div></div><span class="rate-text">${rate.toFixed(1)}%</span>`;
 }
 
-let reportMode = 'overall'; // 'overall' 跨活動整體彙總 | 'single' 指定單一任務活動ID
+let reportMode = 'overall'; // 'overall' 跨活動整體彙總 | 'single' 指定單一活動任務ID
 function setReportMode(mode){
   reportMode = mode;
   document.getElementById('report-mode-overall-btn').classList.toggle('active', mode==='overall');
@@ -2745,7 +3272,7 @@ function renderReportPanel(){
   }
 
   if(isSingle && ids.length===0){
-    document.getElementById('report-stats').innerHTML = `<div style="grid-column:1/-1;color:var(--text-secondary);padding:12px;">請輸入有效的任務活動ID以查看統計</div>`;
+    document.getElementById('report-stats').innerHTML = `<div style="grid-column:1/-1;color:var(--text-secondary);padding:12px;">請輸入有效的活動任務ID以查看統計</div>`;
   }else{
     let uniqueParticipants=0, participants=0, achievedMembers=0, rewardedMembers=0;
     ids.forEach(id=>{
@@ -2767,7 +3294,7 @@ function renderReportPanel(){
     `;
   }
 
-  // 任務達成率分析表:低一層(任務活動列)顯示整體狀況,點擊展開才顯示任務1/2/3各自明細
+  // 任務達成率分析表:低一層(活動任務列)顯示整體狀況,點擊展開才顯示任務1/2/3各自明細
   // 整體模式:若有設定「達成率 ≤ %」篩選,只保留有符合條件任務的活動,並自動展開,方便快速抓出過低任務
   // 單一活動模式:只有一筆活動,直接強制展開
   const taskTbody = document.getElementById('report-task-tbody');
@@ -2866,7 +3393,7 @@ function renderReportPanel(){
     });
     dailyTbody.innerHTML = dailyHtml;
   }else{
-    dailyTbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">請於上方輸入有效的任務活動ID,即可查看每日趨勢</td></tr>`;
+    dailyTbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">請於上方輸入有效的活動任務ID,即可查看每日趨勢</td></tr>`;
   }
 
   // 獎勵支出明細:比照任務達成率表,第一層為單一活動ID的總計,展開才顯示各任務的獎勵明細
@@ -2955,6 +3482,9 @@ renderMissionTable();
 renderTemplateTable();
 renderRecordFilterControls();
 renderRecordTable();
+renderBackpackFilterControls();
+renderBackpackTable();
+renderUserAccountTable();
 renderReportPanel();
 mountIcons();
 </script>
