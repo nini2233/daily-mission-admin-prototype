@@ -49,7 +49,8 @@
   .sidebar .sub2{padding-left:50px;}
   .scope-link{cursor:pointer;color:var(--accent);}
   .scope-link:hover{text-decoration:underline;}
-  .main{flex:1;overflow-y:auto;padding:20px 24px;}
+  .item-id-link{color:var(--accent);text-decoration:underline;cursor:pointer;}
+  .main{flex:1;overflow-y:auto;padding:20px 24px;scrollbar-gutter:stable;}
   .breadcrumb{color:var(--text-secondary);font-size:13px;margin-bottom:12px;}
   /* ---------- Card / Tabs ---------- */
   .card{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
@@ -94,6 +95,7 @@
   .pill-danger{background:var(--danger-bg);color:var(--danger);}
   .pill-warning{background:var(--warning-bg);color:var(--warning);}
   .pill-muted{background:#f0f1f5;color:var(--text-secondary);}
+  .pill-purple{background:#f1ebff;color:#8b5cf6;}
   .tag{display:inline-block;background:#f0f1f5;border-radius:4px;padding:2px 6px;font-size:12px;margin-right:4px;color:#4b5563;}
   .switch{position:relative;display:inline-block;width:36px;height:20px;}
   .switch input{opacity:0;width:0;height:0;}
@@ -145,6 +147,7 @@
   .modal-overlay.open{display:flex;}
   .modal{background:#fff;border-radius:14px;width:100%;max-width:960px;max-height:calc(100vh - 64px);display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(20,20,30,.22);}
   .modal.small{max-width:460px;}
+  .modal.medium{max-width:680px;}
   .modal-header{padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0;background:#fbfbfd;}
   .modal-header h3{margin:0;font-size:16px;font-weight:700;}
   .modal-close{cursor:pointer;color:var(--text-secondary);display:flex;padding:4px;border-radius:6px;}
@@ -285,6 +288,7 @@
       <div class="item"><span class="dot"></span>彩票管理</div>
       <div class="item"><span class="dot"></span>記錄查詢</div>
       <div class="item sub" data-page="backpack-history"><span class="dot"></span>背包紀錄</div>
+      <div class="item sub" data-page="item-card-usage"><span class="dot"></span>道具卡紀錄</div>
       <div class="item"><span class="dot"></span>消息管理</div>
       <div class="item"><span class="dot"></span>日誌管理</div>
       <div class="item"><span class="dot"></span>系統設定</div>
@@ -551,9 +555,7 @@
               </div>
               <input type="time" id="backpack-filter-end-time" step="1" lang="en-GB">
             </div>
-            <input type="text" id="backpack-filter-member" placeholder="搜尋用戶帳號" style="align-self:flex-start;">
-            <input type="text" id="backpack-filter-txid" placeholder="搜尋異動單號" style="align-self:flex-start;">
-            <input type="text" id="backpack-filter-itemid" placeholder="搜尋道具id" style="align-self:flex-start;">
+            <input type="text" id="backpack-filter-keyword" placeholder="搜尋用戶帳號 / 異動單號 / 道具ID" style="align-self:flex-start;width:220px;">
             <div class="ms" id="backpack-filter-type-ms" style="width:200px;align-self:flex-start;">
               <div class="ms-control" onclick="toggleDropdownById('backpack-filter-type-ms')">
                 <span class="ms-summary" id="backpack-filter-type-summary"></span>
@@ -563,13 +565,81 @@
             </div>
             <button class="btn btn-primary" onclick="applyBackpackFilter()" style="align-self:flex-start;">搜尋</button>
             <button class="btn btn-outline" onclick="resetBackpackFilter()" style="align-self:flex-start;">重置</button>
+            <div class="spacer-flex"></div>
+            <span style="color:var(--text-secondary);font-size:13px;align-self:center;">排序方法</span>
+            <button class="btn btn-outline" id="backpack-sort-old-btn" onclick="setHistorySortDir('asc')" style="align-self:flex-start;">較舊在上</button>
+            <button class="btn btn-primary" id="backpack-sort-new-btn" onclick="setHistorySortDir('desc')" style="align-self:flex-start;">較新在上</button>
           </div>
           <table>
             <thead><tr>
-              <th>異動單號</th><th class="sortable" onclick="sortHistoryBy('createdAt')">建立時間<span class="sort-icon" id="history-sort-icon-createdAt"></span></th><th>交易類型</th><th>道具類型</th><th>道具id</th><th>用戶帳號</th><th>數量</th><th>詳情</th>
+              <th>異動單號</th><th>建立時間</th><th>交易類型</th><th>道具類型</th><th>道具ID</th><th>用戶帳號</th><th>數量</th>
             </tr></thead>
             <tbody id="backpack-tbody"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- ============ 獨立功能頁:記錄查詢 / 道具卡紀錄(以「單張道具卡」為單位,彙整同一張卡的使用進度) ============ -->
+      <div class="page" id="page-item-card-usage">
+        <div class="breadcrumb">記錄查詢 / 道具卡紀錄</div>
+        <div class="card" style="padding:16px;">
+          <!-- 依道具類型分頁,目前只有免費旋轉卡;之後若有其他道具卡種類,在這裡加對應的 subtab 即可 -->
+          <div class="subtabs">
+            <div class="subtab active" data-subtab="itemcard-freespin">免費旋轉卡</div>
+          </div>
+          <div class="subtab-panel active" id="subpanel-itemcard-freespin">
+          <div class="filter-bar" style="align-items:flex-start;">
+            <select id="itemcard-filter-time-field" style="align-self:center;">
+              <option value="validFrom">獲得時間</option>
+              <option value="validTo">有效時間</option>
+            </select>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div class="ms date-picker" id="itemcard-filter-start-dp">
+                <div class="ms-control" onclick="toggleDatePicker('itemcard-filter','start')">
+                  <span class="ms-summary" id="itemcard-filter-start-date-label"></span>
+                  <span class="chevron" data-icon="calendar"></span>
+                </div>
+                <input type="hidden" id="itemcard-filter-start-date">
+                <div class="ms-panel" id="itemcard-filter-start-date-panel"></div>
+              </div>
+              <input type="time" id="itemcard-filter-start-time" step="1" lang="en-GB">
+              <span class="arrow">→</span>
+              <div class="ms date-picker" id="itemcard-filter-end-dp">
+                <div class="ms-control" onclick="toggleDatePicker('itemcard-filter','end')">
+                  <span class="ms-summary" id="itemcard-filter-end-date-label"></span>
+                  <span class="chevron" data-icon="calendar"></span>
+                </div>
+                <input type="hidden" id="itemcard-filter-end-date">
+                <div class="ms-panel" id="itemcard-filter-end-date-panel"></div>
+              </div>
+              <input type="time" id="itemcard-filter-end-time" step="1" lang="en-GB">
+            </div>
+            <input type="text" id="itemcard-filter-member" placeholder="搜尋用戶帳號" style="align-self:flex-start;">
+            <input type="text" id="itemcard-filter-itemid" placeholder="搜尋道具ID" style="align-self:flex-start;">
+            <div class="ms" id="itemcard-filter-game-ms" style="width:180px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleDropdownById('itemcard-filter-game-ms')">
+                <span class="ms-summary" id="itemcard-filter-game-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="itemcard-filter-game-panel"></div>
+            </div>
+            <div class="ms" id="itemcard-filter-status-ms" style="width:160px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleDropdownById('itemcard-filter-status-ms')">
+                <span class="ms-summary" id="itemcard-filter-status-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="itemcard-filter-status-panel"></div>
+            </div>
+            <button class="btn btn-primary" onclick="applyItemCardFilter()" style="align-self:flex-start;">搜尋</button>
+            <button class="btn btn-outline" onclick="resetItemCardFilter()" style="align-self:flex-start;">重置</button>
+          </div>
+          <table>
+            <thead><tr>
+              <th>道具ID</th><th>用戶帳號</th><th>遊戲</th><th class="num">旋轉次數</th><th class="num">已使用</th><th class="num">剩餘</th><th class="sortable" onclick="sortItemCardBy('validFrom')">獲得時間<span class="sort-icon" id="itemcard-sort-icon-validFrom"></span></th><th class="sortable" onclick="sortItemCardBy('validTo')">有效時間<span class="sort-icon" id="itemcard-sort-icon-validTo"></span></th><th class="sortable" onclick="sortItemCardBy('lastUpdatedAt')">最後更新時間<span class="sort-icon" id="itemcard-sort-icon-lastUpdatedAt"></span></th><th>狀態</th><th>詳情</th>
+            </tr></thead>
+            <tbody id="itemcard-tbody"></tbody>
+          </table>
+          </div>
         </div>
       </div>
 
@@ -785,19 +855,35 @@
   </div>
 </div>
 
-<!-- ============ Modal: 玩家目前背包(帳號管理 / 用戶帳號 功能欄「背包」圖示點擊,內容欄位同原「背包紀錄 > 當前」) ============ -->
+<!-- ============ Modal: 玩家目前背包(帳號管理 / 用戶帳號 功能欄「背包」圖示點擊)。
+     只顯示狀態為「未使用」的卡片,外層列表為道具ID/道具類型/遊戲/獲得時間/有效時間,
+     旋轉次數/每局投注額/最大贏分倍數都移到展開詳情裡(已使用/剩餘因為一定是0/全額,不重複顯示;
+     用戶帳號本來就是這個彈窗鎖定的對象,也不重複顯示;最後更新時間在未使用狀態下等於獲得時間,同樣移除) ============ -->
 <div class="modal-overlay" id="backpack-current-modal-overlay">
-  <div class="modal">
+  <div class="modal medium">
     <div class="modal-header">
       <h3 id="backpack-current-modal-title">玩家目前背包</h3>
       <span class="modal-close" onclick="closeBackpackCurrentModal()" data-icon="close"></span>
     </div>
     <div class="modal-body">
+      <!-- 遊戲篩選置頂:position:sticky 釘在 modal-body 頂端,列表較長需要往下滾動時,
+           下拉選單控制項與展開後的選項面板都不會被下方表格內容蓋到;z-index 需高於表格,
+           背景補白色避免滾動時看到下方內容穿透 -->
+      <div style="margin-bottom:12px;position:sticky;top:0;z-index:30;background:#fff;padding-bottom:4px;">
+        <div class="ms" id="bp-current-filter-game-ms" style="width:180px;">
+          <div class="ms-control" onclick="toggleDropdownById('bp-current-filter-game-ms')">
+            <span class="ms-summary" id="bp-current-filter-game-summary"></span>
+            <span class="chevron" data-icon="chevronDown"></span>
+          </div>
+          <div class="ms-panel" id="bp-current-filter-game-panel"></div>
+        </div>
+      </div>
       <table>
         <thead><tr>
-          <th class="sortable" onclick="sortCurrentBy('createdAt')">建立時間<span class="sort-icon" id="current-sort-icon-createdAt"></span></th>
-          <th class="sortable" onclick="sortCurrentBy('expiresAt')">道具時效<span class="sort-icon" id="current-sort-icon-expiresAt"></span></th>
-          <th>交易類型</th><th>道具類型</th><th>道具ID</th><th>詳情</th>
+          <th>道具ID</th><th>道具類型</th><th>遊戲</th>
+          <th class="sortable" onclick="sortBpCurrentBy('validFrom')">獲得時間<span class="sort-icon" id="bp-current-sort-icon-validFrom"></span></th>
+          <th class="sortable" onclick="sortBpCurrentBy('validTo')">有效時間<span class="sort-icon" id="bp-current-sort-icon-validTo"></span></th>
+          <th>詳情</th>
         </tr></thead>
         <tbody id="backpack-current-tbody"></tbody>
       </table>
@@ -1626,7 +1712,8 @@ document.querySelectorAll('.subtab').forEach(st=>{
 
 /* ============================================================
    左側選單獨立頁面切換:目前僅「活動模組 > 彩金活動 > 活動任務」「記錄查詢 > 背包紀錄」
-   「帳號管理 > 用戶帳號」三個頁面是真的可切換的,其餘側邊選單項目僅示意用,尚未串接任何頁面
+   「記錄查詢 > 道具卡紀錄」「帳號管理 > 用戶帳號」四個頁面是真的可切換的,
+   其餘側邊選單項目僅示意用,尚未串接任何頁面
    ============================================================ */
 document.querySelectorAll('.sidebar .item[data-page]').forEach(item=>{
   item.addEventListener('click', ()=>{
@@ -2769,26 +2856,37 @@ const TX_TYPE_LABEL = {
   platform_gift: '平台贈送',
   manual_resend: '人工補派',
   use: '使用',
-  expired: '道具到期'
+  expired: '道具到期',
+  cancelled: '人工取消'
 };
 const ITEM_TYPE_LABEL = {
   free_spin: '免費旋轉卡'
 };
 
-// 模擬一張免費旋轉卡內,每一局(spin)各自獨立的投注ID,從 startSeed 開始遞增
-function mkSpinUsage(count, startSeed){
+// 模擬一張免費旋轉卡內,每一局(spin)各自獨立的投注ID(從 startSeed 開始遞增)與建立時間(=注單下注時間)。
+// lastSpinAt:最後一局的下注時間(通常對齊到「這批局數被記錄下來」的那個時間點),每往前一局倒推 intervalSec 秒,
+// 模擬玩家連續快速下注的情境;intervalSec 預設 6 秒,僅為示意,非實際遊戲局間間隔規格。
+function mkSpinUsage(count, startSeed, lastSpinAt, intervalSec){
+  intervalSec = intervalSec || 6;
+  const lastTime = new Date(lastSpinAt.replace(' ','T'));
   const spins = [];
   for(let i=1;i<=count;i++){
-    spins.push({ no:i, betId: String(startSeed + i - 1) });
+    const t = new Date(lastTime.getTime() - (count-i)*intervalSec*1000);
+    spins.push({ no:i, betId: String(startSeed + i - 1), createdAt: formatDateTime(t) });
   }
   return spins;
+}
+function formatDateTime(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  const hh=String(d.getHours()).padStart(2,'0'), mm=String(d.getMinutes()).padStart(2,'0'), ss=String(d.getSeconds()).padStart(2,'0');
+  return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
 }
 
 let backpackHistoryData = [
   { txId:'BP20260712103003001', type:'task', itemType:'free_spin', itemId:'FS-0001', createdAt:'2026-07-12 10:30:03', member:'test0001', qty:1, activityId:'12356',
     detail:{ mode:'add', params:{ gameId:'g2', betLevel:1, expireHours:24, spinCount:10, maxWinMode:'range', maxWinMultiplier:50 } } },
   { txId:'USE-0001', type:'use', itemType:'free_spin', itemId:'FS-0001', createdAt:'2026-07-12 11:05:20', member:'test0001', qty:-1,
-    detail:{ mode:'use', params:{ gameId:'g2', betLevel:1, expireHours:24, spinCount:10, maxWinMode:'range', maxWinMultiplier:50 }, spins: mkSpinUsage(10, 1549479258339461) } },
+    detail:{ mode:'use', params:{ gameId:'g2', betLevel:1, expireHours:24, spinCount:10, maxWinMode:'range', maxWinMultiplier:50 }, spins: mkSpinUsage(10, 1549479258339461, '2026-07-12 11:05:20') } },
   { txId:'GIFT-0001', type:'platform_gift', itemType:'free_spin', itemId:'FS-0002', createdAt:'2026-07-13 09:00:00', member:'test0002', qty:1,
     detail:{ mode:'add', params:{ gameId:'g1', betLevel:2, expireHours:48, spinCount:5, maxWinMode:'near', maxWinMultiplier:100 } } },
   { txId:'EXP-0001', type:'expired', itemType:'free_spin', itemId:'FS-0002', createdAt:'2026-07-15 09:00:00', member:'test0002', qty:-1,
@@ -2796,17 +2894,38 @@ let backpackHistoryData = [
   { txId:'BP20260713091256004', type:'task', itemType:'free_spin', itemId:'FS-0003', createdAt:'2026-07-13 09:12:56', member:'test0004', qty:1, activityId:'78987',
     detail:{ mode:'add', params:{ gameId:'g3', betLevel:1, expireHours:24, spinCount:20, maxWinMode:'range', maxWinMultiplier:100 } } },
   { txId:'USE-0002', type:'use', itemType:'free_spin', itemId:'FS-0003', createdAt:'2026-07-13 10:40:00', member:'test0004', qty:-1,
-    detail:{ mode:'use', params:{ gameId:'g3', betLevel:1, expireHours:24, spinCount:20, maxWinMode:'range', maxWinMultiplier:100 }, spins: mkSpinUsage(20, 1549480200001001) } },
+    detail:{ mode:'use', params:{ gameId:'g3', betLevel:1, expireHours:24, spinCount:20, maxWinMode:'range', maxWinMultiplier:100 }, spins: mkSpinUsage(20, 1549480200001001, '2026-07-13 10:40:00') } },
   { txId:'RESEND-483920', type:'manual_resend', itemType:'free_spin', itemId:'FS-0004', createdAt:'2026-07-13 12:00:00', member:'test0003', qty:1,
-    detail:{ mode:'add', params:{ gameId:'g4', betLevel:1, expireHours:24, spinCount:20, maxWinMode:'range', maxWinMultiplier:100 } } }
+    detail:{ mode:'add', params:{ gameId:'g4', betLevel:1, expireHours:24, spinCount:20, maxWinMode:'range', maxWinMultiplier:100 } } },
+  // 斷線情境示意:玩家打了3局後斷線,直到道具到期都沒回來,剩下7局隨道具到期一併失效。
+  // 只在「離開背包」的那一刻(到期)寫一筆 ledger,不拆成「使用」+「到期」兩筆,避免同一張卡被扣兩次 qty。
+  // 3局的下注時間對齊到「領取後不久」(斷線前),不是到期時間,才符合「玩了3局就斷線」的情境。
+  { txId:'BP20260714090000005', type:'task', itemType:'free_spin', itemId:'FS-0005', createdAt:'2026-07-14 09:00:00', member:'test0005', qty:1, activityId:'12356',
+    detail:{ mode:'add', params:{ gameId:'g1', betLevel:1, expireHours:24, spinCount:10, maxWinMode:'range', maxWinMultiplier:80 } } },
+  { txId:'EXP-0002', type:'expired', itemType:'free_spin', itemId:'FS-0005', createdAt:'2026-07-15 09:00:00', member:'test0005', qty:-1,
+    detail:{ mode:'expire', params:{ gameId:'g1', betLevel:1, expireHours:24, spinCount:10, maxWinMode:'range', maxWinMultiplier:80 },
+      spins: mkSpinUsage(3, 1549490000000001, '2026-07-14 09:04:30'), unusedSpinCount:7 } },
+  // 「使用中」示意:卡片還在背包內,尚未結案(沒有使用/到期紀錄),但玩家已經玩了4局。
+  // progressSpins 是示意用的「即時使用進度」欄位,不是正式的 ledger 結案紀錄——這點在道具卡紀錄的說明註解裡也有提到,
+  // 正式串接應改由即時對局系統提供這份即時進度,而不是憑空放在 add 紀錄上。
+  { txId:'BP20260716090000006', type:'task', itemType:'free_spin', itemId:'FS-0006', createdAt:'2026-07-16 09:00:00', member:'test0001', qty:1, activityId:'78987',
+    detail:{ mode:'add', params:{ gameId:'g5', betLevel:1, expireHours:24, spinCount:10, maxWinMode:'range', maxWinMultiplier:60 },
+      progressSpins: mkSpinUsage(4, 1549600000000001, '2026-07-16 09:03:00') } },
+  // 「已取消」示意:客服/系統在玩家使用前,主動把這張卡收回(例如誤發、防弊凍結等),
+  // 屬於「人工取消」這個新的交易類型,跟「道具到期(時間到)」是不同的結案原因,兩者不應該混在一起算。
+  { txId:'BP20260716100000007', type:'platform_gift', itemType:'free_spin', itemId:'FS-0007', createdAt:'2026-07-16 10:00:00', member:'test0003', qty:1,
+    detail:{ mode:'add', params:{ gameId:'g6', betLevel:1, expireHours:24, spinCount:10, maxWinMode:'range', maxWinMultiplier:60 } } },
+  { txId:'CANCEL-0001', type:'cancelled', itemType:'free_spin', itemId:'FS-0007', createdAt:'2026-07-16 11:00:00', member:'test0003', qty:-1,
+    detail:{ mode:'cancel', params:{ gameId:'g6', betLevel:1, expireHours:24, spinCount:10, maxWinMode:'range', maxWinMultiplier:60 } } }
 ];
 
 // 預設區間涵蓋以上假資料的時間跨度,讓列表預設就能示意所有交易類型;與前面幾個頁籤的預設值處理方式一致
+// keyword:用戶帳號/異動單號/道具ID 三者皆為唯一值,合併成單一搜尋欄位,符合任一欄即算命中(OR)
 function defaultBackpackFilterState(){
   return {
     startDate:'2026-07-01', startTime:'00:00:00',
     endDate:'2026-07-20', endTime:'23:59:59',
-    member:'', txId:'', itemId:'',
+    keyword:'',
     types: new Set(Object.keys(TX_TYPE_LABEL))
   };
 }
@@ -2832,15 +2951,12 @@ function toggleBackpackFilterType(type, checked){
   renderBackpackFilterTypeControl();
 }
 
-// 依目前 backpackFilterState 判斷單筆背包異動是否符合(所有條件皆為 AND 交集)
+// 依目前 backpackFilterState 判斷單筆背包異動是否符合(交易類型/時間區間與關鍵字之間為 AND;
+// 關鍵字則同時比對用戶帳號/異動單號/道具ID,三者為 OR 關係,符合任一欄即算命中)
 function backpackMatchesFilter(r){
   if(backpackFilterState.types.size>0 && !backpackFilterState.types.has(r.type)) return false;
-  const memberKw = (backpackFilterState.member||'').trim().toLowerCase();
-  if(memberKw && !r.member.toLowerCase().includes(memberKw)) return false;
-  const txKw = (backpackFilterState.txId||'').trim().toLowerCase();
-  if(txKw && !r.txId.toLowerCase().includes(txKw)) return false;
-  const itemKw = (backpackFilterState.itemId||'').trim().toLowerCase();
-  if(itemKw && !r.itemId.toLowerCase().includes(itemKw)) return false;
+  const kw = (backpackFilterState.keyword||'').trim().toLowerCase();
+  if(kw && !(r.member.toLowerCase().includes(kw) || r.txId.toLowerCase().includes(kw) || r.itemId.toLowerCase().includes(kw))) return false;
   const t = new Date(r.createdAt.replace(' ','T'));
   const fStart = new Date(`${backpackFilterState.startDate}T${backpackFilterState.startTime}`);
   const fEnd = new Date(`${backpackFilterState.endDate}T${backpackFilterState.endTime}`);
@@ -2858,9 +2974,7 @@ function applyBackpackFilter(){
   backpackFilterState.startTime = document.getElementById('backpack-filter-start-time').value || '00:00:00';
   backpackFilterState.endDate = document.getElementById('backpack-filter-end-date').value;
   backpackFilterState.endTime = document.getElementById('backpack-filter-end-time').value || '23:59:59';
-  backpackFilterState.member = document.getElementById('backpack-filter-member').value;
-  backpackFilterState.txId = document.getElementById('backpack-filter-txid').value;
-  backpackFilterState.itemId = document.getElementById('backpack-filter-itemid').value;
+  backpackFilterState.keyword = document.getElementById('backpack-filter-keyword').value;
   renderBackpackTable();
 }
 // 將搜尋列所有欄位與下拉重繪回目前的 backpackFilterState(初始渲染 / 重置後都會呼叫)
@@ -2869,9 +2983,7 @@ function renderBackpackFilterControls(){
   document.getElementById('backpack-filter-start-time').value = backpackFilterState.startTime;
   setDatePickerValue('backpack-filter','end', backpackFilterState.endDate);
   document.getElementById('backpack-filter-end-time').value = backpackFilterState.endTime;
-  document.getElementById('backpack-filter-member').value = backpackFilterState.member;
-  document.getElementById('backpack-filter-txid').value = backpackFilterState.txId;
-  document.getElementById('backpack-filter-itemid').value = backpackFilterState.itemId;
+  document.getElementById('backpack-filter-keyword').value = backpackFilterState.keyword;
   renderBackpackFilterTypeControl(); renderBackpackFilterTypePanel();
 }
 // 重置:所有搜尋條件恢復預設值,並重新套用(重繪清單)
@@ -2881,23 +2993,14 @@ function resetBackpackFilter(){
   renderBackpackTable();
 }
 
-// 詳情改為「點擊往下展開」的呈現方式(不再用彈窗):expandedBackpackRows 記錄目前展開中的
-// backpackHistoryData 索引,「歷程」頁籤與「玩家目前背包」彈窗共用同一組展開狀態(彼此以 idx 對應同一筆原始資料)
-let expandedBackpackRows = new Set();
-function toggleBackpackRow(idx){
-  if(expandedBackpackRows.has(idx)) expandedBackpackRows.delete(idx);
-  else expandedBackpackRows.add(idx);
-  renderBackpackTable();
-  // 「玩家目前背包」彈窗若開啟中,也一併重繪,否則看不到展開後的內容
-  if(document.getElementById('backpack-current-modal-overlay').classList.contains('open')) renderBackpackCurrentModal();
-}
-// 依「建立時間」+「道具時效(小時)」換算實際到期時間,回傳 Date 物件與 yyyy/mm/dd hh:mm:ss 格式字串
+// 依「建立時間」+「道具時效(小時)」換算實際到期時間,回傳 Date 物件與 yyyy-mm-dd hh:mm:ss 格式字串
+// (統一用 yyyy-mm-dd,不再用 / 分隔,跟其他時間欄位的格式一致)
 function computeExpiry(createdAt, hours){
   const d = new Date(createdAt.replace(' ','T'));
   d.setHours(d.getHours() + Number(hours));
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
   const hh=String(d.getHours()).padStart(2,'0'), mm=String(d.getMinutes()).padStart(2,'0'), ss=String(d.getSeconds()).padStart(2,'0');
-  return { date:d, str:`${y}/${m}/${day} ${hh}:${mm}:${ss}` };
+  return { date:d, str:`${y}-${m}-${day} ${hh}:${mm}:${ss}` };
 }
 // 最大贏分倍數顯示:不再另外顯示「判定方式」文字,改成直接把判定方式併入倍數的顯示格式;
 // range(0~指定倍數)顯示「0~N」;near(接近指定倍數±10%)顯示「(N×0.9)~(N×1.1)」;未設定倍數則顯示「無限制」
@@ -2911,61 +3014,26 @@ function formatMaxWinDisplay(mode, multiplier){
   // 預設(含 range):0 ~ 指定倍數
   return `0~${n} 倍`;
 }
-// 詳情內容:只顯示外層列表沒有的資訊(活動ID[限時任務來源限定]/道具參數/使用投注明細),不重複異動單號/交易類型/道具id/道具類型/建立時間/用戶帳號/數量
-function backpackDetailContentHtml(r){
-  // 交易類型為「限時任務」時,詳情需額外提供該獎勵所屬的活動ID(對應限時任務/紀錄頁的活動ID)
-  let activityIdHtml = '';
-  if(r.type === 'task' && r.activityId){
-    activityIdHtml = `<div class="detail-row"><span class="k">活動ID</span><span class="v">${r.activityId}</span></div>`;
-  }
-  let paramsHtml = '';
-  if(r.detail.params){
-    const p = r.detail.params;
-    const gameName = (GAME_LIST.find(g=>g.id===p.gameId) || {}).name || p.gameId;
-    const expiresAt = computeExpiry(r.createdAt, p.expireHours).str;
-    paramsHtml = `
-    <div class="detail-row"><span class="k">道具遊戲</span><span class="v">${gameName}</span></div>
-    <div class="detail-row"><span class="k">每局投注額</span><span class="v">${p.betLevel}</span></div>
-    <div class="detail-row"><span class="k">道具時效</span><span class="v">${expiresAt}</span></div>
-    <div class="detail-row"><span class="k">旋轉次數</span><span class="v">${p.spinCount}</span></div>
-    <div class="detail-row"><span class="k">最大贏分倍數</span><span class="v">${formatMaxWinDisplay(p.maxWinMode, p.maxWinMultiplier)}</span></div>`;
-  }
-  let spinsHtml = '';
-  if(r.detail.mode === 'use'){
-    spinsHtml = `
-    <div style="margin-top:12px;">
-      <div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:6px;font-weight:600;">使用投注明細</div>
-      <table style="width:100%;background:#fff;"><thead><tr><th>局數</th><th>注單ID</th></tr></thead>
-      <tbody>${r.detail.spins.map(s=>`<tr><td class="num">第 ${s.no} 局</td><td>${s.betId}</td></tr>`).join('')}</tbody></table>
-    </div>`;
-  }
-  return `<div class="bp-detail-grid">${activityIdHtml}${paramsHtml}</div>${spinsHtml}`;
-}
-// 展開後插入的詳情列;colspan 需與外層表格欄位數一致(歷程=8欄、當前=6欄),由呼叫端傳入
-function backpackDetailRowHtml(idx, colspan){
-  const r = backpackHistoryData[idx];
-  return `<tr><td class="bp-detail-td" colspan="${colspan}">${backpackDetailContentHtml(r)}</td></tr>`;
-}
-function backpackExpandBtnHtml(idx){
-  const isOpen = expandedBackpackRows.has(idx);
-  return `<button class="bp-expand-btn${isOpen?' open':''}" onclick="toggleBackpackRow(${idx})" title="展開/收合詳情">${iconSvg('chevronDown',14)}</button>`;
+// 從背包紀錄的道具ID連結(或目前背包彈窗的展開詳情)跳轉到「道具卡紀錄」頁並帶入該道具ID篩選,
+// 方便直接查看這張卡完整的道具參數與使用投注明細,不用兩邊各維護一份重複資料
+function viewItemCardFromBackpack(itemId){
+  closeBackpackCurrentModal();
+  const navItem = document.querySelector('.sidebar .item[data-page="item-card-usage"]');
+  if(navItem) navItem.click();
+  itemCardFilterState.itemId = itemId;
+  document.getElementById('itemcard-filter-itemid').value = itemId;
+  renderItemCardTable();
 }
 
-// 「歷程」子頁籤排序:目前只提供建立時間(與其他頁籤排序邏輯一致,點擊同一欄再點一次切換升冪/降冪)
-let historySortKey = null;   // null | 'createdAt'
-let historySortDir = 'asc';  // 'asc' | 'desc'
-function sortHistoryBy(key){
-  if(historySortKey === key){
-    historySortDir = historySortDir === 'asc' ? 'desc' : 'asc';
-  }else{
-    historySortKey = key;
-    historySortDir = 'asc';
-  }
+// 「歷程」建立時間排序:比照「交易記錄」頁籤的「排序方法」按鈕呈現方式(較舊在上/較新在上二擇一),
+// 一律套用排序(不像表頭點擊排序可取消),預設「較新在上」(desc)
+let historySortDir = 'desc'; // 'asc'=較舊在上 | 'desc'=較新在上
+function setHistorySortDir(dir){
+  historySortDir = dir;
   renderBackpackTable();
 }
 function getSortedBackpackHistory(){
   const filtered = getFilteredBackpackHistory(); // [{r, idx}]
-  if(!historySortKey) return filtered;
   const list = filtered.slice();
   list.sort((a, b)=>{
     const av = new Date(a.r.createdAt.replace(' ','T')).getTime();
@@ -2976,85 +3044,96 @@ function getSortedBackpackHistory(){
   });
   return list;
 }
-function updateHistorySortIcons(){
-  const el = document.getElementById('history-sort-icon-createdAt');
-  if(!el) return;
-  if(historySortKey==='createdAt'){
-    el.textContent = historySortDir==='asc' ? '▲' : '▼';
-    el.classList.add('active');
-  }else{
-    el.textContent = '↕';
-    el.classList.remove('active');
-  }
+function updateHistorySortButtons(){
+  const oldBtn = document.getElementById('backpack-sort-old-btn');
+  const newBtn = document.getElementById('backpack-sort-new-btn');
+  if(!oldBtn || !newBtn) return;
+  oldBtn.className = 'btn ' + (historySortDir==='asc' ? 'btn-primary' : 'btn-outline');
+  newBtn.className = 'btn ' + (historySortDir==='desc' ? 'btn-primary' : 'btn-outline');
 }
 
+// 道具ID改為連結:點擊直接跳轉到「道具卡紀錄」頁並帶入該道具ID篩選,取代原本的展開詳情欄位
+// (道具參數/使用投注明細等完整內容都在道具卡紀錄頁,這裡不再重複維護,詳情欄位已移除)
 function renderBackpackTable(){
   const tbody = document.getElementById('backpack-tbody');
-  updateHistorySortIcons();
+  updateHistorySortButtons();
   const filtered = getSortedBackpackHistory();
-  tbody.innerHTML = filtered.map(({r, idx})=>{
-    let rowHtml = `
+  tbody.innerHTML = filtered.map(({r, idx})=>`
     <tr>
       <td>${r.txId}</td>
       <td>${r.createdAt}</td>
       <td><span class="badge-fixed">${TX_TYPE_LABEL[r.type]}</span></td>
       <td>${ITEM_TYPE_LABEL[r.itemType]}</td>
-      <td>${r.itemId}</td>
+      <td><a href="javascript:void(0)" class="item-id-link" onclick="viewItemCardFromBackpack('${r.itemId}')">${r.itemId}</a></td>
       <td>${r.member}</td>
       <td class="num"><span style="color:${r.qty>0?'var(--danger)':'var(--success)'};font-weight:600;">${r.qty}</span></td>
-      <td>${backpackExpandBtnHtml(idx)}</td>
-    </tr>`;
-    if(expandedBackpackRows.has(idx)) rowHtml += backpackDetailRowHtml(idx, 8);
-    return rowHtml;
-  }).join('');
+    </tr>`).join('');
 }
 
 /* ============================================================
-   玩家目前背包(彈窗):查詢某玩家「目前持有(尚未使用/尚未到期)」的道具清單。
+   玩家目前背包(彈窗):查詢某玩家「目前持有且完全未使用」的道具清單。
    原為「背包紀錄 > 當前」子頁籤,依需求移至 帳號管理 / 用戶帳號 功能欄「背包」圖示,
    點擊後直接帶入該筆列表的玩家帳號開啟彈窗,不需另外輸入帳號查詢。
-   判斷邏輯:同一 itemId 若已存在「使用」或「道具到期」的異動紀錄,代表該道具已消耗,不算目前持有。
+   顯示邏輯改為沿用「道具卡紀錄」同一份 buildItemCardData() 衍生資料(不重複維護一份),
+   只篩選 member 符合 + 狀態為「未使用」的卡片——依需求,已經開始使用(使用中)的卡片不列在這裡,
+   所以狀態一定都是「未使用」,欄位就不重複顯示狀態欄了。
    ============================================================ */
-// 回傳該玩家目前持有道具在 backpackHistoryData 內對應「新增」異動的索引陣列(idx 可直接沿用 toggleBackpackRow 展開詳情)
-function getCurrentBackpackIndexes(member){
-  const byItem = {};
-  backpackHistoryData.forEach((r, idx)=>{
-    if(r.member !== member) return;
-    if(!byItem[r.itemId]) byItem[r.itemId] = { addIdx:null, consumed:false };
-    if(r.detail.mode === 'add') byItem[r.itemId].addIdx = idx;
-    if(r.detail.mode === 'use' || r.detail.mode === 'expire') byItem[r.itemId].consumed = true;
-  });
-  return Object.values(byItem).filter(x=>x.addIdx!==null && !x.consumed).map(x=>x.addIdx);
-}
 // 目前開啟中的彈窗所屬玩家帳號(由「用戶帳號」列表功能欄的背包圖示點擊時帶入)
 let backpackCurrentModalMember = '';
 function openBackpackCurrentModal(member){
   backpackCurrentModalMember = member;
   document.getElementById('backpack-current-modal-title').textContent = '玩家目前背包 - ' + member;
+  bpCurrentGameFilter = new Set(GAME_LIST.map(g=>g.id)); // 每次開啟彈窗(換玩家)都重置為「所有遊戲」
+  renderBpCurrentGameFilterControl();
+  renderBpCurrentGameFilterPanel();
   renderBackpackCurrentModal();
   document.getElementById('backpack-current-modal-overlay').classList.add('open');
 }
 function closeBackpackCurrentModal(){
   document.getElementById('backpack-current-modal-overlay').classList.remove('open');
 }
-// 排序:建立時間 / 道具時效,點擊同一欄再點一次切換升冪/降冪(與其他頁籤排序邏輯一致)
-let currentBackpackSortKey = null;   // null | 'createdAt' | 'expiresAt'
-let currentBackpackSortDir = 'asc';
-function sortCurrentBy(key){
-  if(currentBackpackSortKey === key){
-    currentBackpackSortDir = currentBackpackSortDir === 'asc' ? 'desc' : 'asc';
+// 遊戲篩選(彈窗左上):獨立於道具卡紀錄頁的 itemCardFilterState.games,避免互相干擾
+let bpCurrentGameFilter = new Set(GAME_LIST.map(g=>g.id));
+function renderBpCurrentGameFilterControl(){
+  const el = document.getElementById('bp-current-filter-game-summary');
+  if(!el) return;
+  if(bpCurrentGameFilter.size===0){ el.textContent='遊戲:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  if(bpCurrentGameFilter.size===GAME_LIST.length){ el.textContent='遊戲:所有遊戲'; return; }
+  el.textContent = '遊戲:'+GAME_LIST.filter(g=>bpCurrentGameFilter.has(g.id)).map(g=>g.name).join('、');
+}
+function renderBpCurrentGameFilterPanel(){
+  const panel = document.getElementById('bp-current-filter-game-panel');
+  if(!panel) return;
+  panel.innerHTML = `<div class="ms-list">${GAME_LIST.map(g=>`
+    <label class="ms-option">
+      <input type="checkbox" ${bpCurrentGameFilter.has(g.id)?'checked':''} onchange="toggleBpCurrentGameFilter('${g.id}', this.checked)"> ${g.name}
+    </label>`).join('')}</div>`;
+}
+function toggleBpCurrentGameFilter(gameId, checked){
+  if(checked) bpCurrentGameFilter.add(gameId); else bpCurrentGameFilter.delete(gameId);
+  renderBpCurrentGameFilterControl();
+  renderBackpackCurrentModal();
+}
+// 排序:獲得時間/有效時間/最後更新時間,跟「道具卡紀錄」頁同一套排序邏輯,但狀態獨立(不共用同一份排序狀態,
+// 避免這個彈窗排序跟道具卡紀錄頁的排序互相干擾)
+let bpCurrentSortKey = null;   // null | 'validFrom' | 'validTo' | 'lastUpdatedAt'
+let bpCurrentSortDir = 'asc';
+function sortBpCurrentBy(key){
+  if(bpCurrentSortKey === key){
+    bpCurrentSortDir = bpCurrentSortDir === 'asc' ? 'desc' : 'asc';
   }else{
-    currentBackpackSortKey = key;
-    currentBackpackSortDir = 'asc';
+    bpCurrentSortKey = key;
+    bpCurrentSortDir = 'asc';
   }
   renderBackpackCurrentModal();
 }
-function updateCurrentBackpackSortIcons(){
-  ['createdAt','expiresAt'].forEach(key=>{
-    const el = document.getElementById('current-sort-icon-'+key);
+function updateBpCurrentSortIcons(){
+  ['validFrom','validTo'].forEach(key=>{
+    const el = document.getElementById('bp-current-sort-icon-'+key);
     if(!el) return;
-    if(currentBackpackSortKey===key){
-      el.textContent = currentBackpackSortDir==='asc' ? '▲' : '▼';
+    if(bpCurrentSortKey===key){
+      el.textContent = bpCurrentSortDir==='asc' ? '▲' : '▼';
       el.classList.add('active');
     }else{
       el.textContent = '↕';
@@ -3062,45 +3141,327 @@ function updateCurrentBackpackSortIcons(){
     }
   });
 }
-// 欄位順序(左至右):建立時間/道具時效/交易類型/道具類型/道具ID/詳情
+// 欄位順序(左至右):道具ID/道具類型/獲得時間/有效時間/詳情
+// (遊戲/旋轉次數/每局投注額/最大贏分倍數都移到詳情裡;已使用/剩餘/用戶帳號/最後更新時間不重複顯示,見上方註解)
 function renderBackpackCurrentModal(){
   const member = backpackCurrentModalMember;
   const tbody = document.getElementById('backpack-current-tbody');
   const empty = document.getElementById('backpack-current-empty');
-  updateCurrentBackpackSortIcons();
-  const idxList = getCurrentBackpackIndexes(member);
-  if(idxList.length === 0){
+  updateBpCurrentSortIcons();
+  let list = buildItemCardData().filter(c=>c.member === member && c.status === 'unused' && bpCurrentGameFilter.has(c.gameId));
+  if(list.length === 0){
     tbody.innerHTML = '';
-    empty.textContent = `查無資料:玩家「${member}」目前背包內沒有任何道具。`;
+    empty.textContent = `查無資料:玩家「${member}」目前背包內沒有符合篩選條件的未使用道具。`;
     return;
   }
   empty.textContent = '';
-  // 先把每一筆的到期時間算好(顯示與排序共用同一份計算結果,避免重複運算或前後不一致)
-  let list = idxList.map(idx=>{
-    const r = backpackHistoryData[idx];
-    const expiry = computeExpiry(r.createdAt, r.detail.params.expireHours);
-    return { idx, r, expiresAtDate:expiry.date, expiresAtStr:expiry.str };
-  });
-  if(currentBackpackSortKey){
-    list.sort((a, b)=>{
-      const av = currentBackpackSortKey==='createdAt' ? new Date(a.r.createdAt.replace(' ','T')).getTime() : a.expiresAtDate.getTime();
-      const bv = currentBackpackSortKey==='createdAt' ? new Date(b.r.createdAt.replace(' ','T')).getTime() : b.expiresAtDate.getTime();
-      if(av<bv) return currentBackpackSortDir==='asc' ? -1 : 1;
-      if(av>bv) return currentBackpackSortDir==='asc' ? 1 : -1;
+  if(bpCurrentSortKey){
+    list = list.slice().sort((a, b)=>{
+      let av, bv;
+      if(bpCurrentSortKey === 'validFrom'){ av = new Date(a.validFrom.replace(' ','T')).getTime(); bv = new Date(b.validFrom.replace(' ','T')).getTime(); }
+      else{ av = a.validToDate.getTime(); bv = b.validToDate.getTime(); }
+      if(av<bv) return bpCurrentSortDir==='asc' ? -1 : 1;
+      if(av>bv) return bpCurrentSortDir==='asc' ? 1 : -1;
       return 0;
     });
   }
-  tbody.innerHTML = list.map(({idx, r, expiresAtStr})=>{
+  tbody.innerHTML = list.map(c=>{
+    const gameName = (GAME_LIST.find(g=>g.id===c.gameId) || {}).name || c.gameId;
     let rowHtml = `
     <tr>
-      <td>${r.createdAt}</td>
-      <td>${expiresAtStr}</td>
-      <td><span class="badge-fixed">${TX_TYPE_LABEL[r.type]}</span></td>
-      <td>${ITEM_TYPE_LABEL[r.itemType]}</td>
-      <td>${r.itemId}</td>
-      <td>${backpackExpandBtnHtml(idx)}</td>
+      <td>${c.itemId}</td>
+      <td>${ITEM_TYPE_LABEL[c.itemType]}</td>
+      <td>${gameName}</td>
+      <td>${c.validFrom}</td>
+      <td>${c.validToStr}</td>
+      <td>${itemCardExpandBtnHtml(c.itemId)}</td>
     </tr>`;
-    if(expandedBackpackRows.has(idx)) rowHtml += backpackDetailRowHtml(idx, 6);
+    if(expandedItemCardRows.has(c.itemId)) rowHtml += itemCardDetailRowHtml(c, 6, { showSpinCount:true, showUsage:false });
+    return rowHtml;
+  }).join('');
+}
+
+/* ============================================================
+   記錄查詢 > 道具卡紀錄:以「單張道具卡(itemId)」為單位彙整使用進度,
+   跟「背包紀錄」不同——背包紀錄是每一筆異動(進/出)各一列,這裡是每一張卡一列。
+   此列表是「衍生視圖」,不是獨立資料表:所有欄位都即時從 backpackHistoryData 這份 ledger 算出來,
+   確保跟背包紀錄的原始資料永遠一致,不會有兩份資料對不上的風險。
+   狀態判斷(僅供篩選,不在列表欄位顯示,因為欄位規格沒有要求顯示狀態),共 5 種:
+     未使用(unused)   = 卡片仍在背包內(未結案),且完全沒有使用進度
+     使用中(in_use)   = 卡片仍在背包內(未結案),但已有部分使用進度(見下方架構限制說明)
+     已完成(completed) = 有「使用」結案紀錄(玩家自己把全部局數玩完)
+     已過期(expired)   = 有「道具到期」結案紀錄(不論到期前有沒有用過幾局,統一算已過期)
+     已取消(cancelled) = 有「人工取消」結案紀錄(客服/系統主動收回,跟時間到的「已過期」是不同原因)
+   ============================================================ */
+const ITEM_CARD_STATUS_LABEL = {
+  unused:{ text:'未使用', cls:'pill-muted' },
+  in_use:{ text:'使用中', cls:'pill-warning' },
+  completed:{ text:'已完成', cls:'pill-success' },
+  expired:{ text:'已過期', cls:'pill-danger' },
+  cancelled:{ text:'已取消', cls:'pill-purple' }
+};
+// 目前架構限制:一張卡「還在背包內(未結案)」時,ledger 本身沒有即時的玩局資料
+// (ledger 只在道具離開背包的那一刻才記錄用了幾局)。這裡的 progressSpins 是放在 add 紀錄上的
+// 示意用「即時使用進度」欄位,用來示範「使用中」這個狀態長什麼樣子;正式串接應改由即時對局系統
+// 提供這份即時進度,不會是憑空寫在 add 紀錄裡。
+function buildItemCardData(){
+  const byItem = {};
+  backpackHistoryData.forEach(r=>{
+    if(!byItem[r.itemId]) byItem[r.itemId] = { itemId:r.itemId, addRecord:null, closeRecord:null };
+    if(r.detail.mode === 'add') byItem[r.itemId].addRecord = r;
+    if(r.detail.mode === 'use' || r.detail.mode === 'expire' || r.detail.mode === 'cancel') byItem[r.itemId].closeRecord = r;
+  });
+  return Object.values(byItem).filter(x=>x.addRecord).map(x=>{
+    const add = x.addRecord;
+    const close = x.closeRecord;
+    const p = add.detail.params;
+    const totalSpinCount = Number(p.spinCount);
+    const spins = close ? (close.detail.spins || []) : (add.detail.progressSpins || []);
+    const usedCount = spins.length;
+    const remainCount = totalSpinCount - usedCount;
+    const validTo = computeExpiry(add.createdAt, p.expireHours);
+    let status;
+    if(!close){
+      status = usedCount > 0 ? 'in_use' : 'unused';
+    }else if(close.detail.mode === 'use'){
+      status = 'completed';
+    }else if(close.detail.mode === 'cancel'){
+      status = 'cancelled';
+    }else{
+      status = 'expired';
+    }
+    return {
+      itemId: x.itemId,
+      itemType: add.itemType,
+      member: add.member,
+      gameId: p.gameId,
+      betLevel: p.betLevel,
+      maxWinDisplay: formatMaxWinDisplay(p.maxWinMode, p.maxWinMultiplier),
+      totalSpinCount, usedCount, remainCount,
+      validFrom: add.createdAt,
+      validToDate: validTo.date,
+      validToStr: validTo.str,
+      lastUpdatedAt: close ? close.createdAt : add.createdAt,
+      status,
+      spins
+    };
+  });
+}
+
+// timeField:'validFrom'(獲得時間)| 'validTo'(有效時間),決定下方時間區間是套用在哪個時間欄位上
+function defaultItemCardFilterState(){
+  return {
+    timeField:'validFrom',
+    startDate:'2026-07-01', startTime:'00:00:00',
+    endDate:'2026-07-20', endTime:'23:59:59',
+    member:'', itemId:'',
+    statuses: new Set(Object.keys(ITEM_CARD_STATUS_LABEL)),
+    games: new Set(GAME_LIST.map(g=>g.id))
+  };
+}
+let itemCardFilterState = defaultItemCardFilterState();
+
+function renderItemCardFilterStatusControl(){
+  const el = document.getElementById('itemcard-filter-status-summary');
+  if(!el) return;
+  if(itemCardFilterState.statuses.size===0){ el.textContent='狀態:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  el.textContent = '狀態:'+Array.from(itemCardFilterState.statuses).map(s=>ITEM_CARD_STATUS_LABEL[s].text).join('、');
+}
+function renderItemCardFilterStatusPanel(){
+  const panel = document.getElementById('itemcard-filter-status-panel');
+  if(!panel) return;
+  panel.innerHTML = `<div class="ms-list">${Object.keys(ITEM_CARD_STATUS_LABEL).map(s=>`
+    <label class="ms-option">
+      <input type="checkbox" ${itemCardFilterState.statuses.has(s)?'checked':''} onchange="toggleItemCardFilterStatus('${s}', this.checked)"> ${ITEM_CARD_STATUS_LABEL[s].text}
+    </label>`).join('')}</div>`;
+}
+function toggleItemCardFilterStatus(status, checked){
+  if(checked) itemCardFilterState.statuses.add(status); else itemCardFilterState.statuses.delete(status);
+  renderItemCardFilterStatusControl();
+}
+function renderItemCardFilterGameControl(){
+  const el = document.getElementById('itemcard-filter-game-summary');
+  if(!el) return;
+  if(itemCardFilterState.games.size===0){ el.textContent='遊戲:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  if(itemCardFilterState.games.size===GAME_LIST.length){ el.textContent='遊戲:所有遊戲'; return; }
+  el.textContent = '遊戲:'+GAME_LIST.filter(g=>itemCardFilterState.games.has(g.id)).map(g=>g.name).join('、');
+}
+function renderItemCardFilterGamePanel(){
+  const panel = document.getElementById('itemcard-filter-game-panel');
+  if(!panel) return;
+  panel.innerHTML = `<div class="ms-list">${GAME_LIST.map(g=>`
+    <label class="ms-option">
+      <input type="checkbox" ${itemCardFilterState.games.has(g.id)?'checked':''} onchange="toggleItemCardFilterGame('${g.id}', this.checked)"> ${g.name}
+    </label>`).join('')}</div>`;
+}
+function toggleItemCardFilterGame(gameId, checked){
+  if(checked) itemCardFilterState.games.add(gameId); else itemCardFilterState.games.delete(gameId);
+  renderItemCardFilterGameControl();
+}
+// 依目前 itemCardFilterState 判斷單張道具卡是否符合;時間區間依「timeField」套用在對應欄位上
+// (獲得時間=validFrom;有效時間=validTo),只要該欄位的時間點落在搜尋區間內就算符合
+function itemCardMatchesFilter(c){
+  if(itemCardFilterState.statuses.size>0 && !itemCardFilterState.statuses.has(c.status)) return false;
+  if(itemCardFilterState.games.size>0 && !itemCardFilterState.games.has(c.gameId)) return false;
+  const memberKw = (itemCardFilterState.member||'').trim().toLowerCase();
+  if(memberKw && !c.member.toLowerCase().includes(memberKw)) return false;
+  const itemKw = (itemCardFilterState.itemId||'').trim().toLowerCase();
+  if(itemKw && !c.itemId.toLowerCase().includes(itemKw)) return false;
+  const fStart = new Date(`${itemCardFilterState.startDate}T${itemCardFilterState.startTime}`);
+  const fEnd = new Date(`${itemCardFilterState.endDate}T${itemCardFilterState.endTime}`);
+  const targetDate = itemCardFilterState.timeField === 'validTo' ? c.validToDate : new Date(c.validFrom.replace(' ','T'));
+  if(targetDate < fStart || targetDate > fEnd) return false;
+  return true;
+}
+function getFilteredItemCards(){
+  return buildItemCardData().filter(itemCardMatchesFilter);
+}
+function applyItemCardFilter(){
+  itemCardFilterState.timeField = document.getElementById('itemcard-filter-time-field').value;
+  itemCardFilterState.startDate = document.getElementById('itemcard-filter-start-date').value;
+  itemCardFilterState.startTime = document.getElementById('itemcard-filter-start-time').value || '00:00:00';
+  itemCardFilterState.endDate = document.getElementById('itemcard-filter-end-date').value;
+  itemCardFilterState.endTime = document.getElementById('itemcard-filter-end-time').value || '23:59:59';
+  itemCardFilterState.member = document.getElementById('itemcard-filter-member').value;
+  itemCardFilterState.itemId = document.getElementById('itemcard-filter-itemid').value;
+  renderItemCardTable();
+}
+function renderItemCardFilterControls(){
+  document.getElementById('itemcard-filter-time-field').value = itemCardFilterState.timeField;
+  setDatePickerValue('itemcard-filter','start', itemCardFilterState.startDate);
+  document.getElementById('itemcard-filter-start-time').value = itemCardFilterState.startTime;
+  setDatePickerValue('itemcard-filter','end', itemCardFilterState.endDate);
+  document.getElementById('itemcard-filter-end-time').value = itemCardFilterState.endTime;
+  document.getElementById('itemcard-filter-member').value = itemCardFilterState.member;
+  document.getElementById('itemcard-filter-itemid').value = itemCardFilterState.itemId;
+  renderItemCardFilterStatusControl(); renderItemCardFilterStatusPanel();
+  renderItemCardFilterGameControl(); renderItemCardFilterGamePanel();
+}
+function resetItemCardFilter(){
+  itemCardFilterState = defaultItemCardFilterState();
+  renderItemCardFilterControls();
+  renderItemCardTable();
+}
+// 詳情:比照背包紀錄的呈現方式,只列「局數/注單ID」,已使用/剩餘/旋轉次數都已經是外層列表欄位,不重複顯示
+let expandedItemCardRows = new Set(); // 以 itemId 為 key(此列表為即時彙整結果,陣列順序可能因排序/篩選變動,itemId 才是穩定識別)
+function toggleItemCardRow(itemId){
+  if(expandedItemCardRows.has(itemId)) expandedItemCardRows.delete(itemId);
+  else expandedItemCardRows.add(itemId);
+  renderItemCardTable();
+  // 「用戶帳號 > 目前背包」彈窗若開啟中,也一併重繪,否則看不到展開後的內容(兩處共用同一組展開狀態)
+  if(document.getElementById('backpack-current-modal-overlay').classList.contains('open')) renderBackpackCurrentModal();
+}
+// 詳情內容:道具參數(每局投注額/最大贏分倍數,遊戲/有效時間已是外層列表欄位,不重複顯示)
+// + 使用投注明細(原本在背包紀錄詳情裡的內容,已依需求移到這裡統一維護,避免兩處資料對不上)。
+// opts.showSpinCount:「用戶帳號 > 目前背包」彈窗把旋轉次數移到詳情裡顯示(該彈窗外層列表沒有這欄),
+// 道具卡紀錄頁本身旋轉次數已是外層欄位,不用再傳這個參數重複顯示。
+function itemCardDetailContentHtml(c, opts){
+  opts = opts || {};
+  const gameHtml = opts.showGame
+    ? `<div class="detail-row"><span class="k">遊戲</span><span class="v">${(GAME_LIST.find(g=>g.id===c.gameId) || {}).name || c.gameId}</span></div>`
+    : '';
+  const spinCountHtml = opts.showSpinCount
+    ? `<div class="detail-row"><span class="k">旋轉次數</span><span class="v">${c.totalSpinCount}</span></div>`
+    : '';
+  const paramsHtml = `
+    ${gameHtml}
+    ${spinCountHtml}
+    <div class="detail-row"><span class="k">每局投注額</span><span class="v">${c.betLevel}</span></div>
+    <div class="detail-row"><span class="k">最大贏分倍數</span><span class="v">${c.maxWinDisplay}</span></div>`;
+  // showUsage 預設 true(道具卡紀錄頁);「玩家目前背包」彈窗只列狀態為未使用的卡片,
+  // 使用投注明細一定是空的,顯示只會看到「目前尚無使用紀錄」這種沒有資訊量的文字,所以那邊改傳 false 不顯示這段
+  let spinsHtml = '';
+  if(opts.showUsage !== false){
+    if(!c.spins || c.spins.length === 0){
+      spinsHtml = `<div style="margin-top:12px;padding:6px 2px;color:var(--text-secondary);font-size:12.5px;">目前尚無使用紀錄。</div>`;
+    }else{
+      spinsHtml = `
+      <div style="margin-top:12px;">
+        <div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:6px;font-weight:600;">使用投注明細</div>
+        <table style="width:100%;background:#fff;"><thead><tr><th>局數</th><th>建立時間</th><th>注單ID</th></tr></thead>
+        <tbody>${c.spins.map(s=>`<tr><td class="num">第 ${s.no} 局</td><td>${s.createdAt||'-'}</td><td>${s.betId}</td></tr>`).join('')}</tbody></table>
+        ${c.status==='expired' && c.remainCount>0 ? `<div style="margin-top:8px;font-size:12.5px;color:var(--text-secondary);">剩餘 ${c.remainCount} 局因道具到期,已自動失效(未觸發下注,無注單ID)</div>` : ''}
+      </div>`;
+    }
+  }
+  return `<div class="bp-detail-grid">${paramsHtml}</div>${spinsHtml}`;
+}
+function itemCardDetailRowHtml(c, colspan, opts){
+  return `<tr><td class="bp-detail-td" colspan="${colspan}">${itemCardDetailContentHtml(c, opts)}</td></tr>`;
+}
+function itemCardExpandBtnHtml(itemId){
+  const isOpen = expandedItemCardRows.has(itemId);
+  return `<button class="bp-expand-btn${isOpen?' open':''}" onclick="toggleItemCardRow('${itemId}')" title="展開/收合詳情">${iconSvg('chevronDown',14)}</button>`;
+}
+// 排序:獲得時間/有效時間/最後更新時間,點擊同一欄再點一次切換升冪/降冪(與其他頁籤排序邏輯一致)
+let itemCardSortKey = null;   // null | 'validFrom' | 'validTo' | 'lastUpdatedAt'
+let itemCardSortDir = 'asc';  // 'asc' | 'desc'
+function sortItemCardBy(key){
+  if(itemCardSortKey === key){
+    itemCardSortDir = itemCardSortDir === 'asc' ? 'desc' : 'asc';
+  }else{
+    itemCardSortKey = key;
+    itemCardSortDir = 'asc';
+  }
+  renderItemCardTable();
+}
+function updateItemCardSortIcons(){
+  ['validFrom','validTo','lastUpdatedAt'].forEach(key=>{
+    const el = document.getElementById('itemcard-sort-icon-'+key);
+    if(!el) return;
+    if(itemCardSortKey===key){
+      el.textContent = itemCardSortDir==='asc' ? '▲' : '▼';
+      el.classList.add('active');
+    }else{
+      el.textContent = '↕';
+      el.classList.remove('active');
+    }
+  });
+}
+function getSortedItemCards(){
+  const list = getFilteredItemCards();
+  if(!itemCardSortKey) return list;
+  const sorted = list.slice();
+  sorted.sort((a, b)=>{
+    let av, bv;
+    if(itemCardSortKey === 'validFrom'){ av = new Date(a.validFrom.replace(' ','T')).getTime(); bv = new Date(b.validFrom.replace(' ','T')).getTime(); }
+    else if(itemCardSortKey === 'validTo'){ av = a.validToDate.getTime(); bv = b.validToDate.getTime(); }
+    else{ av = new Date(a.lastUpdatedAt.replace(' ','T')).getTime(); bv = new Date(b.lastUpdatedAt.replace(' ','T')).getTime(); }
+    if(av<bv) return itemCardSortDir==='asc' ? -1 : 1;
+    if(av>bv) return itemCardSortDir==='asc' ? 1 : -1;
+    return 0;
+  });
+  return sorted;
+}
+// 欄位順序(左至右):道具ID/用戶帳號/遊戲/旋轉次數/已使用/剩餘/獲得時間/有效時間/最後更新時間/狀態/詳情
+function renderItemCardTable(){
+  const tbody = document.getElementById('itemcard-tbody');
+  updateItemCardSortIcons();
+  const list = getSortedItemCards();
+  if(list.length === 0){
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--text-secondary);padding:20px;">查無符合條件的資料</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(c=>{
+    const gameName = (GAME_LIST.find(g=>g.id===c.gameId) || {}).name || c.gameId;
+    const st = ITEM_CARD_STATUS_LABEL[c.status];
+    let rowHtml = `
+    <tr>
+      <td>${c.itemId}</td>
+      <td>${c.member}</td>
+      <td>${gameName}</td>
+      <td class="num">${c.totalSpinCount}</td>
+      <td class="num">${c.usedCount}</td>
+      <td class="num">${c.remainCount}</td>
+      <td>${c.validFrom}</td>
+      <td>${c.validToStr}</td>
+      <td>${c.lastUpdatedAt}</td>
+      <td><span class="pill ${st.cls}">${st.text}</span></td>
+      <td>${itemCardExpandBtnHtml(c.itemId)}</td>
+    </tr>`;
+    if(expandedItemCardRows.has(c.itemId)) rowHtml += itemCardDetailRowHtml(c, 11);
     return rowHtml;
   }).join('');
 }
@@ -3484,6 +3845,8 @@ renderRecordFilterControls();
 renderRecordTable();
 renderBackpackFilterControls();
 renderBackpackTable();
+renderItemCardFilterControls();
+renderItemCardTable();
 renderUserAccountTable();
 renderReportPanel();
 mountIcons();
