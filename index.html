@@ -114,6 +114,33 @@
   .icon-bag{background:#0ea5a4;}
   .btn-resend{background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning);font-weight:600;padding:5px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;}
   .btn-resend:hover{background:var(--warning);color:#fff;}
+  /* ---------- 匯出下載中心(topbar 下載icon:分類選單 + 下載列表面板) ---------- */
+  .dl-wrap{position:relative;}
+  .dl-category-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 12px 28px rgba(20,20,30,.16);min-width:150px;z-index:200;overflow:hidden;}
+  .dl-category-menu.open{display:block;}
+  .dl-category-item{padding:11px 16px;font-size:13.5px;color:var(--text);cursor:pointer;}
+  .dl-category-item:hover{background:#f5f6f8;}
+  .dl-panel{display:none;position:absolute;top:calc(100% + 6px);right:0;width:330px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 16px 40px rgba(20,20,30,.2);z-index:200;overflow:hidden;}
+  .dl-panel.open{display:block;}
+  .dl-panel-header{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text);}
+  .dl-panel-header .dl-panel-icon{color:var(--text-secondary);display:flex;}
+  .dl-panel-header .dl-panel-title{flex:1;font-size:14px;font-weight:600;}
+  .dl-panel-add{width:24px;height:24px;border-radius:6px;background:#3fbf6f;color:#fff;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+  .dl-panel-add:hover{opacity:.85;}
+  .dl-panel-list{max-height:360px;overflow-y:auto;}
+  .dl-job{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;}
+  .dl-job:last-child{border-bottom:none;}
+  .dl-job-dot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:0 0 auto;}
+  .dl-job-dot.processing{background:#f5a623;}
+  .dl-job-dot.done{background:var(--success);}
+  .dl-job-body{flex:1;min-width:0;}
+  .dl-job-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;}
+  .dl-job-meta{font-size:12px;color:var(--text-secondary);line-height:1.5;word-break:break-all;}
+  .dl-job-expire{font-size:11.5px;color:var(--accent);margin-top:4px;}
+  .dl-job-actions{display:flex;gap:6px;flex:0 0 auto;padding-top:2px;}
+  .dl-job-actions .icon-action{margin-right:0;width:24px;height:24px;}
+  .dl-job-actions .icon-action.disabled{opacity:.35;cursor:not-allowed;pointer-events:none;}
+  .dl-panel-empty{padding:26px 14px;text-align:center;font-size:13px;color:var(--text-secondary);}
   /* ---------- Stat cards (紀錄頁統計) ---------- */
   .stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
   #report-stats{grid-template-columns:repeat(6,1fr);}
@@ -270,7 +297,23 @@
     <div class="spacer"></div>
     <div class="icon-btn" title="重新整理"></div>
     <div class="icon-btn" title="複製"></div>
-    <div class="icon-btn" title="下載"></div>
+    <!-- 匯出下載中心:點擊圖示 → 選分類 → 開該分類下載列表 → 「+」開輸出設定 → 送出後排入非同步任務,
+         完成後回此列表下載(比照參考截圖的既有流程示意,目前僅「任務紀錶」一個分類,之後有其他清單頁
+         要支援匯出,可直接在分類選單/DOWNLOAD_CATEGORIES 裡擴充) -->
+    <div class="dl-wrap">
+      <div class="icon-btn" title="下載" data-icon="download" onclick="toggleDlCategoryMenu()"></div>
+      <div class="dl-category-menu" id="dl-category-menu">
+        <div class="dl-category-item" onclick="openDownloadPanel('mission-record')">任務紀錶下載</div>
+      </div>
+      <div class="dl-panel" id="dl-panel">
+        <div class="dl-panel-header">
+          <span class="dl-panel-icon" data-icon="folder"></span>
+          <span class="dl-panel-title" id="dl-panel-title"></span>
+          <button class="dl-panel-add" title="新增輸出" onclick="openExportSettingModal(dlPanelCategory, false)">+</button>
+        </div>
+        <div class="dl-panel-list" id="dl-panel-list"></div>
+      </div>
+    </div>
     <select style="margin-left:4px;"><option>繁體中文</option><option>English</option></select>
     <div class="user"><div class="avatar">Y</div>yvonne</div>
   </div>
@@ -448,7 +491,7 @@
             <button class="btn btn-primary" onclick="applyRecordFilter()" style="align-self:flex-start;">搜尋</button>
             <button class="btn btn-outline" onclick="resetRecordFilter()" style="align-self:flex-start;">重置</button>
             <div class="spacer-flex"></div>
-            <button class="btn btn-outline" onclick="exportRecords()" style="align-self:flex-start;"><span class="icon" data-icon="download"></span> 匯出</button>
+            <button class="btn btn-outline" onclick="openExportSettingModal('mission-record', true)" style="align-self:flex-start;"><span class="icon" data-icon="download"></span> 匯出</button>
           </div>
           <div class="stat-cards" id="record-stats"></div>
           <table>
@@ -895,6 +938,140 @@
   </div>
 </div>
 
+<!-- ============ 輸出設定 Modal ============
+     先選搜尋方式:時間 / 活動ID,兩種欄位完全分開、不共用。
+     時間模式:時間類型(開始/達成/派獎)+日期區間+高級營運(快速勾選底下所有營運)+營運+幣別+用戶帳號+狀態
+     活動ID模式:只有活動ID 這一個欄位,其他條件都不提供(已指定單一活動,不需要再疊加其他篩選) ============ -->
+<div class="modal-overlay" id="export-setting-modal-overlay">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3>輸出設定</h3>
+      <span class="modal-close" onclick="closeExportSettingModal()" data-icon="close"></span>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <span style="color:var(--text-secondary);font-size:12.5px;font-weight:600;align-self:center;">搜尋方式</span>
+        <button class="btn btn-primary" id="export-mode-time-btn" onclick="setExportSettingMode('time')" style="align-self:flex-start;">時間</button>
+        <button class="btn btn-outline" id="export-mode-activityid-btn" onclick="setExportSettingMode('activityId')" style="align-self:flex-start;">活動ID</button>
+      </div>
+
+      <!-- ---------- 時間模式專屬欄位(營運/幣別/用戶/狀態都只在這個模式下) ---------- -->
+      <div id="export-fields-time">
+        <div class="form-row">
+          <div class="form-item">
+            <label>時間類型</label>
+            <select id="export-setting-time-type-select">
+              <option value="claimedAt">開始時間</option>
+              <option value="achievedAt">達成時間</option>
+              <option value="rewardedAt">派獎時間</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-item" style="flex:1 1 100%;">
+            <label>開始日期</label>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div class="ms date-picker" id="export-setting-start-dp">
+                <div class="ms-control" onclick="toggleDatePicker('export-setting','start')">
+                  <span class="ms-summary" id="export-setting-start-date-label"></span>
+                  <span class="chevron" data-icon="calendar"></span>
+                </div>
+                <input type="hidden" id="export-setting-start-date">
+                <div class="ms-panel" id="export-setting-start-date-panel"></div>
+              </div>
+              <input type="time" id="export-setting-start-time" step="1" lang="en-GB">
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-item" style="flex:1 1 100%;">
+            <label>結束日期</label>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div class="ms date-picker" id="export-setting-end-dp">
+                <div class="ms-control" onclick="toggleDatePicker('export-setting','end')">
+                  <span class="ms-summary" id="export-setting-end-date-label"></span>
+                  <span class="chevron" data-icon="calendar"></span>
+                </div>
+                <input type="hidden" id="export-setting-end-date">
+                <div class="ms-panel" id="export-setting-end-date-panel"></div>
+              </div>
+              <input type="time" id="export-setting-end-time" step="1" lang="en-GB">
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-item">
+            <label>高級營運(可複選,選填;選擇後自動勾選底下所有營運)</label>
+            <div class="ms" id="export-setting-master-ms">
+              <div class="ms-control" onclick="toggleDropdownById('export-setting-master-ms')">
+                <span class="ms-summary" id="export-setting-master-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="export-setting-master-panel"></div>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-item">
+            <label>選擇營運(可複選,預設不限)</label>
+            <div class="ms" id="export-setting-operator-ms">
+              <div class="ms-control" onclick="toggleDropdownById('export-setting-operator-ms')">
+                <span class="ms-summary" id="export-setting-operator-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="export-setting-operator-panel"></div>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-item">
+            <label>幣別(可複選,預設不限)</label>
+            <div class="ms" id="export-setting-currency-ms">
+              <div class="ms-control" onclick="toggleDropdownById('export-setting-currency-ms')">
+                <span class="ms-summary" id="export-setting-currency-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="export-setting-currency-panel"></div>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-item">
+            <label>搜尋用戶</label>
+            <input type="text" id="export-setting-member" placeholder="搜尋用戶賬號">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-item">
+            <label>狀態</label>
+            <select id="export-setting-status-select">
+              <option value="">全部</option>
+              <option value="progress">進行中</option>
+              <option value="pending_reward">未領獎</option>
+              <option value="done">已完成</option>
+              <option value="expired">未達成</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- 活動ID模式:只有活動ID 一個欄位 ---------- -->
+      <div id="export-fields-activityid" style="display:none;">
+        <div class="form-row">
+          <div class="form-item" style="flex:1 1 100%;">
+            <label>活動ID</label>
+            <input type="text" id="export-setting-activityid" placeholder="輸入活動ID">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeExportSettingModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitExportSetting()">確認</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    Icon 系統:以 inline SVG 取代 emoji,維持風格一致
@@ -913,7 +1090,8 @@ const ICON_PATHS = {
   clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   download:'<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/>',
   pause:'<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
-  bag:'<path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/><rect x="4" y="7" width="16" height="14" rx="2"/><path d="M9 12h6"/>'
+  bag:'<path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/><rect x="4" y="7" width="16" height="14" rx="2"/><path d="M9 12h6"/>',
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>'
 };
 function iconSvg(name, size){
   size = size || 16;
@@ -1751,6 +1929,14 @@ document.addEventListener('mousedown', function(e){
   if(!openDropdownId) return;
   const openEl = document.getElementById(openDropdownId);
   if(openEl && !openEl.contains(e.target)) closeAllDropdowns();
+});
+// 匯出下載中心(分類選單/下載列表面板)點擊外部收合,獨立於上面 .ms 那套(這兩個不是 .ms 結構)
+document.addEventListener('mousedown', function(e){
+  const wrap = document.querySelector('.dl-wrap');
+  if(wrap && !wrap.contains(e.target)){
+    closeDlCategoryMenu();
+    closeDownloadPanel();
+  }
 });
 
 /* ============================================================
@@ -2748,12 +2934,13 @@ function renderRecordStats(filtered){
     <div class="stat-card"><div class="label">達成次數</div><div class="value">${achievedCount.toLocaleString()}</div></div>
     <div class="stat-card"><div class="label">派獎次數</div><div class="value">${rewardedCount.toLocaleString()}</div></div>`;
 }
-// 匯出紀錄:欄位順序與「查看詳情」完全一致(活動ID/任務名稱/營運/用戶賬號/任務編號/任務類型/任務內容/
-// 累積進度/獎勵內容/開始時間/達成時間/派獎時間/結束時間/背包紀錄單號/狀態),且僅匯出「目前篩選後」的清單
+// 匯出 CSV 共用組檔邏輯:欄位順序與「查看詳情」完全一致(活動ID/任務名稱/營運/用戶賬號/任務編號/任務類型/任務內容/
+// 累積進度/獎勵內容/開始時間/達成時間/派獎時間/結束時間/背包紀錄單號/狀態)
 // (示意用,加 BOM 避免 Excel 開啟中文亂碼)
-function exportRecords(){
+// 這份組檔邏輯同時被「輸出設定」送出後的非同步任務(downloadJobFile)沿用,避免兩處欄位定義各自維護、跑掉不同步
+function buildAndDownloadRecordsCsv(filteredRows, filenamePrefix){
   const headers = ['活動ID','任務名稱','營運','用戶賬號','任務編號','任務類型','任務內容','累積進度','獎勵內容','開始時間','達成時間','派獎時間','結束時間','背包紀錄單號','狀態'];
-  const rows = getFilteredRecords().map(({r})=>{
+  const rows = filteredRows.map(({r})=>{
     const missionEndAt = (missions.find(m=>m.id===r.activityId) || {}).end || '';
     return [
       r.activityId, r.activity, r.operator, r.member, r.taskNo, TASK_TYPES[r.taskType].label,
@@ -2770,11 +2957,334 @@ function exportRecords(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `任務紀錄_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `${filenamePrefix}_${new Date().toISOString().slice(0,10)}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+// 依「輸出設定」送出時凍結的篩選條件(filterSnapshot)重新計算命中清單。
+// 這裡不沿用畫面搜尋列的 recordMatchesFilter(),因為輸出設定改成「時間 / 活動ID」二選一的獨立搜尋邏輯,
+// 跟畫面搜尋列的欄位組合不完全一樣,獨立寫一份比對函式,避免互相干擾。
+// 活動ID模式只比對活動ID,其餘條件(營運/用戶/幣別/狀態/時間)一律不套用,對應規格「只針對活動ID」。
+function recordMatchesExportSnapshot(r, snap){
+  if(snap.mode === 'activityId'){
+    const kw = (snap.activityId||'').trim().toLowerCase();
+    if(kw && !r.activityId.toLowerCase().includes(kw)) return false;
+    return true;
+  }
+  // mode === 'time'
+  if(snap.operators && snap.operators.size>0){
+    const names = new Set();
+    operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(snap.operators.has(c.id)) names.add(c.name); }));
+    if(!names.has(r.operator)) return false;
+  }
+  const memberKw = (snap.member||'').trim().toLowerCase();
+  if(memberKw && !r.member.toLowerCase().includes(memberKw)) return false;
+  if(snap.status && r.status !== snap.status) return false;
+  if(snap.currencies && snap.currencies.size>0 && !(r.currencyCode && snap.currencies.has(r.currencyCode))) return false;
+  const ts = r[snap.timeType];
+  if(!ts) return false;
+  const t = new Date(ts.replace(' ','T'));
+  const fStart = new Date(`${snap.startDate}T${snap.startTime}`);
+  const fEnd = new Date(`${snap.endDate}T${snap.endTime}`);
+  if(t < fStart || t > fEnd) return false;
+  return true;
+}
+function getRecordsForExportSnapshot(snapshot){
+  return recordsData.map((r, idx)=>({ r, idx })).filter(x=>recordMatchesExportSnapshot(x.r, snapshot));
+}
+
+/* ============================================================
+   匯出下載中心:topbar 下載icon → 分類選單 → 下載列表面板 → 輸出設定 → 非同步任務
+   目前只有「任務紀錶」一個分類;之後其他清單頁(背包紀錶/道具卡紀錶等)要支援匯出,
+   可以在 DOWNLOAD_CATEGORIES 裡新增項目,並讓對應頁面的「匯出」按鈕呼叫
+   openExportSettingModal(該分類, true) 即可沿用同一套下載列表/非同步任務機制
+   ============================================================ */
+const DOWNLOAD_CATEGORIES = {
+  'mission-record': { title:'任務紀錶下載', filename:'任務紀錶' }
+};
+// 示意用:預先放一筆「已完成」的歷史任務,讓下載列表一開始不是空的(比照參考截圖的呈現方式)
+let downloadJobs = [
+  {
+    id:'dlj-0001', category:'mission-record',
+    title:'營運:不限',
+    lines:['搜尋方式:時間・狀態:全部', '2026-07-01 00:00 ~ 2026-07-20 23:59'],
+    createdAt:'2026-08-24 09:00:00', status:'done',
+    filterSnapshot:{ mode:'time', timeType:'claimedAt', startDate:'2026-07-01', startTime:'00:00:00', endDate:'2026-07-20', endTime:'23:59:59', currencies:new Set(), operators:new Set(), member:'', status:'' }
+  }
+];
+let downloadJobSeq = 2;
+let dlPanelCategory = null;
+let dlCategoryMenuOpen = false;
+let dlPanelOpen = false;
+
+function toggleDlCategoryMenu(){
+  closeDownloadPanel();
+  dlCategoryMenuOpen = !dlCategoryMenuOpen;
+  document.getElementById('dl-category-menu').classList.toggle('open', dlCategoryMenuOpen);
+}
+function closeDlCategoryMenu(){
+  dlCategoryMenuOpen = false;
+  const el = document.getElementById('dl-category-menu');
+  if(el) el.classList.remove('open');
+}
+function openDownloadPanel(category){
+  closeDlCategoryMenu();
+  dlPanelCategory = category;
+  dlPanelOpen = true;
+  document.getElementById('dl-panel-title').textContent = DOWNLOAD_CATEGORIES[category].title;
+  document.getElementById('dl-panel').classList.add('open');
+  renderDownloadPanel();
+}
+function closeDownloadPanel(){
+  dlPanelOpen = false;
+  const panel = document.getElementById('dl-panel');
+  if(panel) panel.classList.remove('open');
+}
+function renderDownloadPanel(){
+  if(!dlPanelOpen) return;
+  const list = document.getElementById('dl-panel-list');
+  const jobs = downloadJobs.filter(j=>j.category===dlPanelCategory);
+  if(jobs.length===0){
+    list.innerHTML = `<div class="dl-panel-empty">目前尚無匯出紀錶,點擊右上角「+」建立新的匯出。</div>`;
+    return;
+  }
+  list.innerHTML = jobs.map(j=>{
+    const dotCls = j.status==='done' ? 'done' : 'processing';
+    const statusText = j.status==='done' ? '已完成,12 小時後刪除' : '處理中,請稍候…';
+    const downloadDisabled = j.status!=='done';
+    return `
+    <div class="dl-job">
+      <span class="dl-job-dot ${dotCls}"></span>
+      <div class="dl-job-body">
+        <div class="dl-job-title">${j.title}</div>
+        ${(j.lines||[]).map(line=>`<div class="dl-job-meta">${line}</div>`).join('')}
+        <div class="dl-job-expire">${statusText}</div>
+      </div>
+      <div class="dl-job-actions">
+        <span class="icon-action icon-view${downloadDisabled?' disabled':''}" title="下載" data-icon="download" onclick="downloadJobFile('${j.id}')"></span>
+        <span class="icon-action icon-del" title="刪除" data-icon="trash" onclick="deleteDownloadJob('${j.id}')"></span>
+      </div>
+    </div>`;
+  }).join('');
+  mountIcons(); // 面板內容每次都是重新 innerHTML,動態產生的 data-icon 需要重新掛載成 SVG
+}
+function deleteDownloadJob(jobId){
+  downloadJobs = downloadJobs.filter(j=>j.id!==jobId);
+  renderDownloadPanel();
+}
+function downloadJobFile(jobId){
+  const job = downloadJobs.find(j=>j.id===jobId);
+  if(!job || job.status!=='done') return; // 尚未完成的任務,下載icon本身也已用 disabled 樣式擋掉點擊
+  const rows = getRecordsForExportSnapshot(job.filterSnapshot);
+  buildAndDownloadRecordsCsv(rows, DOWNLOAD_CATEGORIES[job.category].filename);
+}
+
+/* ---------------- 輸出設定 Modal ---------------- */
+let exportSettingMode = 'time'; // 'time' | 'activityId',先選搜尋方式,兩者欄位完全分開
+let exportSettingOperators = new Set();
+let exportSettingMasters = new Set(); // 高級營運快速選取(勾選後自動連動勾選底下所有營運,僅時間模式使用)
+let exportSettingOperatorSearch = '';
+let exportSettingCurrencies = new Set(); // 僅時間模式使用
+function setExportSettingMode(mode){
+  exportSettingMode = mode;
+  document.getElementById('export-mode-time-btn').className = mode==='time' ? 'btn btn-primary' : 'btn btn-outline';
+  document.getElementById('export-mode-activityid-btn').className = mode==='activityId' ? 'btn btn-primary' : 'btn btn-outline';
+  document.getElementById('export-fields-time').style.display = mode==='time' ? '' : 'none';
+  document.getElementById('export-fields-activityid').style.display = mode==='activityId' ? '' : 'none';
+}
+function openExportSettingModal(category, prefillFromScreen){
+  dlPanelCategory = category || 'mission-record';
+  closeDownloadPanel();
+  closeDlCategoryMenu();
+  exportSettingOperatorSearch = '';
+  setExportSettingMode('time'); // 兩個入口都先預設「時間」模式(畫面搜尋列本身也是時間類的搜尋,活動ID是輸出設定才有的新選項)
+  document.getElementById('export-setting-activityid').value = '';
+  exportSettingMasters = new Set(); // 高級營運快速選取每次開啟都重置(畫面搜尋列本身沒有高級營運狀態可帶入)
+  if(prefillFromScreen){
+    // 從紀錶查詢頁「匯出」按鈕開啟:直接帶入目前畫面上的搜尋條件,不用重填一次
+    // (畫面搜尋列的狀態是複選,這裡的「狀態」是單選下拉——若目前剛好只選了 1 個狀態就代入,否則視為「全部」)
+    exportSettingOperators = new Set(recordFilterState.operators);
+    exportSettingCurrencies = new Set(recordFilterState.currencies);
+    document.getElementById('export-setting-time-type-select').value = recordFilterState.timeType;
+    setDatePickerValue('export-setting','start', recordFilterState.startDate);
+    document.getElementById('export-setting-start-time').value = recordFilterState.startTime;
+    setDatePickerValue('export-setting','end', recordFilterState.endDate);
+    document.getElementById('export-setting-end-time').value = recordFilterState.endTime;
+    document.getElementById('export-setting-status-select').value =
+      recordFilterState.statuses.size===1 ? Array.from(recordFilterState.statuses)[0] : '';
+    document.getElementById('export-setting-member').value = recordFilterState.member || '';
+  }else{
+    // 從 topbar 下載icon 開啟:給預設空白條件(不限),示意用預設區間比照紀錶查詢頁預設值
+    exportSettingOperators = new Set();
+    exportSettingCurrencies = new Set();
+    document.getElementById('export-setting-time-type-select').value = 'claimedAt';
+    setDatePickerValue('export-setting','start', '2026-07-01');
+    document.getElementById('export-setting-start-time').value = '00:00:00';
+    setDatePickerValue('export-setting','end', '2026-07-20');
+    document.getElementById('export-setting-end-time').value = '23:59:59';
+    document.getElementById('export-setting-status-select').value = '';
+    document.getElementById('export-setting-member').value = '';
+  }
+  renderExportSettingOperatorControl();
+  renderExportSettingOperatorPanel();
+  renderExportSettingCurrencyControl();
+  renderExportSettingCurrencyPanel();
+  renderExportSettingMasterControl();
+  renderExportSettingMasterPanel();
+  document.getElementById('export-setting-modal-overlay').classList.add('open');
+}
+function closeExportSettingModal(){
+  document.getElementById('export-setting-modal-overlay').classList.remove('open');
+}
+function renderExportSettingCurrencyControl(){
+  const el = document.getElementById('export-setting-currency-summary');
+  if(!el) return;
+  if(exportSettingCurrencies.size===0){ el.textContent='幣別:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  el.textContent = '幣別:'+CURRENCIES.filter(c=>exportSettingCurrencies.has(c.code)).map(c=>c.code).join('、');
+}
+function renderExportSettingCurrencyPanel(){
+  const panel = document.getElementById('export-setting-currency-panel');
+  if(!panel) return;
+  panel.innerHTML = `<div class="ms-list">${CURRENCIES.map(c=>`
+    <label class="ms-option">
+      <input type="checkbox" ${exportSettingCurrencies.has(c.code)?'checked':''} onchange="toggleExportSettingCurrency('${c.code}', this.checked)"> ${c.name}
+    </label>`).join('')}</div>`;
+}
+function toggleExportSettingCurrency(code, checked){
+  if(checked) exportSettingCurrencies.add(code); else exportSettingCurrencies.delete(code);
+  renderExportSettingCurrencyControl();
+}
+function renderExportSettingOperatorControl(){
+  const el = document.getElementById('export-setting-operator-summary');
+  if(!el) return;
+  if(exportSettingOperators.size===0){ el.textContent='營運:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  const names = [];
+  operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(exportSettingOperators.has(c.id)) names.push(c.name); }));
+  const shown = names.slice(0,2).join('、');
+  el.textContent = `營運:已選 ${names.length} 個${names.length>2? '('+shown+' 等)':''}`;
+}
+function getExportSettingOperatorGroups(){
+  const kw = exportSettingOperatorSearch.trim().toLowerCase();
+  return operatorTreeData.map(parent=>{
+    const children = parent.children.filter(c=> !kw || c.name.toLowerCase().includes(kw));
+    return { parent, children };
+  }).filter(g=>g.children.length>0);
+}
+function renderExportSettingOperatorPanel(){
+  const panel = document.getElementById('export-setting-operator-panel');
+  if(!panel) return;
+  panel.innerHTML = `
+    <div class="ms-search"><input type="text" placeholder="搜尋營運名稱" value="${exportSettingOperatorSearch}" oninput="onExportSettingOperatorSearch(this.value)"></div>
+    <div class="ms-list" id="export-setting-operator-ms-list"></div>`;
+  renderExportSettingOperatorList();
+}
+function renderExportSettingOperatorList(){
+  const list = document.getElementById('export-setting-operator-ms-list');
+  if(!list) return;
+  const groups = getExportSettingOperatorGroups();
+  list.innerHTML = groups.length===0 ? '<div class="ms-empty">查無符合的營運</div>' : groups.map(g=>`
+    <div class="ms-group-title" style="cursor:default;">${g.parent.name}<span class="tag" style="margin-left:6px;">${g.children.length} 筆</span></div>
+    ${g.children.map(c=>`
+      <label class="ms-option">
+        <input type="checkbox" ${exportSettingOperators.has(c.id)?'checked':''} onchange="toggleExportSettingOperator('${c.id}', this.checked)"> ${c.name} <span class="tag">${c.currency}</span>
+      </label>`).join('')}
+  `).join('');
+}
+function onExportSettingOperatorSearch(val){
+  exportSettingOperatorSearch = val;
+  renderExportSettingOperatorList();
+}
+function toggleExportSettingOperator(id, checked){
+  if(checked) exportSettingOperators.add(id); else exportSettingOperators.delete(id);
+  renderExportSettingOperatorControl();
+  // 手動調整個別營運後,高級營運的勾選/半選狀態要跟著重算(比照活動任務新增彈窗 toggleOperator 的做法)
+  renderExportSettingMasterControl();
+  renderExportSettingMasterPanel();
+}
+/* ---------------- 高級營運(選填,快速勾選底下所有營運;僅時間模式使用) ---------------- */
+function renderExportSettingMasterControl(){
+  const el = document.getElementById('export-setting-master-summary');
+  if(!el) return;
+  if(exportSettingMasters.size===0){ el.textContent='高級營運:不限(選填)'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  el.textContent = '高級營運:'+operatorTreeData.filter(p=>exportSettingMasters.has(p.id)).map(p=>p.name).join('、');
+}
+function renderExportSettingMasterPanel(){
+  const panel = document.getElementById('export-setting-master-panel');
+  if(!panel) return;
+  panel.innerHTML = `<div class="ms-list">${operatorTreeData.map(p=>{
+    const allChecked = p.children.every(c=>exportSettingOperators.has(c.id));
+    const someChecked = p.children.some(c=>exportSettingOperators.has(c.id));
+    return `<label class="ms-option">
+      <input type="checkbox" ${allChecked?'checked':''} data-indeterminate="${someChecked && !allChecked}" onchange="toggleExportSettingMaster('${p.id}', this.checked)">
+      ${p.name}<span class="tag" style="margin-left:6px;">${p.children.length} 筆</span>
+    </label>`;
+  }).join('')}</div>`;
+  panel.querySelectorAll('[data-indeterminate]').forEach(chk=>{
+    chk.indeterminate = chk.getAttribute('data-indeterminate')==='true';
+  });
+}
+function toggleExportSettingMaster(parentId, checked){
+  const p = operatorTreeData.find(x=>x.id===parentId);
+  if(!p) return;
+  p.children.forEach(c=>{ if(checked) exportSettingOperators.add(c.id); else exportSettingOperators.delete(c.id); });
+  if(checked) exportSettingMasters.add(parentId); else exportSettingMasters.delete(parentId);
+  renderExportSettingMasterControl();
+  renderExportSettingMasterPanel();
+  renderExportSettingOperatorControl();
+  renderExportSettingOperatorList();
+}
+function submitExportSetting(){
+  let filterSnapshot, title, lines;
+  if(exportSettingMode === 'activityId'){
+    // 活動ID模式只針對活動ID,不套用營運/用戶/幣別/狀態/時間任何其他條件
+    const activityId = document.getElementById('export-setting-activityid').value.trim();
+    filterSnapshot = { mode:'activityId', activityId };
+    title = `活動ID:${activityId || '(未輸入)'}`;
+    lines = ['搜尋方式:活動ID'];
+  }else{
+    const status = document.getElementById('export-setting-status-select').value;
+    const member = document.getElementById('export-setting-member').value.trim();
+    const statusLabel = status ? STATUS_LABEL[status].text : '全部';
+    const operatorNames = [];
+    operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(exportSettingOperators.has(c.id)) operatorNames.push(c.name); }));
+    const operatorLabel = exportSettingOperators.size===0 ? '不限' :
+      (operatorNames.length<=2 ? operatorNames.join('、') : `已選 ${operatorNames.length} 個(${operatorNames.slice(0,2).join('、')} 等)`);
+    const timeType = document.getElementById('export-setting-time-type-select').value;
+    const startDate = document.getElementById('export-setting-start-date').value;
+    const startTime = document.getElementById('export-setting-start-time').value || '00:00:00';
+    const endDate = document.getElementById('export-setting-end-date').value;
+    const endTime = document.getElementById('export-setting-end-time').value || '23:59:59';
+    filterSnapshot = { mode:'time', timeType, startDate, startTime, endDate, endTime, currencies:new Set(exportSettingCurrencies), operators:new Set(exportSettingOperators), member, status };
+    title = `營運:${operatorLabel}`;
+    lines = [
+      `搜尋方式:時間・狀態:${statusLabel}${member? '・用戶:'+member : ''}`,
+      `${startDate} ${startTime.slice(0,5)} ~ ${endDate} ${endTime.slice(0,5)}`
+    ];
+  }
+
+  const job = {
+    id:'dlj-'+String(downloadJobSeq++).padStart(4,'0'),
+    category: dlPanelCategory || 'mission-record',
+    title, lines,
+    createdAt: formatDateTime(new Date()),
+    status:'processing',
+    filterSnapshot
+  };
+  downloadJobs.unshift(job);
+  closeExportSettingModal();
+  openDownloadPanel(job.category);
+
+  // 示意用:模擬後端非同步產生檔案,2.5 秒後轉為「已完成」;正式串接應改由後端完成後通知/前端輪詢狀態
+  setTimeout(()=>{
+    const target = downloadJobs.find(j=>j.id===job.id);
+    if(target) target.status = 'done';
+    renderDownloadPanel();
+  }, 2500);
 }
 function openRecordDetail(idx){
   const r = recordsData[idx];
