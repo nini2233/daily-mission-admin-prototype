@@ -301,12 +301,12 @@
     <div class="icon-btn" title="重新整理"></div>
     <div class="icon-btn" title="複製"></div>
     <!-- 匯出下載中心:點擊圖示 → 選分類 → 開該分類下載列表 → 「+」開輸出設定 → 送出後排入非同步任務,
-         完成後回此列表下載(比照參考截圖的既有流程示意,目前僅「任務紀錶」一個分類,之後有其他清單頁
+         完成後回此列表下載(比照參考截圖的既有流程示意,目前僅「任務紀錄」一個分類,之後有其他清單頁
          要支援匯出,可直接在分類選單/DOWNLOAD_CATEGORIES 裡擴充) -->
     <div class="dl-wrap">
       <div class="icon-btn" title="下載" data-icon="download" onclick="toggleDlCategoryMenu()"></div>
       <div class="dl-category-menu" id="dl-category-menu">
-        <div class="dl-category-item" onclick="openDownloadPanel('mission-record')">任務紀錶下載</div>
+        <div class="dl-category-item" onclick="openDownloadPanel('mission-record')">任務紀錄下載</div>
       </div>
       <div class="dl-panel" id="dl-panel">
         <div class="dl-panel-header">
@@ -632,7 +632,7 @@
             <select id="itemcard-filter-time-field" style="align-self:center;">
               <option value="validFrom">獲得時間</option>
               <option value="validTo">有效時間</option>
-              <option value="lastSpinAt">使用時間</option>
+              <option value="firstSpinAt">使用時間</option>
             </select>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               <div class="ms date-picker" id="itemcard-filter-start-dp">
@@ -657,12 +657,22 @@
             </div>
             <input type="text" id="itemcard-filter-member" placeholder="搜尋用戶帳號" style="align-self:flex-start;">
             <input type="text" id="itemcard-filter-itemid" placeholder="搜尋道具ID" style="align-self:flex-start;">
+            <input type="text" id="itemcard-filter-activityid" placeholder="搜尋活動ID" style="align-self:flex-start;">
             <div class="ms" id="itemcard-filter-game-ms" style="width:180px;align-self:flex-start;">
               <div class="ms-control" onclick="toggleDropdownById('itemcard-filter-game-ms')">
                 <span class="ms-summary" id="itemcard-filter-game-summary"></span>
                 <span class="chevron" data-icon="chevronDown"></span>
               </div>
               <div class="ms-panel" id="itemcard-filter-game-panel"></div>
+            </div>
+            <!-- 道具類型篩選:選項直接列舉 ITEM_TYPE_LABEL 的 key,以後新增免費遊戲卡/金幣卡..等類型,
+                 只要把新類型加進 ITEM_TYPE_LABEL,這裡跟下方統計卡就會自動出現對應選項,不用再改這裡的程式碼 -->
+            <div class="ms" id="itemcard-filter-type-ms" style="width:170px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleDropdownById('itemcard-filter-type-ms')">
+                <span class="ms-summary" id="itemcard-filter-type-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="itemcard-filter-type-panel"></div>
             </div>
             <div class="ms" id="itemcard-filter-source-ms" style="width:170px;align-self:flex-start;">
               <div class="ms-control" onclick="toggleDropdownById('itemcard-filter-source-ms')">
@@ -685,6 +695,8 @@
             <button class="btn btn-outline" id="itemcard-sort-old-btn" onclick="setItemCardSortDir('asc')" style="align-self:flex-start;">較舊在上</button>
             <button class="btn btn-primary" id="itemcard-sort-new-btn" onclick="setItemCardSortDir('desc')" style="align-self:flex-start;">較新在上</button>
           </div>
+          <!-- 總筆數:依目前篩選條件(尤其是搜尋活動ID時)即時算出,只做小字顯示,放列表右上角 -->
+          <div style="margin-bottom:8px;text-align:right;"><span id="itemcard-stats" style="font-size:12.5px;color:var(--text-secondary);"></span></div>
           <table>
             <thead><tr>
               <th>道具ID</th><th>來源</th><th>類型</th><th>用戶帳號</th><th>遊戲</th><th class="num">已使用</th><th class="num">剩餘</th><th>獲得時間</th><th>使用時間</th><th>狀態</th><th>詳情</th>
@@ -1010,31 +1022,7 @@
         </div>
         <div class="form-row">
           <div class="form-item">
-            <label>高級營運(可複選,選填;選擇後自動勾選底下所有營運)</label>
-            <div class="ms" id="export-setting-master-ms">
-              <div class="ms-control" onclick="toggleDropdownById('export-setting-master-ms')">
-                <span class="ms-summary" id="export-setting-master-summary"></span>
-                <span class="chevron" data-icon="chevronDown"></span>
-              </div>
-              <div class="ms-panel" id="export-setting-master-panel"></div>
-            </div>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-item">
-            <label>選擇營運(可複選,預設不限)</label>
-            <div class="ms" id="export-setting-operator-ms">
-              <div class="ms-control" onclick="toggleDropdownById('export-setting-operator-ms')">
-                <span class="ms-summary" id="export-setting-operator-summary"></span>
-                <span class="chevron" data-icon="chevronDown"></span>
-              </div>
-              <div class="ms-panel" id="export-setting-operator-panel"></div>
-            </div>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-item">
-            <label>幣別(可複選,預設不限)</label>
+            <label>幣別(可複選,需先選擇才能設定高級營運/營運)</label>
             <div class="ms" id="export-setting-currency-ms">
               <div class="ms-control" onclick="toggleDropdownById('export-setting-currency-ms')">
                 <span class="ms-summary" id="export-setting-currency-summary"></span>
@@ -1046,8 +1034,32 @@
         </div>
         <div class="form-row">
           <div class="form-item">
-            <label>搜尋用戶</label>
-            <input type="text" id="export-setting-member" placeholder="搜尋用戶賬號">
+            <label>高級營運(可複選,選填;選擇後自動勾選底下所有營運)</label>
+            <div class="ms" id="export-setting-master-ms">
+              <div class="ms-control" onclick="toggleExportSettingOperatorDropdown('master')">
+                <span class="ms-summary" id="export-setting-master-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="export-setting-master-panel"></div>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-item">
+            <label>選擇營運(可複選)</label>
+            <div class="ms" id="export-setting-operator-ms">
+              <div class="ms-control" onclick="toggleExportSettingOperatorDropdown('operator')">
+                <span class="ms-summary" id="export-setting-operator-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="export-setting-operator-panel"></div>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-item">
+            <label>搜尋用戶(需先選擇營運才能輸入)</label>
+            <input type="text" id="export-setting-member" placeholder="請先選擇營運" disabled>
           </div>
         </div>
         <div class="form-row">
@@ -3006,12 +3018,12 @@ function getRecordsForExportSnapshot(snapshot){
 
 /* ============================================================
    匯出下載中心:topbar 下載icon → 分類選單 → 下載列表面板 → 輸出設定 → 非同步任務
-   目前只有「任務紀錶」一個分類;之後其他清單頁(背包紀錶/道具紀錄等)要支援匯出,
+   目前只有「任務紀錄」一個分類;之後其他清單頁(背包紀錄/道具紀錄等)要支援匯出,
    可以在 DOWNLOAD_CATEGORIES 裡新增項目,並讓對應頁面的「匯出」按鈕呼叫
    openExportSettingModal(該分類, true) 即可沿用同一套下載列表/非同步任務機制
    ============================================================ */
 const DOWNLOAD_CATEGORIES = {
-  'mission-record': { title:'任務紀錶下載', filename:'任務紀錶' }
+  'mission-record': { title:'任務紀錄下載', filename:'任務紀錄' }
 };
 // 示意用:預先放一筆「已完成」的歷史任務,讓下載列表一開始不是空的(比照參考截圖的呈現方式)
 let downloadJobs = [
@@ -3056,7 +3068,7 @@ function renderDownloadPanel(){
   const list = document.getElementById('dl-panel-list');
   const jobs = downloadJobs.filter(j=>j.category===dlPanelCategory);
   if(jobs.length===0){
-    list.innerHTML = `<div class="dl-panel-empty">目前尚無匯出紀錶,點擊右上角「+」建立新的匯出。</div>`;
+    list.innerHTML = `<div class="dl-panel-empty">目前尚無匯出紀錄,點擊右上角「+」建立新的匯出。</div>`;
     return;
   }
   list.innerHTML = jobs.map(j=>{
@@ -3112,7 +3124,7 @@ function openExportSettingModal(category, prefillFromScreen){
   document.getElementById('export-setting-activityid').value = '';
   exportSettingMasters = new Set(); // 高級營運快速選取每次開啟都重置(畫面搜尋列本身沒有高級營運狀態可帶入)
   if(prefillFromScreen){
-    // 從紀錶查詢頁「匯出」按鈕開啟:直接帶入目前畫面上的搜尋條件,不用重填一次
+    // 從紀錄查詢頁「匯出」按鈕開啟:直接帶入目前畫面上的搜尋條件,不用重填一次
     // (畫面搜尋列的狀態是複選,這裡的「狀態」是單選下拉——若目前剛好只選了 1 個狀態就代入,否則視為「全部」)
     exportSettingOperators = new Set(recordFilterState.operators);
     exportSettingCurrencies = new Set(recordFilterState.currencies);
@@ -3125,7 +3137,7 @@ function openExportSettingModal(category, prefillFromScreen){
       recordFilterState.statuses.size===1 ? Array.from(recordFilterState.statuses)[0] : '';
     document.getElementById('export-setting-member').value = recordFilterState.member || '';
   }else{
-    // 從 topbar 下載icon 開啟:給預設空白條件(不限),示意用預設區間比照紀錶查詢頁預設值
+    // 從 topbar 下載icon 開啟:給預設空白條件(不限),示意用預設區間比照紀錄查詢頁預設值
     exportSettingOperators = new Set();
     exportSettingCurrencies = new Set();
     document.getElementById('export-setting-time-type-select').value = 'claimedAt';
@@ -3136,16 +3148,38 @@ function openExportSettingModal(category, prefillFromScreen){
     document.getElementById('export-setting-status-select').value = '';
     document.getElementById('export-setting-member').value = '';
   }
-  renderExportSettingOperatorControl();
-  renderExportSettingOperatorPanel();
   renderExportSettingCurrencyControl();
   renderExportSettingCurrencyPanel();
+  renderExportSettingOperatorControl();
+  renderExportSettingOperatorPanel();
   renderExportSettingMasterControl();
   renderExportSettingMasterPanel();
+  updateExportSettingCurrencyDependentState(); // 依目前幣別/營運選取狀態,設定高級營運/營運/搜尋用戶的 enable 狀態
   document.getElementById('export-setting-modal-overlay').classList.add('open');
 }
 function closeExportSettingModal(){
   document.getElementById('export-setting-modal-overlay').classList.remove('open');
+}
+// 幣別 → 高級營運/營運 → 搜尋用戶,三層一路鎖定的 enable 狀態:
+// 沒選幣別前,高級營運/營運整組鎖定(灰底、點不開下拉);選了幣別才能選營運,選了至少一個營運才能打搜尋用戶。
+function updateExportSettingCurrencyDependentState(){
+  const currencyEnabled = exportSettingCurrencies.size > 0;
+  document.getElementById('export-setting-master-ms').classList.toggle('disabled', !currencyEnabled);
+  document.getElementById('export-setting-operator-ms').classList.toggle('disabled', !currencyEnabled);
+  updateExportSettingOperatorDependentState();
+}
+function updateExportSettingOperatorDependentState(){
+  const operatorEnabled = exportSettingOperators.size > 0;
+  const memberInput = document.getElementById('export-setting-member');
+  if(!memberInput) return;
+  memberInput.disabled = !operatorEnabled;
+  memberInput.placeholder = operatorEnabled ? '搜尋用戶賬號' : '請先選擇營運';
+  if(!operatorEnabled) memberInput.value = ''; // 營運被清空/取消後,搜尋用戶欄位一併清空,避免鎖定狀態下殘留舊輸入值
+}
+// 高級營運/營運的下拉開關統一走這裡,沒選幣別前直接鎖定不給開(比照活動任務新增彈窗 toggleDropdown 的做法)
+function toggleExportSettingOperatorDropdown(key){
+  if(exportSettingCurrencies.size===0) return;
+  toggleDropdownById('export-setting-'+key+'-ms');
 }
 function renderExportSettingCurrencyControl(){
   const el = document.getElementById('export-setting-currency-summary');
@@ -3162,13 +3196,31 @@ function renderExportSettingCurrencyPanel(){
       <input type="checkbox" ${exportSettingCurrencies.has(c.code)?'checked':''} onchange="toggleExportSettingCurrency('${c.code}', this.checked)"> ${c.name}
     </label>`).join('')}</div>`;
 }
+// 幣別變動後,清掉不再符合目前幣別的已選營運/高級營運(比照活動任務新增彈窗 pruneInvalidOperators 的做法)
+function pruneExportSettingInvalidOperators(){
+  const validIds = new Set();
+  operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(exportSettingCurrencies.has(c.currency)) validIds.add(c.id); }));
+  Array.from(exportSettingOperators).forEach(id=>{ if(!validIds.has(id)) exportSettingOperators.delete(id); });
+  Array.from(exportSettingMasters).forEach(pid=>{
+    const p = operatorTreeData.find(x=>x.id===pid);
+    const hasValidChild = p && p.children.some(c=>exportSettingCurrencies.has(c.currency));
+    if(!hasValidChild) exportSettingMasters.delete(pid);
+  });
+}
 function toggleExportSettingCurrency(code, checked){
   if(checked) exportSettingCurrencies.add(code); else exportSettingCurrencies.delete(code);
+  pruneExportSettingInvalidOperators();
   renderExportSettingCurrencyControl();
+  renderExportSettingOperatorControl();
+  renderExportSettingOperatorPanel();
+  renderExportSettingMasterControl();
+  renderExportSettingMasterPanel();
+  updateExportSettingCurrencyDependentState();
 }
 function renderExportSettingOperatorControl(){
   const el = document.getElementById('export-setting-operator-summary');
   if(!el) return;
+  if(exportSettingCurrencies.size===0){ el.textContent='請先選擇幣別'; el.classList.add('placeholder'); return; }
   if(exportSettingOperators.size===0){ el.textContent='營運:不限'; el.classList.add('placeholder'); return; }
   el.classList.remove('placeholder');
   const names = [];
@@ -3176,16 +3228,25 @@ function renderExportSettingOperatorControl(){
   const shown = names.slice(0,2).join('、');
   el.textContent = `營運:已選 ${names.length} 個${names.length>2? '('+shown+' 等)':''}`;
 }
+// 只列出符合目前已選幣別的營運(再依關鍵字搜尋進一步過濾)
 function getExportSettingOperatorGroups(){
   const kw = exportSettingOperatorSearch.trim().toLowerCase();
   return operatorTreeData.map(parent=>{
-    const children = parent.children.filter(c=> !kw || c.name.toLowerCase().includes(kw));
+    const children = parent.children.filter(c=>{
+      if(!exportSettingCurrencies.has(c.currency)) return false;
+      if(kw && !c.name.toLowerCase().includes(kw)) return false;
+      return true;
+    });
     return { parent, children };
   }).filter(g=>g.children.length>0);
 }
 function renderExportSettingOperatorPanel(){
   const panel = document.getElementById('export-setting-operator-panel');
   if(!panel) return;
+  if(exportSettingCurrencies.size===0){
+    panel.innerHTML = `<div class="ms-empty">請先選擇幣別,才會列出對應營運</div>`;
+    return;
+  }
   panel.innerHTML = `
     <div class="ms-search"><input type="text" placeholder="搜尋營運名稱" value="${exportSettingOperatorSearch}" oninput="onExportSettingOperatorSearch(this.value)"></div>
     <div class="ms-list" id="export-setting-operator-ms-list"></div>`;
@@ -3213,11 +3274,13 @@ function toggleExportSettingOperator(id, checked){
   // 手動調整個別營運後,高級營運的勾選/半選狀態要跟著重算(比照活動任務新增彈窗 toggleOperator 的做法)
   renderExportSettingMasterControl();
   renderExportSettingMasterPanel();
+  updateExportSettingOperatorDependentState(); // 營運有沒有選,決定搜尋用戶欄位能不能輸入
 }
 /* ---------------- 高級營運(選填,快速勾選底下所有營運;僅時間模式使用) ---------------- */
 function renderExportSettingMasterControl(){
   const el = document.getElementById('export-setting-master-summary');
   if(!el) return;
+  if(exportSettingCurrencies.size===0){ el.textContent='請先選擇幣別'; el.classList.add('placeholder'); return; }
   if(exportSettingMasters.size===0){ el.textContent='高級營運:不限(選填)'; el.classList.add('placeholder'); return; }
   el.classList.remove('placeholder');
   el.textContent = '高級營運:'+operatorTreeData.filter(p=>exportSettingMasters.has(p.id)).map(p=>p.name).join('、');
@@ -3225,12 +3288,19 @@ function renderExportSettingMasterControl(){
 function renderExportSettingMasterPanel(){
   const panel = document.getElementById('export-setting-master-panel');
   if(!panel) return;
+  if(exportSettingCurrencies.size===0){
+    panel.innerHTML = `<div class="ms-empty">請先選擇幣別</div>`;
+    return;
+  }
+  const groups = getExportSettingOperatorGroups.length ? null : null; // no-op 佔位,避免誤觸未定義變數(下方直接用 operatorTreeData 篩幣別即可)
   panel.innerHTML = `<div class="ms-list">${operatorTreeData.map(p=>{
-    const allChecked = p.children.every(c=>exportSettingOperators.has(c.id));
-    const someChecked = p.children.some(c=>exportSettingOperators.has(c.id));
+    const validChildren = p.children.filter(c=>exportSettingCurrencies.has(c.currency));
+    if(validChildren.length===0) return '';
+    const allChecked = validChildren.every(c=>exportSettingOperators.has(c.id));
+    const someChecked = validChildren.some(c=>exportSettingOperators.has(c.id));
     return `<label class="ms-option">
       <input type="checkbox" ${allChecked?'checked':''} data-indeterminate="${someChecked && !allChecked}" onchange="toggleExportSettingMaster('${p.id}', this.checked)">
-      ${p.name}<span class="tag" style="margin-left:6px;">${p.children.length} 筆</span>
+      ${p.name}<span class="tag" style="margin-left:6px;">${validChildren.length} 筆</span>
     </label>`;
   }).join('')}</div>`;
   panel.querySelectorAll('[data-indeterminate]').forEach(chk=>{
@@ -3240,12 +3310,15 @@ function renderExportSettingMasterPanel(){
 function toggleExportSettingMaster(parentId, checked){
   const p = operatorTreeData.find(x=>x.id===parentId);
   if(!p) return;
-  p.children.forEach(c=>{ if(checked) exportSettingOperators.add(c.id); else exportSettingOperators.delete(c.id); });
+  // 只勾選/取消符合目前已選幣別的子營運,避免把不符合幣別的營運也誤選進去
+  const validChildren = p.children.filter(c=>exportSettingCurrencies.has(c.currency));
+  validChildren.forEach(c=>{ if(checked) exportSettingOperators.add(c.id); else exportSettingOperators.delete(c.id); });
   if(checked) exportSettingMasters.add(parentId); else exportSettingMasters.delete(parentId);
   renderExportSettingMasterControl();
   renderExportSettingMasterPanel();
   renderExportSettingOperatorControl();
   renderExportSettingOperatorList();
+  updateExportSettingOperatorDependentState();
 }
 function submitExportSetting(){
   let filterSnapshot, title, lines;
@@ -3773,9 +3846,12 @@ function buildItemCardData(){
       validToDate: validTo.date,
       validToStr: validTo.str,
       lastUpdatedAt: close ? close.createdAt : add.createdAt,
-      // 使用時間:最後一次「實際玩局」的時間點(最後一筆 spin 的 createdAt),跟 lastUpdatedAt 不同——
+      // 使用時間:「第一次」實際玩局的時間點(第一筆 spin 的 createdAt),跟 lastUpdatedAt 不同——
       // lastUpdatedAt 是結案事件時間(例如到期處理時間),就算完全沒玩過也會有值;這裡完全沒使用過就是空字串。
-      lastSpinAt: spins.length ? spins[spins.length-1].createdAt : '',
+      // 注意:玩家可能玩到一半斷線、之後在有效期內才回來玩完剩下局數,所以「第一次使用時間」只能代表
+      // 這張卡開始被使用的時間點,不代表卡片所有局數都發生在同一天/同一個月——每月交收金額仍須以
+      // 投注紀錄(逐局各自的下注時間)為準,這裡的統計只做道具卡層級的健檢/對照用途。
+      firstSpinAt: spins.length ? spins[0].createdAt : '',
       status,
       spins
     };
@@ -3790,10 +3866,12 @@ function defaultItemCardFilterState(){
     timeField:'validFrom',
     startDate:'2026-07-01', startTime:'00:00:00',
     endDate:'2026-07-20', endTime:'23:59:59',
-    member:'', itemId:'',
+    member:'', itemId:'', activityId:'',
     statuses: new Set(Object.keys(ITEM_CARD_STATUS_LABEL)),
     games: new Set(GAME_LIST.map(g=>g.id)),
-    sources: new Set(ITEM_CARD_SOURCE_OPTIONS)
+    sources: new Set(ITEM_CARD_SOURCE_OPTIONS),
+    // 道具類型預設全選,選項直接取 ITEM_TYPE_LABEL 的 key,以後新增免費遊戲卡/金幣卡..等類型不用改這裡
+    itemTypes: new Set(Object.keys(ITEM_TYPE_LABEL))
   };
 }
 let itemCardFilterState = defaultItemCardFilterState();
@@ -3856,25 +3934,53 @@ function toggleItemCardFilterSource(source, checked){
   if(checked) itemCardFilterState.sources.add(source); else itemCardFilterState.sources.delete(source);
   renderItemCardFilterSourceControl();
 }
+function renderItemCardFilterTypeControl(){
+  const el = document.getElementById('itemcard-filter-type-summary');
+  if(!el) return;
+  if(itemCardFilterState.itemTypes.size===0){ el.textContent='道具類型:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  if(itemCardFilterState.itemTypes.size===Object.keys(ITEM_TYPE_LABEL).length){ el.textContent='道具類型:所有類型'; return; }
+  el.textContent = '道具類型:'+Array.from(itemCardFilterState.itemTypes).map(t=>ITEM_TYPE_LABEL[t]).join('、');
+}
+function renderItemCardFilterTypePanel(){
+  const panel = document.getElementById('itemcard-filter-type-panel');
+  if(!panel) return;
+  panel.innerHTML = `<div class="ms-list">${Object.keys(ITEM_TYPE_LABEL).map(t=>`
+    <label class="ms-option">
+      <input type="checkbox" ${itemCardFilterState.itemTypes.has(t)?'checked':''} onchange="toggleItemCardFilterType('${t}', this.checked)"> ${ITEM_TYPE_LABEL[t]}
+    </label>`).join('')}</div>`;
+}
+function toggleItemCardFilterType(itemType, checked){
+  if(checked) itemCardFilterState.itemTypes.add(itemType); else itemCardFilterState.itemTypes.delete(itemType);
+  renderItemCardFilterTypeControl();
+}
 // 依目前 itemCardFilterState 判斷單張道具卡是否符合;時間區間依「timeField」套用在對應欄位上
-// (獲得時間=validFrom;有效時間=validTo;使用時間=lastSpinAt),只要該欄位的時間點落在搜尋區間內就算符合。
-// 使用時間比較特別:完全沒玩過的卡片 lastSpinAt 是空字串,沒有時間可比對,搜「使用時間」時直接不算命中
-// (比照紀錶查詢頁對「該事件尚未發生」欄位的處理方式,不會誤判成 Invalid Date 落在任何區間內)。
+// (獲得時間=validFrom;有效時間=validTo;使用時間=firstSpinAt,即第一次實際玩局的時間),
+// 只要該欄位的時間點落在搜尋區間內就算符合。
+// 使用時間比較特別:完全沒玩過的卡片 firstSpinAt 是空字串,沒有時間可比對,搜「使用時間」時直接不算命中
+// (比照紀錄查詢頁對「該事件尚未發生」欄位的處理方式,不會誤判成 Invalid Date 落在任何區間內)。
+// 提醒:這裡篩的是「卡片第一次開始被使用」的時間點,不代表卡片裡每一局都發生在同一天/同一月——
+// 玩家可能中途斷線、之後才在有效期內玩完剩下局數。若要做「按月」的精確交收金額拆分,
+// 應該改以投注紀錄(每一局各自的下注時間)為準,這裡的時間篩選只適合用來查找/健檢單張卡片。
 function itemCardMatchesFilter(c){
   if(itemCardFilterState.statuses.size>0 && !itemCardFilterState.statuses.has(c.status)) return false;
   if(itemCardFilterState.games.size>0 && !itemCardFilterState.games.has(c.gameId)) return false;
   if(itemCardFilterState.sources.size>0 && !itemCardFilterState.sources.has(c.source)) return false;
+  if(itemCardFilterState.itemTypes.size>0 && !itemCardFilterState.itemTypes.has(c.itemType)) return false;
   const memberKw = (itemCardFilterState.member||'').trim().toLowerCase();
   if(memberKw && !c.member.toLowerCase().includes(memberKw)) return false;
   const itemKw = (itemCardFilterState.itemId||'').trim().toLowerCase();
   if(itemKw && !c.itemId.toLowerCase().includes(itemKw)) return false;
+  // 活動ID只有來源是「限時任務」的道具卡才有值,搜尋活動ID時等於順便篩掉非任務來源的道具卡
+  const activityKw = (itemCardFilterState.activityId||'').trim().toLowerCase();
+  if(activityKw && !(c.activityId||'').toLowerCase().includes(activityKw)) return false;
   const fStart = new Date(`${itemCardFilterState.startDate}T${itemCardFilterState.startTime}`);
   const fEnd = new Date(`${itemCardFilterState.endDate}T${itemCardFilterState.endTime}`);
   let targetDate;
   if(itemCardFilterState.timeField === 'validTo'){ targetDate = c.validToDate; }
-  else if(itemCardFilterState.timeField === 'lastSpinAt'){
-    if(!c.lastSpinAt) return false;
-    targetDate = new Date(c.lastSpinAt.replace(' ','T'));
+  else if(itemCardFilterState.timeField === 'firstSpinAt'){
+    if(!c.firstSpinAt) return false;
+    targetDate = new Date(c.firstSpinAt.replace(' ','T'));
   }else{ targetDate = new Date(c.validFrom.replace(' ','T')); }
   if(targetDate < fStart || targetDate > fEnd) return false;
   return true;
@@ -3890,6 +3996,7 @@ function applyItemCardFilter(){
   itemCardFilterState.endTime = document.getElementById('itemcard-filter-end-time').value || '23:59:59';
   itemCardFilterState.member = document.getElementById('itemcard-filter-member').value;
   itemCardFilterState.itemId = document.getElementById('itemcard-filter-itemid').value;
+  itemCardFilterState.activityId = document.getElementById('itemcard-filter-activityid').value;
   renderItemCardTable();
 }
 function renderItemCardFilterControls(){
@@ -3900,9 +4007,11 @@ function renderItemCardFilterControls(){
   document.getElementById('itemcard-filter-end-time').value = itemCardFilterState.endTime;
   document.getElementById('itemcard-filter-member').value = itemCardFilterState.member;
   document.getElementById('itemcard-filter-itemid').value = itemCardFilterState.itemId;
+  document.getElementById('itemcard-filter-activityid').value = itemCardFilterState.activityId;
   renderItemCardFilterStatusControl(); renderItemCardFilterStatusPanel();
   renderItemCardFilterGameControl(); renderItemCardFilterGamePanel();
   renderItemCardFilterSourceControl(); renderItemCardFilterSourcePanel();
+  renderItemCardFilterTypeControl(); renderItemCardFilterTypePanel();
 }
 function resetItemCardFilter(){
   itemCardFilterState = defaultItemCardFilterState();
@@ -4010,7 +4119,15 @@ function getSortedItemCards(){
 // 欄位順序(左至右):道具ID/來源/類型/用戶帳號/遊戲/已使用/剩餘/獲得時間/使用時間/狀態/詳情
 // (旋轉次數/有效時間移到展開詳情裡,見 itemCardDetailContentHtml 的 showSpinCount/showValidTo;
 //  最後更新時間已不再顯示,詳情不再傳 showLastUpdated)
+// 總筆數:依目前篩選結果(getFilteredItemCards())即時算出,只做小字顯示放列表左上角,不再另外呈現總中獎金額。
+function renderItemCardStats(){
+  const el = document.getElementById('itemcard-stats');
+  if(!el) return;
+  const totalCount = getFilteredItemCards().length;
+  el.textContent = `總筆數:${totalCount.toLocaleString()}`;
+}
 function renderItemCardTable(){
+  renderItemCardStats();
   const tbody = document.getElementById('itemcard-tbody');
   updateItemCardSortButtons();
   const list = getSortedItemCards();
@@ -4031,7 +4148,7 @@ function renderItemCardTable(){
       <td class="num">${c.usedCount}</td>
       <td class="num">${c.remainCount}</td>
       <td>${c.validFrom}</td>
-      <td>${c.lastSpinAt || '-'}</td>
+      <td>${c.firstSpinAt || '-'}</td>
       <td><span class="pill ${st.cls}">${st.text}</span></td>
       <td>${itemCardExpandBtnHtml(c.itemId)}</td>
     </tr>`;
