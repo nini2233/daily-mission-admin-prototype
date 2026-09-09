@@ -495,7 +495,8 @@
             <button class="btn btn-primary" onclick="applyRecordFilter()" style="align-self:flex-start;">搜尋</button>
             <button class="btn btn-outline" onclick="resetRecordFilter()" style="align-self:flex-start;">重置</button>
           </div>
-          <div class="stat-cards" id="record-stats"></div>
+          <!-- 總筆數:依目前篩選條件即時算出,只做小字顯示,放列表右上角 -->
+          <div style="margin-bottom:8px;text-align:right;"><span id="record-stats" style="font-size:12.5px;color:var(--text-secondary);"></span></div>
           <table>
             <thead><tr>
               <th>活動ID</th><th>任務名稱</th><th>營運</th><th>用戶賬號</th><th>任務類型</th>
@@ -2942,20 +2943,12 @@ function renderRecordTable(){
   renderRecordStats(filtered);
   updateRecordSortIcons();
 }
-// 紀錄頁上方統計卡:依「目前篩選後」的清單計算(與清單顯示範圍一致)
+// 紀錄頁上方總筆數:依「目前篩選後」的清單計算(與清單顯示範圍一致),只做小字顯示放右上角
 function renderRecordStats(filtered){
   const el = document.getElementById('record-stats');
   if(!el) return;
   const list = (filtered || getFilteredRecords()).map(x=>x.r);
-  const uniqueMembers = new Set(list.map(r=>r.member)).size;
-  const participantCount = list.length;
-  const achievedCount = list.filter(r=>!!r.achievedAt).length;
-  const rewardedCount = list.filter(r=>!!r.rewardedAt).length;
-  el.innerHTML = `
-    <div class="stat-card"><div class="label">參與玩家不重複數量</div><div class="value">${uniqueMembers.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">參與次數</div><div class="value">${participantCount.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">達成次數</div><div class="value">${achievedCount.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">派獎次數</div><div class="value">${rewardedCount.toLocaleString()}</div></div>`;
+  el.textContent = `總筆數:${list.length.toLocaleString()}`;
 }
 // 匯出 CSV 共用組檔邏輯:欄位順序與「查看詳情」完全一致(活動ID/任務名稱/營運/用戶賬號/任務編號/任務類型/任務內容/
 // 累積進度/獎勵內容/開始時間/達成時間/派獎時間/結束時間/背包紀錄單號/狀態)
