@@ -655,16 +655,10 @@
               </div>
               <input type="time" id="itemcard-filter-end-time" step="1" lang="en-GB">
             </div>
-            <!-- 用戶帳號/道具ID 合併成同一個關鍵字搜尋欄位,前面用 radio button 選「現在要搜哪一種」(單選,兩者互斥) -->
-            <div style="display:flex;align-items:center;gap:10px;align-self:center;">
-              <label style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:400;cursor:pointer;white-space:nowrap;">
-                <input type="radio" name="itemcard-filter-keyword-field" value="member" checked onchange="updateItemCardKeywordPlaceholder()"> 用戶帳號
-              </label>
-              <label style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:400;cursor:pointer;white-space:nowrap;">
-                <input type="radio" name="itemcard-filter-keyword-field" value="itemId" onchange="updateItemCardKeywordPlaceholder()"> 道具ID
-              </label>
-            </div>
-            <input type="text" id="itemcard-filter-keyword" placeholder="搜尋用戶帳號" style="align-self:flex-start;">
+            <input type="text" id="itemcard-filter-member" placeholder="搜尋用戶帳號" style="align-self:flex-start;">
+            <!-- 道具ID是唯一值搜尋:一旦有輸入,搜尋時會忽略其他所有條件(時間/用戶帳號/活動ID/遊戲/道具類型/來源/狀態),
+                 不跟用戶帳號合併,獨立一個欄位 -->
+            <input type="text" id="itemcard-filter-itemid" placeholder="搜尋道具ID(唯一值,輸入後將忽略其他搜尋條件)" style="align-self:flex-start;width:230px;">
             <input type="text" id="itemcard-filter-activityid" placeholder="搜尋活動ID" style="align-self:flex-start;">
             <div class="ms" id="itemcard-filter-game-ms" style="width:180px;align-self:flex-start;">
               <div class="ms-control" onclick="toggleDropdownById('itemcard-filter-game-ms')">
@@ -3627,10 +3621,8 @@ function viewItemCardFromBackpack(itemId){
   closeBackpackCurrentModal();
   const navItem = document.querySelector('.sidebar .item[data-page="item-card-usage"]');
   if(navItem) navItem.click();
-  itemCardFilterState.keywordField = 'itemId';
-  itemCardFilterState.keyword = itemId;
-  setItemCardKeywordField('itemId');
-  document.getElementById('itemcard-filter-keyword').value = itemId;
+  itemCardFilterState.itemId = itemId;
+  document.getElementById('itemcard-filter-itemid').value = itemId;
   renderItemCardTable();
 }
 
@@ -3876,8 +3868,7 @@ function defaultItemCardFilterState(){
     timeField:'validFrom',
     startDate:'2026-07-01', startTime:'00:00:00',
     endDate:'2026-07-20', endTime:'23:59:59',
-    // 用戶帳號/道具ID 合併成單一關鍵字欄位:keywordField 決定 keyword 是拿去比對哪個欄位(單選,互斥)
-    keywordField:'member', keyword:'', activityId:'',
+    member:'', itemId:'', activityId:'',
     statuses: new Set(Object.keys(ITEM_CARD_STATUS_LABEL)),
     games: new Set(GAME_LIST.map(g=>g.id)),
     sources: new Set(ITEM_CARD_SOURCE_OPTIONS),
@@ -3974,19 +3965,18 @@ function toggleItemCardFilterType(itemType, checked){
 // 玩家可能中途斷線、之後才在有效期內玩完剩下局數。若要做「按月」的精確交收金額拆分,
 // 應該改以投注紀錄(每一局各自的下注時間)為準,這裡的時間篩選只適合用來查找/健檢單張卡片。
 function itemCardMatchesFilter(c){
+  // 道具ID是唯一值搜尋:一旦有輸入,直接忽略其他所有搜尋條件(時間/用戶帳號/活動ID/遊戲/道具類型/來源/狀態),
+  // 只用道具ID本身判斷是否命中,不跟用戶帳號合併、也不跟其他條件做AND。
+  const itemKw = (itemCardFilterState.itemId||'').trim().toLowerCase();
+  if(itemKw){
+    return c.itemId.toLowerCase().includes(itemKw);
+  }
   if(itemCardFilterState.statuses.size>0 && !itemCardFilterState.statuses.has(c.status)) return false;
   if(itemCardFilterState.games.size>0 && !itemCardFilterState.games.has(c.gameId)) return false;
   if(itemCardFilterState.sources.size>0 && !itemCardFilterState.sources.has(c.source)) return false;
   if(itemCardFilterState.itemTypes.size>0 && !itemCardFilterState.itemTypes.has(c.itemType)) return false;
-  // 用戶帳號/道具ID 合併關鍵字:依 keywordField 決定拿 keyword 去比對哪一欄
-  const kw = (itemCardFilterState.keyword||'').trim().toLowerCase();
-  if(kw){
-    if(itemCardFilterState.keywordField === 'itemId'){
-      if(!c.itemId.toLowerCase().includes(kw)) return false;
-    }else{
-      if(!c.member.toLowerCase().includes(kw)) return false;
-    }
-  }
+  const memberKw = (itemCardFilterState.member||'').trim().toLowerCase();
+  if(memberKw && !c.member.toLowerCase().includes(memberKw)) return false;
   // 活動ID只有來源是「限時任務」的道具卡才有值,搜尋活動ID時等於順便篩掉非任務來源的道具卡
   const activityKw = (itemCardFilterState.activityId||'').trim().toLowerCase();
   if(activityKw && !(c.activityId||'').toLowerCase().includes(activityKw)) return false;
@@ -4010,26 +4000,10 @@ function applyItemCardFilter(){
   itemCardFilterState.startTime = document.getElementById('itemcard-filter-start-time').value || '00:00:00';
   itemCardFilterState.endDate = document.getElementById('itemcard-filter-end-date').value;
   itemCardFilterState.endTime = document.getElementById('itemcard-filter-end-time').value || '23:59:59';
-  itemCardFilterState.keywordField = getItemCardKeywordField();
-  itemCardFilterState.keyword = document.getElementById('itemcard-filter-keyword').value;
+  itemCardFilterState.member = document.getElementById('itemcard-filter-member').value;
+  itemCardFilterState.itemId = document.getElementById('itemcard-filter-itemid').value;
   itemCardFilterState.activityId = document.getElementById('itemcard-filter-activityid').value;
   renderItemCardTable();
-}
-// 讀目前 radio button 選中的是哪一個(用戶帳號/道具ID)
-function getItemCardKeywordField(){
-  const checked = document.querySelector('input[name="itemcard-filter-keyword-field"]:checked');
-  return checked ? checked.value : 'member';
-}
-// 設定 radio button 選中狀態(用戶帳號/道具ID),並同步更新 placeholder
-function setItemCardKeywordField(field){
-  document.querySelectorAll('input[name="itemcard-filter-keyword-field"]').forEach(r=>{
-    r.checked = (r.value === field);
-  });
-  updateItemCardKeywordPlaceholder();
-}
-// 依目前 radio button 選的是用戶帳號還是道具ID,換關鍵字輸入框的 placeholder 提示文字
-function updateItemCardKeywordPlaceholder(){
-  document.getElementById('itemcard-filter-keyword').placeholder = getItemCardKeywordField() === 'itemId' ? '搜尋道具ID' : '搜尋用戶帳號';
 }
 function renderItemCardFilterControls(){
   document.getElementById('itemcard-filter-time-field').value = itemCardFilterState.timeField;
@@ -4037,8 +4011,8 @@ function renderItemCardFilterControls(){
   document.getElementById('itemcard-filter-start-time').value = itemCardFilterState.startTime;
   setDatePickerValue('itemcard-filter','end', itemCardFilterState.endDate);
   document.getElementById('itemcard-filter-end-time').value = itemCardFilterState.endTime;
-  setItemCardKeywordField(itemCardFilterState.keywordField);
-  document.getElementById('itemcard-filter-keyword').value = itemCardFilterState.keyword;
+  document.getElementById('itemcard-filter-member').value = itemCardFilterState.member;
+  document.getElementById('itemcard-filter-itemid').value = itemCardFilterState.itemId;
   document.getElementById('itemcard-filter-activityid').value = itemCardFilterState.activityId;
   renderItemCardFilterStatusControl(); renderItemCardFilterStatusPanel();
   renderItemCardFilterGameControl(); renderItemCardFilterGamePanel();
