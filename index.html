@@ -112,8 +112,6 @@
   .icon-del{background:var(--danger);}
   .icon-pause{background:#f5a623;}
   .icon-bag{background:#0ea5a4;}
-  .btn-resend{background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning);font-weight:600;padding:5px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;}
-  .btn-resend:hover{background:var(--warning);color:#fff;}
   /* ---------- 匯出下載中心(topbar 下載icon:分類選單 + 下載列表面板) ---------- */
   .dl-wrap{position:relative;}
   .dl-category-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 12px 28px rgba(20,20,30,.16);min-width:150px;z-index:200;overflow:hidden;}
@@ -148,6 +146,22 @@
   .stat-card .label{font-size:12.5px;color:var(--text-secondary);margin-bottom:6px;}
   .stat-card .value{font-size:22px;font-weight:700;color:var(--text);}
   .stat-card.accent .value{color:var(--accent);}
+  /* ---------- 系統總覽 > 流量統計(畫面示意,尚未接後端,數字為靜態假資料) ---------- */
+  .traffic-chip-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px;}
+  .traffic-chip{border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;white-space:nowrap;border:1px solid transparent;}
+  .traffic-chip.c-danger{background:var(--danger-bg);color:var(--danger);border-color:var(--danger);}
+  .traffic-chip.c-warning{background:var(--warning-bg);color:var(--warning);border-color:var(--warning);}
+  .traffic-chip.c-success{background:var(--success-bg);color:var(--success);border-color:var(--success);}
+  .traffic-chip.c-purple{background:#f1ebff;color:#8b5cf6;border-color:#8b5cf6;}
+  .traffic-chip.c-info{background:#eaf1ff;color:var(--accent);border-color:var(--accent);}
+  .traffic-chip.c-pink{background:#fdeef7;color:#db2777;border-color:#db2777;}
+  .traffic-op-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:18px;}
+  .traffic-op-name{font-size:17px;font-weight:700;margin-bottom:10px;}
+  .traffic-op-row{padding:10px 4px;border-bottom:1px solid var(--border);}
+  .traffic-op-row:nth-child(even){background:#fafbfd;}
+  .traffic-op-row .k{font-size:12.5px;color:var(--text-secondary);}
+  .traffic-op-row .v{text-align:right;font-size:15px;font-weight:700;color:var(--accent);margin-top:4px;}
+  .traffic-placeholder{padding:60px 20px;text-align:center;color:var(--text-secondary);font-size:13.5px;}
   /* ---------- 分析報表:達成率長條 ---------- */
   .rate-bar-wrap{display:inline-block;width:90px;height:8px;background:#eee;border-radius:4px;overflow:hidden;vertical-align:middle;margin-right:8px;}
   .rate-bar{height:100%;border-radius:4px;}
@@ -325,6 +339,7 @@
     <!-- ============ Sidebar ============ -->
     <div class="sidebar">
       <div class="item"><span class="dot"></span>系統總覽</div>
+      <div class="item sub" data-page="traffic-stats"><span class="dot"></span>流量統計</div>
       <div class="item"><span class="dot"></span>帳號管理</div>
       <div class="item sub" data-page="user-account"><span class="dot"></span>用戶帳號</div>
       <div class="item"><span class="dot"></span>權限管理</div>
@@ -346,6 +361,152 @@
 
     <!-- ============ Main ============ -->
     <div class="main">
+      <!-- ============ 系統總覽 / 流量統計(畫面示意用,靜態假資料,尚未接後端,搜尋/選擇營運/日期/排序等控制項為裝飾用,尚未真正串接運算邏輯) ============ -->
+      <div class="page" id="page-traffic-stats">
+        <div class="breadcrumb">系統總覽 / 流量統計</div>
+        <div class="card">
+          <div class="tabs">
+            <div class="tab active" data-tab="traffic-operator">營運流量</div>
+            <div class="tab" data-tab="traffic-currency">幣別流量</div>
+            <div class="tab" data-tab="traffic-game">遊戲排名</div>
+            <div class="tab" data-tab="traffic-activity">營運活動流量</div>
+          </div>
+
+          <!-- 篩選列:比照畫面示意排版,目前為裝飾用,尚未接搜尋/排序邏輯
+               margin-top 特意加大,讓篩選列跟上面的頁籤(營運流量/幣別流量..)之間留多一點距離;
+               左右加 16px padding,對齊 .tabs 本身的左右內距(padding:0 16px),避免篩選列的內容
+               直接貼齊卡片邊界——這裡只調這個頁面自己的間距/內距,不動 .tabs/.filter-bar 全域樣式,
+               不影響其他頁面。「選擇遊戲」只在「營運活動流量」頁籤時隱藏(該頁籤是道具/活動獎金相關統計,
+               不是依遊戲拆分),其餘頁籤(營運流量/幣別流量/遊戲排名)都維持顯示,由下方 JS 依目前選中的
+               頁籤切換 #traffic-game-select 的顯示狀態。 -->
+          <div class="filter-bar" style="align-items:center;margin-top:22px;margin-bottom:16px;padding:0 16px;">
+            <select id="traffic-game-select" style="width:130px;"><option>所有遊戲</option></select>
+            <button class="btn btn-outline">≡ 選擇營運</button>
+            <button class="btn btn-outline" title="上一區間">‹</button>
+            <div class="ms date-picker" style="width:210px;">
+              <div class="ms-control"><span class="ms-summary">2026-09-16 ~ 2026-09-16</span><span class="chevron" data-icon="calendar"></span></div>
+            </div>
+            <button class="btn btn-outline" title="下一區間">›</button>
+            <button class="btn btn-primary">搜尋</button>
+            <span style="color:var(--text-secondary);font-size:13px;">排序</span>
+            <select id="traffic-sort-select" style="width:110px;"><option>投注額</option></select>
+            <span style="color:var(--text-secondary);font-size:13px;">營運類型</span>
+            <select style="width:110px;"><option>正式營運</option></select>
+          </div>
+
+          <!-- ---------------- Tab: 營運流量(唯一有填示意數據的頁籤) ---------------- -->
+          <div class="tab-panel active" id="panel-traffic-operator">
+            <!-- margin-top 用負值抵消 .tab-panel 本身的上方 padding(16px),讓這則提示更貼近上面的搜尋條件列;
+                 只調這個 hint 自己的間距,不動 .tab-panel/.filter-bar 的全域樣式,不影響其他頁籤/頁面 -->
+            <div class="hint" style="margin-top:-10px;margin-bottom:14px;">說明:此頁面統計數據不含活動流量(限時任務/平台贈送/彩金活動等道具驅動的中獎金額),如需查看這部分數據請切到「營運活動流量」頁籤。</div>
+            <div class="traffic-chip-row">
+              <div class="traffic-chip c-danger">獲利: -3,740,813.51(-2544.56%)</div>
+              <div class="traffic-chip c-warning">遊玩人數: 13</div>
+              <div class="traffic-chip c-success">中獎/投注金額: 3,887,825.51 / 147,012</div>
+              <div class="traffic-chip c-danger">中獎/投注次數: 186 / 499</div>
+              <div class="traffic-chip c-purple">平轉免遊次數: 9(1.8%)</div>
+              <div class="traffic-chip c-purple">特色中獎額/下注額/次數: 3(0%) / 200(0.14%) / 1(0.2%)</div>
+              <div class="traffic-chip c-pink">彩池 中獎額/下注額/次數: 1,700,916.81(43.75%) / 69.8(0.05%) / 11(2.2%)</div>
+              <div class="traffic-chip c-info">買一般免遊 中獎額/下注額/次數: 3(0%) / 200(0.14%) / 1(0.2%)</div>
+            </div>
+
+            <div class="traffic-op-grid">
+              <div class="traffic-op-col">
+                <div class="traffic-op-name">#1 qatmint</div>
+                <div class="traffic-op-row"><div class="k">盈利/RTP/佔比</div><div class="v">-43,700 / 134.545% / -34.545%</div></div>
+                <div class="traffic-op-row"><div class="k">投注額/次數</div><div class="v">126,500 / 138</div></div>
+                <div class="traffic-op-row"><div class="k">中獎額/次數</div><div class="v">170,200 / 58</div></div>
+                <div class="traffic-op-row"><div class="k">平轉整體RTP</div><div class="v">134.545%</div></div>
+                <div class="traffic-op-row"><div class="k">平轉空轉率/平轉免遊中獎率</div><div class="v">57.97% / 2.17%</div></div>
+                <div class="traffic-op-row"><div class="k">平轉 中獎額/下注額/押注次數/中獎次數</div><div class="v">170,200 / 126,500 / 138 / 58 / 134.545%</div></div>
+                <div class="traffic-op-row"><div class="k">平轉免遊 中獎額/次數</div><div class="v">0 / 3 / 0.000%</div></div>
+                <div class="traffic-op-row"><div class="k">特色獎金/下注次數</div><div class="v">0(0%) / 0(0%) / 0(0%)</div></div>
+              </div>
+              <div class="traffic-op-col">
+                <div class="traffic-op-name">#2 bx高級營運</div>
+                <div class="traffic-op-row"><div class="k">盈利/RTP/佔比</div><div class="v">-1,690,224.17 / 10183.065% / -10083.065%</div></div>
+                <div class="traffic-op-row"><div class="k">投注額/次數</div><div class="v">16,763 / 211</div></div>
+                <div class="traffic-op-row"><div class="k">中獎額/次數</div><div class="v">1,706,987.17 / 63</div></div>
+                <div class="traffic-op-row"><div class="k">平轉整體RTP</div><div class="v">10306.008%</div></div>
+                <div class="traffic-op-row"><div class="k">平轉空轉率/平轉免遊中獎率</div><div class="v">70.48% / 0.95%</div></div>
+                <div class="traffic-op-row"><div class="k">平轉 中獎額/下注額/押注次數/中獎次數</div><div class="v">8,730.75 / 16,563 / 210 / 58 / 52.712%</div></div>
+                <div class="traffic-op-row"><div class="k">平轉免遊 中獎額/次數</div><div class="v">0 / 2 / 0.000%</div></div>
+                <div class="traffic-op-row"><div class="k">JP總中獎額 中獎額/次數/RTP/佔比</div><div class="v">1,698,253.42 / 4 / 10253.3% / 99.49%</div></div>
+                <div class="traffic-op-row"><div class="k">小獎及次獎 中獎額/次數/RTP/佔比</div><div class="v">46,381.44 / 2 / 280.03% / 2.72%</div></div>
+                <div class="traffic-op-row"><div class="k">小獎 中獎額/下注額/次數</div><div class="v">10,030.46 / 1.2 / 1</div></div>
+                <div class="traffic-op-row"><div class="k">次獎 中獎額/下注額/次數</div><div class="v">36,350.98 / 1.2 / 1</div></div>
+                <div class="traffic-op-row"><div class="k">大獎 中獎額/下注額/次數</div><div class="v">328,370.99 / 1.2 / 1</div></div>
+              </div>
+              <div class="traffic-op-col">
+                <div class="traffic-op-name">#3 qajimmy_QAT測試營運</div>
+                <div class="traffic-op-row"><div class="k">盈利/RTP/佔比</div><div class="v">-2,005,250.95 / 54828.465% / -54728.465%</div></div>
+                <div class="traffic-op-row"><div class="k">投注額/次數</div><div class="v">3,664 / 142</div></div>
+                <div class="traffic-op-row"><div class="k">中獎額/次數</div><div class="v">2,008,914.95 / 58</div></div>
+                <div class="traffic-op-row"><div class="k">平轉整體RTP</div><div class="v">54828.465%</div></div>
+                <div class="traffic-op-row"><div class="k">平轉空轉率/平轉免遊中獎率</div><div class="v">59.16% / 0.70%</div></div>
+                <div class="traffic-op-row"><div class="k">平轉 中獎額/下注額/押注次數/中獎次數</div><div class="v">2,000,326.95 / 3,664 / 142 / 52 / 54594.076%</div></div>
+                <div class="traffic-op-row"><div class="k">平轉免遊 中獎額/次數</div><div class="v">6,188 / 1 / 168.886%</div></div>
+                <div class="traffic-op-row"><div class="k">JP總中獎額 中獎額/次數/RTP/佔比</div><div class="v">2,400 / 5 / 65.5% / 0.12%</div></div>
+                <div class="traffic-op-row"><div class="k">小獎及次獎 中獎額/次數/RTP/佔比</div><div class="v">400 / 3 / 10.92% / 0.02%</div></div>
+                <div class="traffic-op-row"><div class="k">小獎 中獎額/下注額/次數</div><div class="v">200 / 4 / 2</div></div>
+                <div class="traffic-op-row"><div class="k">次獎 中獎額/下注額/次數</div><div class="v">200 / 2 / 1</div></div>
+                <div class="traffic-op-row"><div class="k">大獎 中獎額/下注額/次數</div><div class="v">800 / 2 / 1</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------------- Tab: 幣別流量(僅示意頁籤,尚未提供資料) ---------------- -->
+          <div class="tab-panel" id="panel-traffic-currency">
+            <div class="traffic-placeholder">此頁籤僅為畫面示意,尚未提供資料</div>
+          </div>
+
+          <!-- ---------------- Tab: 遊戲排名(僅示意頁籤,尚未提供資料) ---------------- -->
+          <div class="tab-panel" id="panel-traffic-game">
+            <div class="traffic-placeholder">此頁籤僅為畫面示意,尚未提供資料</div>
+          </div>
+
+          <!-- ---------------- Tab: 活動流量(新增,依你指定的四組欄位;數字為靜態假資料。
+               上方為三個營運加總後的總計,下方卡片為各營運分別的數字,兩者刻意對得起來:
+               活動獎金的中獎額/投注次數 = 限時任務 + 平台贈送 + 彩金活動 三者加總(無論總計或個別營運都成立);
+               活動獎金的下注額則等於彩金活動的下注額(限時任務/平台贈送屬於道具驅動,沒有對應的下注額概念)。
+               中獎額/投注次數後面的(%)是各分類佔活動獎金的比例,公式:該分類自己的該項數值 / 活動獎金該項數值 * 100%
+               (已修正,之前分子分母寫反了),只套用在限時任務/平台贈送/彩金活動這三個分類,活動獎金自己
+               這一列不顯示%。三個分類的百分比加總會等於100%(總計層級跟個別營運層級都成立)。 ---------------- -->
+          <div class="tab-panel" id="panel-traffic-activity">
+            <div class="traffic-chip-row">
+              <div class="traffic-chip c-info" style="font-size:14px;">活動獎金 中獎額/下注額/投注次數: 892,450 / 92,100 / 3,821</div>
+              <div class="traffic-chip c-warning">限時任務 中獎額/投注次數: 612,300(68.61%) / 2,540(66.47%)</div>
+              <div class="traffic-chip c-success">平台贈送 中獎額/投注次數: 215,800(24.18%) / 980(25.65%)</div>
+              <div class="traffic-chip c-pink">彩金活動 中獎額/下注額/投注次數: 64,350(7.21%) / 92,100 / 301(7.88%)</div>
+            </div>
+
+            <div class="traffic-op-grid">
+              <div class="traffic-op-col">
+                <div class="traffic-op-name">#1 qatmint</div>
+                <div class="traffic-op-row"><div class="k">活動獎金 中獎額/下注額/投注次數</div><div class="v">299,850 / 30,400 / 1,298</div></div>
+                <div class="traffic-op-row"><div class="k">限時任務 中獎額/投注次數</div><div class="v">210,500(70.20%) / 890(68.57%)</div></div>
+                <div class="traffic-op-row"><div class="k">平台贈送 中獎額/投注次數</div><div class="v">68,200(22.74%) / 310(23.88%)</div></div>
+                <div class="traffic-op-row"><div class="k">彩金活動 中獎額/下注額/投注次數</div><div class="v">21,150(7.05%) / 30,400 / 98(7.55%)</div></div>
+              </div>
+              <div class="traffic-op-col">
+                <div class="traffic-op-name">#2 bx高級營運</div>
+                <div class="traffic-op-row"><div class="k">活動獎金 中獎額/下注額/投注次數</div><div class="v">466,200 / 47,300 / 1,992</div></div>
+                <div class="traffic-op-row"><div class="k">限時任務 中獎額/投注次數</div><div class="v">320,800(68.81%) / 1,320(66.27%)</div></div>
+                <div class="traffic-op-row"><div class="k">平台贈送 中獎額/投注次數</div><div class="v">112,600(24.15%) / 520(26.10%)</div></div>
+                <div class="traffic-op-row"><div class="k">彩金活動 中獎額/下注額/投注次數</div><div class="v">32,800(7.04%) / 47,300 / 152(7.63%)</div></div>
+              </div>
+              <div class="traffic-op-col">
+                <div class="traffic-op-name">#3 qajimmy_QAT測試營運</div>
+                <div class="traffic-op-row"><div class="k">活動獎金 中獎額/下注額/投注次數</div><div class="v">126,400 / 14,400 / 531</div></div>
+                <div class="traffic-op-row"><div class="k">限時任務 中獎額/投注次數</div><div class="v">81,000(64.08%) / 330(62.15%)</div></div>
+                <div class="traffic-op-row"><div class="k">平台贈送 中獎額/投注次數</div><div class="v">35,000(27.69%) / 150(28.25%)</div></div>
+                <div class="traffic-op-row"><div class="k">彩金活動 中獎額/下注額/投注次數</div><div class="v">10,400(8.23%) / 14,400 / 51(9.60%)</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="page active" id="page-mission-activity">
       <div class="breadcrumb">活動模組 / 活動任務</div>
 
@@ -868,40 +1029,6 @@
   </div>
 </div>
 
-<!-- ============ Modal: 補派獎勵確認 ============ -->
-<div class="modal-overlay" id="resend-confirm-overlay">
-  <div class="modal small">
-    <div class="modal-header">
-      <h3>補派獎勵</h3>
-      <span class="modal-close" onclick="closeResendConfirm()" data-icon="close"></span>
-    </div>
-    <div class="modal-body">
-      <p style="margin-top:0;">是否確定補派獎勵給玩家「<b id="resend-confirm-member"></b>」?</p>
-      <p style="color:var(--text-secondary);">補派成功後,獎勵將直接存入玩家背包。</p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeResendConfirm()">取消</button>
-      <button class="btn btn-primary" onclick="confirmResend()">確認補派</button>
-    </div>
-  </div>
-</div>
-
-<!-- ============ Modal: 補派獎勵結果 ============ -->
-<div class="modal-overlay" id="resend-success-overlay">
-  <div class="modal small">
-    <div class="modal-header">
-      <h3>補派獎成功</h3>
-      <span class="modal-close" onclick="closeResendSuccess()" data-icon="close"></span>
-    </div>
-    <div class="modal-body">
-      <p style="margin-top:0;">已完成補派獎,交易單號:<span class="scope-link" id="resend-success-tx"></span></p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-primary" onclick="closeResendSuccess()">確定</button>
-    </div>
-  </div>
-</div>
-
 <!-- ============ Modal: 參與幣別與營運(任務列表 +N 點擊) ============ -->
 <div class="modal-overlay" id="scope-modal-overlay">
   <div class="modal small">
@@ -1071,7 +1198,6 @@
             <select id="export-setting-status-select">
               <option value="">全部</option>
               <option value="progress">進行中</option>
-              <option value="pending_reward">未領獎</option>
               <option value="done">已完成</option>
               <option value="expired">未達成</option>
             </select>
@@ -1245,7 +1371,7 @@ function pickOperatorIdsByCurrency(currencyCode, count){
 // 讓紀錄可以回溯是哪一組任務設定觸發的,避免同活動內多組任務類型相同時無法分辨。
 // progress/target:玩家目前累積進度與該任務門檻(數字皆為原型假資料,正式串接應改抓玩家即時累積數值)
 // currencyCode:對應該筆紀錄所屬活動任務之幣別(供紀錄頁「幣別」篩選使用,依 activityId 對應 missions 內的 currencyCode);
-// backpackTxId:玩家實際獲得獎勵時,後台背包異動的單號(僅「已完成」狀態才會有值;人工補派後由 confirmResend() 一併寫入)
+// backpackTxId:玩家實際獲得獎勵時,後台背包異動的單號(僅「已完成」狀態才會有值)
 let recordsData = [
   { member:'test0001', operator:'vip0001', activityId:'12356', activity:'台幣任務', taskNo:1, taskType:'bet_amount', currencyCode:'TWD',
     taskContent:'累積有效投注滿 NT$5,000', rewardContent:'免費旋轉 x10(戰神賽特2)', progress:5000, target:5000,
@@ -1255,7 +1381,7 @@ let recordsData = [
     claimedAt:'2026-07-12 08:40:52', achievedAt:'', rewardedAt:'', status:'progress', backpackTxId:'' },
   { member:'test0003', operator:'vip0456', activityId:'78987', activity:'其他幣別任務', taskNo:2, taskType:'bet_count', currencyCode:'HKD',
     taskContent:'累積有效投注滿 200 次', rewardContent:'免費旋轉 x20(所有遊戲)', progress:200, target:200,
-    claimedAt:'2026-07-11 21:15:07', achievedAt:'2026-07-11 22:41:38', rewardedAt:'', status:'pending_reward', backpackTxId:'' },
+    claimedAt:'2026-07-11 21:15:07', achievedAt:'2026-07-11 22:41:38', rewardedAt:'2026-07-11 22:41:38', status:'done', backpackTxId:'BP20260711224138003' }, // 原本示意「未領獎」的狀態已移除,改為達成後直接視為已完成(領獎時間比照達成時間)
   { member:'test0004', operator:'vip0301', activityId:'12356', activity:'台幣任務', taskNo:3, taskType:'super_free', currencyCode:'TWD',
     taskContent:'累積進入超級免費遊戲 1 次', rewardContent:'免費旋轉 x30(赤三國)', progress:1, target:1,
     claimedAt:'2026-07-13 08:02:19', achievedAt:'2026-07-13 09:10:44', rewardedAt:'2026-07-13 09:12:56', status:'done', backpackTxId:'BP20260713091256004' },
@@ -1887,12 +2013,34 @@ let operatorPresets = [];
 /* ============================================================
    Tabs
    ============================================================ */
+// 注意:.tab/.tab-panel 之前是整份文件共用同一組 class,點擊時是對「全文件」找 .tab/.tab-panel 清除 active,
+// 這在只有一個頁面用得到分頁籤時沒問題,但現在系統總覽/流量統計頁也有自己的一組分頁籤,兩邊 class 相同,
+// 會互相干擾(切流量統計的頁籤,會把活動任務頁籤的 active 狀態也清掉,導致切回去時整個空白)。
+// 修正做法:每次都只在「目前這個分頁籤所在的 .card」範圍內找 .tab/.tab-panel 做切換,不影響其他頁面自己的分頁籤。
 document.querySelectorAll('.tab').forEach(tab=>{
   tab.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    const scope = tab.closest('.card') || document;
+    scope.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    scope.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
     tab.classList.add('active');
-    document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+    scope.querySelector('#panel-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 系統總覽 > 流量統計:「選擇遊戲」下拉選單只在「營運活動流量」頁籤時隱藏,
+// 其餘頁籤(營運流量/幣別流量/遊戲排名)都維持顯示;「排序」下拉選單則是「營運活動流量」頁籤
+// 才提供投注額/中獎額(預設)兩個選項,其餘頁籤維持原本只有投注額一個選項。
+// 獨立掛一個監聽,不去改動上面共用的 tab 切換邏輯,避免影響其他頁面。
+document.querySelectorAll('#page-traffic-stats .tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    const gameSelect = document.getElementById('traffic-game-select');
+    if(gameSelect) gameSelect.style.display = (tab.dataset.tab === 'traffic-activity') ? 'none' : '';
+    const sortSelect = document.getElementById('traffic-sort-select');
+    if(sortSelect){
+      sortSelect.innerHTML = (tab.dataset.tab === 'traffic-activity')
+        ? `<option value="betAmount">投注額</option><option value="winAmount" selected>中獎額</option>`
+        : `<option value="betAmount">投注額</option>`;
+    }
   });
 });
 
@@ -1914,7 +2062,7 @@ document.querySelectorAll('.subtab').forEach(st=>{
 
 /* ============================================================
    左側選單獨立頁面切換:目前僅「活動模組 > 彩金活動 > 活動任務」「記錄查詢 > 背包紀錄」
-   「記錄查詢 > 道具紀錄」「帳號管理 > 用戶帳號」四個頁面是真的可切換的,
+   「記錄查詢 > 道具紀錄」「帳號管理 > 用戶帳號」「系統總覽 > 流量統計」五個頁面是真的可切換的,
    其餘側邊選單項目僅示意用,尚未串接任何頁面
    ============================================================ */
 document.querySelectorAll('.sidebar .item[data-page]').forEach(item=>{
@@ -2684,7 +2832,7 @@ function deleteTemplate(templateId){
    紀錄頁篩選:日期(套用限時任務同款行事曆+快捷元件,ns='record-filter')/
    活動名稱模糊搜尋/用戶賬號模糊搜尋/幣別複選(連動營運)/營運複選/任務類型單選/狀態複選,AND交集
    ============================================================ */
-const RECORD_STATUS_OPTIONS = ['progress','pending_reward','done','expired'];
+const RECORD_STATUS_OPTIONS = ['progress','done','expired'];
 // 預設區間刻意涵蓋原型假資料的時間跨度(2026-07-10 ~ 07-13),讓紀錄列表預設就能示意所有狀態;
 // 與限時任務頁一致,這是我這邊自行決定的示意用預設值,並非規格指定,若不合適請告訴我再調整
 function defaultRecordFilterState(){
@@ -2868,7 +3016,6 @@ function resetRecordFilter(){
    ============================================================ */
 const STATUS_LABEL = {
   progress:{ text:'進行中', cls:'pill-warning' },
-  pending_reward:{ text:'未領獎', cls:'pill-muted' },
   done:{ text:'已完成', cls:'pill-success' },
   expired:{ text:'未達成', cls:'pill-danger' }
 };
@@ -2876,7 +3023,7 @@ const STATUS_LABEL = {
 // 紀錄清單排序:開始時間/達成時間/派獎時間/狀態,點擊同一欄再點一次切換升冪/降冪(與限時任務排序邏輯一致)
 let recordSortKey = null;   // null | 'claimedAt' | 'achievedAt' | 'rewardedAt' | 'status'
 let recordSortDir = 'asc';  // 'asc' | 'desc'
-const RECORD_STATUS_SORT_ORDER = { progress:1, pending_reward:2, done:3, expired:4 };
+const RECORD_STATUS_SORT_ORDER = { progress:1, done:2, expired:3 };
 
 function sortRecordsBy(key){
   if(recordSortKey === key){
@@ -2928,9 +3075,7 @@ function renderRecordTable(){
   const filtered = getSortedRecords();
   tbody.innerHTML = filtered.map(({r, idx})=>{
     const st = STATUS_LABEL[r.status];
-    const statusCell = r.status === 'pending_reward'
-      ? `<button class="btn-resend" title="用於原本未成功領取、活動已過期的情況,點擊後可補派獎勵給玩家" onclick="openResendConfirm(${idx})">› ${st.text}</button>`
-      : `<span class="pill ${st.cls}">${st.text}</span>`;
+    const statusCell = `<span class="pill ${st.cls}">${st.text}</span>`;
     return `
     <tr>
       <td>${r.activityId}</td><td>${r.activity}</td><td>${r.operator}</td><td>${r.member}</td>
@@ -3366,9 +3511,7 @@ function submitExportSetting(){
 function openRecordDetail(idx){
   const r = recordsData[idx];
   const st = STATUS_LABEL[r.status];
-  const statusHtml = r.status === 'pending_reward'
-    ? `<button class="btn-resend" onclick="openResendConfirm(${idx})">› ${st.text}</button>`
-    : `<span class="pill ${st.cls}">${st.text}</span>${r.manualResend ? ' <span class="pill pill-muted">人工補派</span>' : ''}${r.resendTxId ? ` <span style="color:var(--text-secondary);font-size:12.5px;">(交易單號 <span class="scope-link">${r.resendTxId}</span>)</span>` : ''}`;
+  const statusHtml = `<span class="pill ${st.cls}">${st.text}</span>`;
   // 結束時間:取自該活動(missions)本身設定的結束時間,與下方 claimedAt/achievedAt/rewardedAt 等玩家個人時間點不同
   const missionEndAt = (missions.find(m=>m.id===r.activityId) || {}).end || '-';
   // 詳情欄位順序:活動ID/任務名稱/營運/用戶賬號/任務編號/任務類型/任務內容/累積進度/獎勵內容/開始時間/達成時間/派獎時間/結束時間/背包紀錄單號/狀態
@@ -3391,40 +3534,6 @@ function openRecordDetail(idx){
   `;
   document.getElementById('record-detail-overlay').classList.add('open');
 }
-// 補派獎勵:用於「未領獎」且活動已過期、玩家原本沒有成功領取的情況,讓操作者手動重新觸發發放
-// 流程分兩段彈窗:先確認補派對象,確認後才真正送出並顯示交易單號
-let resendConfirmIdx = null;
-
-function openResendConfirm(idx){
-  const r = recordsData[idx];
-  if(!r || r.status !== 'pending_reward') return;
-  resendConfirmIdx = idx;
-  document.getElementById('resend-confirm-member').textContent = r.member;
-  document.getElementById('resend-confirm-overlay').classList.add('open');
-}
-function closeResendConfirm(){
-  document.getElementById('resend-confirm-overlay').classList.remove('open');
-  resendConfirmIdx = null;
-}
-function confirmResend(){
-  const idx = resendConfirmIdx;
-  const r = recordsData[idx];
-  if(!r || r.status !== 'pending_reward'){ closeResendConfirm(); return; }
-  r.rewardedAt = '2026-07-13 12:00:00'; // 示意用補派時間,對齊本原型模擬的今日時間
-  r.status = 'done';
-  r.manualResend = true; // 標記此筆為人工補派,供詳情頁與稽核使用
-  r.resendTxId = String(Math.floor(100000 + Math.random()*900000)); // 示意用交易單號,正式串接應改為後端實際回傳的單號
-  r.backpackTxId = 'BP'+String(Math.floor(100000000 + Math.random()*900000000)); // 示意用背包異動單號,正式串接應改為後端實際回傳的單號
-  renderRecordTable();
-  closeResendConfirm();
-  document.getElementById('resend-success-tx').textContent = r.resendTxId;
-  document.getElementById('resend-success-overlay').classList.add('open');
-  const detailOverlay = document.getElementById('record-detail-overlay');
-  if(detailOverlay.classList.contains('open')) openRecordDetail(idx); // 若詳情彈窗開著,重新整理內容以顯示最新狀態
-}
-function closeResendSuccess(){
-  document.getElementById('resend-success-overlay').classList.remove('open');
-}
 function closeRecordDetail(){
   document.getElementById('record-detail-overlay').classList.remove('open');
 }
@@ -3435,13 +3544,13 @@ function closeRecordDetail(){
    目前道具類型僅「免費旋轉卡」一種,itemType 欄位為未來擴充其他道具類型預留。
    資料為示意用假資料,正式串接時應改由後端背包服務提供。
    ============================================================ */
-// 交易類型:task=活動任務完成獲得/platform_gift=串接平台API贈送/manual_resend=客服人工補派/use=玩家使用消耗/expired=道具到期失效移除
-// (task/platform_gift/manual_resend 皆為此需求描述的「任務、平台贈送..等」新增類異動,加上「使用」為消耗類異動,「失效」為到期未使用而系統自動移除;
-//  這份分類是我依你的描述推導出來的,不是既有規格,若還有其他新增來源類型要請你補充)
+// 交易類型:task=活動任務完成獲得/platform_gift=串接平台API贈送/use=玩家使用消耗/expired=道具到期失效移除
+// (task/platform_gift 皆為此需求描述的「任務、平台贈送..等」新增類異動,加上「使用」為消耗類異動,「失效」為到期未使用而系統自動移除;
+//  這份分類是我依你的描述推導出來的,不是既有規格,若還有其他新增來源類型要請你補充。
+//  原本還有 manual_resend(人工補派)這個來源,已依你的指示移除。)
 const TX_TYPE_LABEL = {
   task: '限時任務',
   platform_gift: '平台贈送',
-  manual_resend: '人工補派',
   use: '使用',
   expired: '道具到期',
   cancelled: '人工取消'
@@ -3489,8 +3598,6 @@ let backpackHistoryData = [
     detail:{ mode:'add', params:{ gameId:'g3', betLevel:1, expireHours:24, spinCount:20, maxWinMode:'range', maxWinMultiplier:100 } } },
   { txId:'USE-0002', type:'use', itemType:'free_spin', itemId:'FS-0003', createdAt:'2026-07-13 10:40:00', member:'test0004', qty:-1,
     detail:{ mode:'use', params:{ gameId:'g3', betLevel:1, expireHours:24, spinCount:20, maxWinMode:'range', maxWinMultiplier:100 }, spins: mkSpinUsage(20, 1549480200001001, '2026-07-13 10:40:00', 6, 1) } },
-  { txId:'RESEND-483920', type:'manual_resend', itemType:'free_spin', itemId:'FS-0004', createdAt:'2026-07-13 12:00:00', member:'test0003', qty:1,
-    detail:{ mode:'add', params:{ gameId:'g4', betLevel:1, expireHours:24, spinCount:20, maxWinMode:'range', maxWinMultiplier:100 } } },
   // 斷線情境示意:玩家打了3局後斷線,直到道具到期都沒回來,剩下7局隨道具到期一併失效。
   // 只在「離開背包」的那一刻(到期)寫一筆 ledger,不拆成「使用」+「到期」兩筆,避免同一張卡被扣兩次 qty。
   // 3局的下注時間對齊到「領取後不久」(斷線前),不是到期時間,才符合「玩了3局就斷線」的情境。
@@ -3830,8 +3937,8 @@ function buildItemCardData(){
     return {
       itemId: x.itemId,
       itemType: add.itemType,
-      source: add.type, // 來源:這張卡是怎麼進背包的(限時任務/平台贈送/人工補派),對應 TX_TYPE_LABEL
-      activityId: add.activityId || '', // 僅來源為「限時任務」的紀錄才會有值(平台贈送/人工補派沒有對應活動)
+      source: add.type, // 來源:這張卡是怎麼進背包的(限時任務/平台贈送),對應 TX_TYPE_LABEL
+      activityId: add.activityId || '', // 僅來源為「限時任務」的紀錄才會有值(平台贈送沒有對應活動)
       member: add.member,
       gameId: p.gameId,
       betLevel: p.betLevel,
@@ -3853,8 +3960,8 @@ function buildItemCardData(){
   });
 }
 
-// 來源篩選選項:只列「新增類」交易類型(限時任務/平台贈送/人工補派),對應 buildItemCardData() 的 add.type
-const ITEM_CARD_SOURCE_OPTIONS = ['task','platform_gift','manual_resend'];
+// 來源篩選選項:只列「新增類」交易類型(限時任務/平台贈送),對應 buildItemCardData() 的 add.type
+const ITEM_CARD_SOURCE_OPTIONS = ['task','platform_gift'];
 // timeField:'validFrom'(獲得時間)| 'validTo'(有效時間),決定下方時間區間是套用在哪個時間欄位上
 function defaultItemCardFilterState(){
   return {
@@ -4034,7 +4141,7 @@ function toggleItemCardRow(itemId){
 //   「玩家背包」彈窗不傳這個,因為未使用狀態下最後更新時間=獲得時間,重複顯示沒有資訊量)。
 function itemCardDetailContentHtml(c, opts){
   opts = opts || {};
-  // 來源為「限時任務」才會有 activityId(平台贈送/人工補派沒有對應活動),不受 opts 控制、只看資料本身有沒有值,
+  // 來源為「限時任務」才會有 activityId(平台贈送沒有對應活動),不受 opts 控制、只看資料本身有沒有值,
   // 兩個顯示這份詳情的地方(道具紀錄頁/玩家背包彈窗)都一致套用這個規則
   const activityIdHtml = (c.source === 'task' && c.activityId)
     ? `<div class="detail-row"><span class="k">活動ID</span><span class="v">${c.activityId}</span></div>`
