@@ -78,6 +78,7 @@
   .btn-outline{background:#fff;border:1px solid var(--border);color:var(--text);}
   .btn-outline:hover{background:#f4f5f8;border-color:#d1d5db;}
   .btn-outline[disabled]{opacity:.45;cursor:not-allowed;}
+  .btn-primary[disabled]{opacity:.45;cursor:not-allowed;}
   .btn-text{background:none;color:var(--accent);padding:6px 4px;}
   .btn-sm{padding:5px 10px;font-size:12.5px;}
   .spacer-flex{flex:1;}
@@ -381,14 +382,14 @@
                頁籤切換 #traffic-game-select 的顯示狀態。 -->
           <div class="filter-bar" style="align-items:center;margin-top:22px;margin-bottom:16px;padding:0 16px;">
             <select id="traffic-game-select" style="width:130px;"><option>所有遊戲</option></select>
-            <button class="btn btn-outline">≡ 選擇營運</button>
+            <button class="btn btn-outline" onclick="openTrafficOpGroupModal()">≡ 選擇營運</button>
             <button class="btn btn-outline" title="上一區間">‹</button>
             <div class="ms date-picker" style="width:210px;">
               <div class="ms-control"><span class="ms-summary">2026-09-16 ~ 2026-09-16</span><span class="chevron" data-icon="calendar"></span></div>
             </div>
             <button class="btn btn-outline" title="下一區間">›</button>
             <button class="btn btn-primary">搜尋</button>
-            <span style="color:var(--text-secondary);font-size:13px;">排序</span>
+            <span id="traffic-sort-label" style="color:var(--text-secondary);font-size:13px;">排序</span>
             <select id="traffic-sort-select" style="width:110px;"><option>投注額</option></select>
             <span style="color:var(--text-secondary);font-size:13px;">營運類型</span>
             <select style="width:110px;"><option>正式營運</option></select>
@@ -398,7 +399,7 @@
           <div class="tab-panel active" id="panel-traffic-operator">
             <!-- margin-top 用負值抵消 .tab-panel 本身的上方 padding(16px),讓這則提示更貼近上面的搜尋條件列;
                  只調這個 hint 自己的間距,不動 .tab-panel/.filter-bar 的全域樣式,不影響其他頁籤/頁面 -->
-            <div class="hint" style="margin-top:-10px;margin-bottom:14px;">說明:此頁面統計數據不含活動流量(限時任務/平台贈送/彩金活動等道具驅動的中獎金額),如需查看這部分數據請切到「營運活動流量」頁籤。</div>
+            <div class="hint" style="margin-top:-10px;margin-bottom:14px;">說明:此頁面統計數據不含活動流量(限時任務/平台贈送/彩金活動..等),如需查看這部分數據請切到「營運活動流量」頁籤。</div>
             <div class="traffic-chip-row">
               <div class="traffic-chip c-danger">獲利: -3,740,813.51(-2544.56%)</div>
               <div class="traffic-chip c-warning">遊玩人數: 13</div>
@@ -467,14 +468,16 @@
 
           <!-- ---------------- Tab: 活動流量(新增,依你指定的四組欄位;數字為靜態假資料。
                上方為三個營運加總後的總計,下方卡片為各營運分別的數字,兩者刻意對得起來:
-               活動獎金的中獎額/投注次數 = 限時任務 + 平台贈送 + 彩金活動 三者加總(無論總計或個別營運都成立);
-               活動獎金的下注額則等於彩金活動的下注額(限時任務/平台贈送屬於道具驅動,沒有對應的下注額概念)。
-               中獎額/投注次數後面的(%)是各分類佔活動獎金的比例,公式:該分類自己的該項數值 / 活動獎金該項數值 * 100%
-               (已修正,之前分子分母寫反了),只套用在限時任務/平台贈送/彩金活動這三個分類,活動獎金自己
-               這一列不顯示%。三個分類的百分比加總會等於100%(總計層級跟個別營運層級都成立)。 ---------------- -->
+               活動獎金(總)的中獎額/投注次數 = 限時任務 + 平台贈送 + 彩金活動 三者加總(無論總計或個別營運都成立);
+               活動獎金(總)的下注額則等於彩金活動的下注額(限時任務/平台贈送屬於道具驅動,沒有對應的下注額概念)。
+               中獎額/投注次數後面的(%)是各分類佔活動獎金(總)的比例,公式:該分類自己的該項數值 / 活動獎金(總)該項數值 * 100%
+               (已修正,之前分子分母寫反了),只套用在限時任務/平台贈送/彩金活動這三個分類,活動獎金(總)自己
+               這一列不顯示%。三個分類的百分比加總會等於100%(總計層級跟個別營運層級都成立)。
+               此頁籤不提供排序搜尋條件,固定依「活動獎金(總) 中獎額」由高到低排列(下方 3 張營運卡片已依此排序,
+               排名 #1~#3 對應此順序;bx高級營運 466,200 > qatmint 299,850 > qajimmy_QAT測試營運 126,400)。 ---------------- -->
           <div class="tab-panel" id="panel-traffic-activity">
             <div class="traffic-chip-row">
-              <div class="traffic-chip c-info" style="font-size:14px;">活動獎金 中獎額/下注額/投注次數: 892,450 / 92,100 / 3,821</div>
+              <div class="traffic-chip c-info" style="font-size:14px;">活動獎金(總) 中獎額/下注額/投注次數: 892,450 / 92,100 / 3,821</div>
               <div class="traffic-chip c-warning">限時任務 中獎額/投注次數: 612,300(68.61%) / 2,540(66.47%)</div>
               <div class="traffic-chip c-success">平台贈送 中獎額/投注次數: 215,800(24.18%) / 980(25.65%)</div>
               <div class="traffic-chip c-pink">彩金活動 中獎額/下注額/投注次數: 64,350(7.21%) / 92,100 / 301(7.88%)</div>
@@ -482,22 +485,22 @@
 
             <div class="traffic-op-grid">
               <div class="traffic-op-col">
-                <div class="traffic-op-name">#1 qatmint</div>
-                <div class="traffic-op-row"><div class="k">活動獎金 中獎額/下注額/投注次數</div><div class="v">299,850 / 30,400 / 1,298</div></div>
-                <div class="traffic-op-row"><div class="k">限時任務 中獎額/投注次數</div><div class="v">210,500(70.20%) / 890(68.57%)</div></div>
-                <div class="traffic-op-row"><div class="k">平台贈送 中獎額/投注次數</div><div class="v">68,200(22.74%) / 310(23.88%)</div></div>
-                <div class="traffic-op-row"><div class="k">彩金活動 中獎額/下注額/投注次數</div><div class="v">21,150(7.05%) / 30,400 / 98(7.55%)</div></div>
-              </div>
-              <div class="traffic-op-col">
-                <div class="traffic-op-name">#2 bx高級營運</div>
-                <div class="traffic-op-row"><div class="k">活動獎金 中獎額/下注額/投注次數</div><div class="v">466,200 / 47,300 / 1,992</div></div>
+                <div class="traffic-op-name">#1 bx高級營運</div>
+                <div class="traffic-op-row"><div class="k">活動獎金(總) 中獎額/下注額/投注次數</div><div class="v">466,200 / 47,300 / 1,992</div></div>
                 <div class="traffic-op-row"><div class="k">限時任務 中獎額/投注次數</div><div class="v">320,800(68.81%) / 1,320(66.27%)</div></div>
                 <div class="traffic-op-row"><div class="k">平台贈送 中獎額/投注次數</div><div class="v">112,600(24.15%) / 520(26.10%)</div></div>
                 <div class="traffic-op-row"><div class="k">彩金活動 中獎額/下注額/投注次數</div><div class="v">32,800(7.04%) / 47,300 / 152(7.63%)</div></div>
               </div>
               <div class="traffic-op-col">
+                <div class="traffic-op-name">#2 qatmint</div>
+                <div class="traffic-op-row"><div class="k">活動獎金(總) 中獎額/下注額/投注次數</div><div class="v">299,850 / 30,400 / 1,298</div></div>
+                <div class="traffic-op-row"><div class="k">限時任務 中獎額/投注次數</div><div class="v">210,500(70.20%) / 890(68.57%)</div></div>
+                <div class="traffic-op-row"><div class="k">平台贈送 中獎額/投注次數</div><div class="v">68,200(22.74%) / 310(23.88%)</div></div>
+                <div class="traffic-op-row"><div class="k">彩金活動 中獎額/下注額/投注次數</div><div class="v">21,150(7.05%) / 30,400 / 98(7.55%)</div></div>
+              </div>
+              <div class="traffic-op-col">
                 <div class="traffic-op-name">#3 qajimmy_QAT測試營運</div>
-                <div class="traffic-op-row"><div class="k">活動獎金 中獎額/下注額/投注次數</div><div class="v">126,400 / 14,400 / 531</div></div>
+                <div class="traffic-op-row"><div class="k">活動獎金(總) 中獎額/下注額/投注次數</div><div class="v">126,400 / 14,400 / 531</div></div>
                 <div class="traffic-op-row"><div class="k">限時任務 中獎額/投注次數</div><div class="v">81,000(64.08%) / 330(62.15%)</div></div>
                 <div class="traffic-op-row"><div class="k">平台贈送 中獎額/投注次數</div><div class="v">35,000(27.69%) / 150(28.25%)</div></div>
                 <div class="traffic-op-row"><div class="k">彩金活動 中獎額/下注額/投注次數</div><div class="v">10,400(8.23%) / 14,400 / 51(9.60%)</div></div>
@@ -1044,6 +1047,54 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeScopeModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Modal: 系統總覽 > 流量統計「選擇營運」按鈕開啟的「營運分組」彈窗(比照你提供的截圖)。
+     這顆按鈕所在的整條篩選列跟本頁籤其餘欄位一樣,目前都僅是畫面示意(尚未接實際搜尋/篩選邏輯),
+     所以這個彈窗開合是真的,但裡面的目標幣別/高級營運/營運欄位與「選取測試營運/選取正式營運/選取全部」
+     快速選取按鈕暫不綁定功能;下方的營運分組(快速選取)清單則沿用「新增活動任務」彈窗已有的
+     preset-chip 視覺樣式,改用獨立的假資料與獨立函式,不會動到既有的 operatorPresets 狀態。 ============ -->
+<div class="modal-overlay" id="traffic-op-group-modal-overlay">
+  <div class="modal small">
+    <div class="modal-header">
+      <h3>營運分組</h3>
+      <span class="modal-close" onclick="closeTrafficOpGroupModal()" data-icon="close"></span>
+    </div>
+    <div class="modal-body">
+      <div class="form-item" style="margin-bottom:16px;">
+        <label>目標幣別</label>
+        <div class="ms-control" style="cursor:default;flex-wrap:wrap;gap:6px;">
+          <span class="tag" style="background:var(--accent-tint);color:var(--accent-dark);margin:0;">新台幣 <span style="margin-left:3px;">✕</span></span>
+          <span class="chevron" data-icon="chevronDown" style="margin-left:auto;"></span>
+        </div>
+      </div>
+      <div class="form-item" style="margin-bottom:16px;">
+        <label>請選擇高級營運</label>
+        <div class="ms-control" style="cursor:default;">
+          <span class="ms-summary placeholder">請選擇高級營運</span>
+          <span class="chevron" data-icon="chevronDown"></span>
+        </div>
+      </div>
+      <div class="form-item" style="margin-bottom:16px;">
+        <label>請選擇營運</label>
+        <div class="ms-control" style="cursor:default;">
+          <span class="ms-summary placeholder">請選擇營運</span>
+          <span class="chevron" data-icon="chevronDown"></span>
+        </div>
+      </div>
+      <div id="traffic-op-group-chips" style="display:flex;flex-wrap:wrap;margin-bottom:4px;"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;">
+        <button type="button" class="btn btn-outline btn-sm" title="示意,尚未綁定功能">選取測試營運</button>
+        <button type="button" class="btn btn-outline btn-sm" title="示意,尚未綁定功能">選取正式營運</button>
+        <button type="button" class="btn btn-outline btn-sm" title="示意,尚未綁定功能">選取全部</button>
+        <button type="button" class="btn-add-preset" title="示意,尚未綁定功能">+</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeTrafficOpGroupModal()">取消</button>
+      <button class="btn btn-primary" disabled title="示意,尚未選擇營運">確認</button>
     </div>
   </div>
 </div>
@@ -2028,21 +2079,47 @@ document.querySelectorAll('.tab').forEach(tab=>{
 });
 
 // 系統總覽 > 流量統計:「選擇遊戲」下拉選單只在「營運活動流量」頁籤時隱藏,
-// 其餘頁籤(營運流量/幣別流量/遊戲排名)都維持顯示;「排序」下拉選單則是「營運活動流量」頁籤
-// 才提供投注額/中獎額(預設)兩個選項,其餘頁籤維持原本只有投注額一個選項。
+// 其餘頁籤(營運流量/幣別流量/遊戲排名)都維持顯示;
+// 「排序」這個搜尋條件(標籤+下拉選單)在「營運活動流量」頁籤也一併移除——
+// 該頁籤固定以中獎金額(中獎額)遞減排序顯示,不提供使用者自行選擇排序方式,
+// 下方 3 張營運卡片(#1/#2/#3)已依此規則排好順序,其餘頁籤維持原本可選的排序下拉。
 // 獨立掛一個監聽,不去改動上面共用的 tab 切換邏輯,避免影響其他頁面。
 document.querySelectorAll('#page-traffic-stats .tab').forEach(tab=>{
   tab.addEventListener('click', ()=>{
     const gameSelect = document.getElementById('traffic-game-select');
     if(gameSelect) gameSelect.style.display = (tab.dataset.tab === 'traffic-activity') ? 'none' : '';
+    const sortLabel = document.getElementById('traffic-sort-label');
     const sortSelect = document.getElementById('traffic-sort-select');
-    if(sortSelect){
-      sortSelect.innerHTML = (tab.dataset.tab === 'traffic-activity')
-        ? `<option value="betAmount">投注額</option><option value="winAmount" selected>中獎額</option>`
-        : `<option value="betAmount">投注額</option>`;
-    }
+    const hideSort = (tab.dataset.tab === 'traffic-activity') ? 'none' : '';
+    if(sortLabel) sortLabel.style.display = hideSort;
+    if(sortSelect) sortSelect.style.display = hideSort;
   });
 });
+
+// 系統總覽 > 流量統計「選擇營運」按鈕開啟的「營運分組」彈窗(比照你提供的截圖)。
+// 下方的營運分組(快速選取)清單是獨立的假資料,沿用「新增活動任務」彈窗既有的 preset-chip 視覺樣式,
+// 但用獨立變數/函式名稱,不會讀寫既有的 operatorPresets,避免互相干擾。
+const trafficOpGroupPresets = [
+  { name:'選取彼得TEST-02', scope:'新台幣' },
+  { name:'選取彼得TEST-01', scope:'泰/美' },
+  { name:'選取彼得TEST-03', scope:'新台幣/泰/P13K' }
+];
+function renderTrafficOpGroupChips(){
+  const box = document.getElementById('traffic-op-group-chips');
+  if(!box) return;
+  box.innerHTML = trafficOpGroupPresets.map(p=>`
+    <span class="preset-chip">
+      <span title="示意,尚未綁定功能">${p.name}(${p.scope})</span>
+      <span class="icon-mini" title="重新命名(示意,尚未綁定功能)">${iconSvg('edit',12)}</span>
+      <span class="icon-mini" title="刪除(示意,尚未綁定功能)">${iconSvg('close',12)}</span>
+    </span>`).join('');
+}
+function openTrafficOpGroupModal(){
+  document.getElementById('traffic-op-group-modal-overlay').classList.add('open');
+}
+function closeTrafficOpGroupModal(){
+  document.getElementById('traffic-op-group-modal-overlay').classList.remove('open');
+}
 
 /* ============================================================
    子頁籤(subtab):用於單一頁面內再分頁籤的情況(例如背包紀錄的「歷程/當前」),
@@ -4646,6 +4723,7 @@ renderItemCardFilterControls();
 renderItemCardTable();
 renderUserAccountTable();
 renderReportPanel();
+renderTrafficOpGroupChips();
 mountIcons();
 </script>
 </body>
