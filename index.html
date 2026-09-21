@@ -163,6 +163,26 @@
   .traffic-op-row .k{font-size:12.5px;color:var(--text-secondary);}
   .traffic-op-row .v{text-align:right;font-size:15px;font-weight:700;color:var(--accent);margin-top:4px;}
   .traffic-placeholder{padding:60px 20px;text-align:center;color:var(--text-secondary);font-size:13.5px;}
+  /* ---------- 欄位說明 ⓘ 提示:改用自製 CSS tooltip(滑鼠移入立即顯示),
+       不依賴瀏覽器原生 title 屬性(原生 tooltip 有延遲、命中範圍小,容易滑鼠移過去卻沒看到) ---------- */
+  .info-tip{position:relative;display:inline-flex;vertical-align:middle;cursor:help;margin-left:2px;}
+  .info-tip .tip-box{visibility:hidden;opacity:0;position:absolute;top:130%;left:50%;transform:translateX(-50%);
+    background:#2b2f38;color:#fff;font-size:12px;font-weight:400;line-height:1.6;padding:8px 10px;border-radius:6px;
+    width:260px;text-align:left;white-space:normal;box-shadow:0 8px 20px rgba(0,0,0,.2);z-index:60;
+    transition:opacity .12s;pointer-events:none;}
+  .info-tip .tip-box::before{content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+    border:5px solid transparent;border-bottom-color:#2b2f38;}
+  /* tip-box 靠左對齊(left:0)那種用法,箭頭要跟著改成指向 ⓘ 圖示中心(約 7px),不能再用置中的 50% */
+  .info-tip .tip-box.align-left::before{left:7px;transform:none;}
+  .info-tip:hover .tip-box{visibility:visible;opacity:1;}
+  /* 人工充值彈窗:內容不長,不需要靠 overflow:auto 捲動,改成 visible 讓 ⓘ 提示框不會被裁切遮住 */
+  #manual-topup-modal-overlay .modal-body{overflow:visible;}
+  /* ---------- 用戶盈虧列表:帳號旁邊的線上狀態小圓點(僅示意,灰=離線/綠=在線) ---------- */
+  .user-status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#c7c9d1;margin-right:6px;vertical-align:middle;}
+  .user-status-dot.online{background:var(--success);}
+  /* ---------- 用戶盈虧列表:雙層表頭,區分「純遊戲數據」與「活動數據」兩組欄位 ---------- */
+  thead th.group-game{background:#eef3ff;color:var(--accent-dark);}
+  thead th.group-activity{background:#fff4e5;color:#b45309;}
   /* ---------- 分析報表:達成率長條 ---------- */
   .rate-bar-wrap{display:inline-block;width:90px;height:8px;background:#eee;border-radius:4px;overflow:hidden;vertical-align:middle;margin-right:8px;}
   .rate-bar{height:100%;border-radius:4px;}
@@ -352,6 +372,7 @@
       <!-- 背包紀錄頁已不使用,先隱藏側邊欄入口,頁面本體(#page-backpack-history)保留在下方沒有刪除,之後要恢復只要拿掉這行 display:none 即可 -->
       <div class="item sub" data-page="backpack-history" style="display:none;"><span class="dot"></span>背包紀錄</div>
       <div class="item sub" data-page="item-card-usage"><span class="dot"></span>道具紀錄</div>
+      <div class="item sub" data-page="user-profit-loss"><span class="dot"></span>用戶盈虧</div>
       <div class="item"><span class="dot"></span>消息管理</div>
       <div class="item"><span class="dot"></span>日誌管理</div>
       <div class="item"><span class="dot"></span>系統設定</div>
@@ -456,7 +477,8 @@
             </div>
           </div>
 
-          <!-- ---------------- Tab: 幣別流量(僅示意頁籤,尚未提供資料) ---------------- -->
+          <!-- ---------------- Tab: 幣別流量(僅示意頁籤,尚未提供資料;原本比照截圖做的幣別流量表格,
+               已依你的指示搬到獨立頁面「系統總覽 > 幣別流量」,不再放在這個頁籤底下) ---------------- -->
           <div class="tab-panel" id="panel-traffic-currency">
             <div class="traffic-placeholder">此頁籤僅為畫面示意,尚未提供資料</div>
           </div>
@@ -873,6 +895,44 @@
         </div>
       </div>
 
+      <!-- ============ 獨立功能頁:記錄查詢 / 用戶盈虧(比照你提供的真實系統截圖畫面示意)。
+           新增兩欄「活動總押分/總投注數」「活動獎金」,並改成雙層表頭:
+           左邊藍色那組「純遊戲數據」= 總押分/總投注數、總贏分/總中獎數、免費金額/免費次數、返還率、平台營利、平台歷史損益,
+           這六欄都不含活動;右邊橘色那組「活動數據」= 活動總押分/總投注數、活動獎金,獨立統計。
+           為了讓兩組欄位在表格裡各自是連續的一塊(colspan 才排得出來),原本在畫面最右邊的
+           返還率/平台營利/平台歷史損益,搬到活動數據那兩欄的「前面」,活動數據固定放在功能欄位之前。
+           「免費金額/免費次數」我先假設是遊戲本身的免費遊戲觸發機制(比照 Excel 計算機裡的「平轉免遊」),
+           跟限時任務/平台贈送這種活動發的免費旋轉卡是兩回事,所以放在「純遊戲數據」這組——
+           這個假設我不是百分之百確定,已經在回覆裡跟你確認。
+           排序方法/搜尋玩家/新增個人機率等按鈕都只是畫面示意,尚未綁定功能,數字為靜態假資料。 ============ -->
+      <div class="page" id="page-user-profit-loss">
+        <div class="breadcrumb">記錄查詢 / 用戶盈虧</div>
+        <div class="card" style="padding:16px;">
+          <div class="filter-bar" style="align-items:center;flex-wrap:nowrap;">
+            <select style="width:130px;"><option>所有遊戲</option></select>
+            <div class="ms date-picker" style="width:210px;">
+              <div class="ms-control"><span class="ms-summary">2026-08-01 ~ 2026-08-31</span><span class="chevron" data-icon="calendar"></span></div>
+            </div>
+            <input type="text" placeholder="搜尋玩家" style="width:160px;">
+            <button class="btn btn-outline" title="示意,尚未綁定功能"><span data-icon="search"></span></button>
+            <div class="spacer-flex"></div>
+            <button class="btn" style="background:var(--success);color:#fff;white-space:nowrap;" title="示意,尚未綁定功能">+ 新增個人機率</button>
+            <button class="btn" style="background:var(--danger);color:#fff;white-space:nowrap;" title="示意,尚未綁定功能">✕ 移除所有個人機率</button>
+            <span style="color:var(--text-secondary);font-size:13px;white-space:nowrap;">排序方法</span>
+            <button class="btn btn-outline" style="white-space:nowrap;" title="示意,尚未綁定功能">由低到高</button>
+            <button class="btn btn-primary" style="white-space:nowrap;" title="示意,尚未綁定功能">由高到低</button>
+            <button class="btn btn-outline" style="white-space:nowrap;" title="示意,尚未綁定功能">平台歷史盈虧</button>
+            <button class="btn btn-primary" style="white-space:nowrap;" title="示意,尚未綁定功能">平台營利</button>
+          </div>
+          <div class="filter-bar" style="align-items:center;">
+            <span style="color:var(--text-secondary);font-size:13px;">平台歷史損益</span>
+            <input type="text" placeholder="平台歷史損益" style="width:160px;">
+            <button class="btn btn-primary" title="示意,尚未綁定功能">搜尋</button>
+          </div>
+          <div id="user-profit-loss-table-wrap"></div>
+        </div>
+      </div>
+
       <!-- ============ 獨立功能頁:帳號管理 / 用戶帳號(僅為示意此原型所需的欄位與「背包」功能圖示,非完整用戶帳號規格) ============ -->
       <div class="page" id="page-user-account">
         <div class="breadcrumb">帳號管理 / 用戶帳號</div>
@@ -1140,6 +1200,48 @@
   </div>
 </div>
 
+<!-- ============ Modal: 帳號管理 > 用戶帳號「$」圖示點開的「人工充值」彈窗(比照你提供的截圖畫面示意)。
+     總押分/總贏分/獲利這三個欄位,跟前面「用戶盈虧」頁一樣的原則:不含活動數據,
+     活動的部分獨立用「活動總押分」「活動總贏分」兩個新欄位呈現,並在區塊標題旁加 (?) 說明這個口徑。
+     這個彈窗只做畫面示意,「確認」送出尚未接實際的儲值/扣款邏輯。 ============ -->
+<div class="modal-overlay" id="manual-topup-modal-overlay">
+  <div class="modal small">
+    <div class="modal-header">
+      <h3>人工充值</h3>
+      <span class="modal-close" onclick="closeManualTopupModal()" data-icon="close"></span>
+    </div>
+    <div class="modal-body">
+      <div class="detail-row"><span class="k">帳號</span><span class="v" id="topup-account">-</span></div>
+      <div class="detail-row"><span class="k">姓名</span><span class="v" id="topup-name">-</span></div>
+      <div class="detail-row"><span class="k">用戶編號</span><span class="v" id="topup-id">-</span></div>
+      <div class="detail-row"><span class="k">用戶全名</span><span class="v" id="topup-fullname">-</span></div>
+      <div style="display:flex;align-items:center;gap:8px;margin:18px 0 6px;color:var(--text-secondary);font-size:13px;">
+        <span style="white-space:nowrap;">#1 ATG餘額</span>
+        <span class="info-tip"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle;"><circle cx="12" cy="12" r="11" fill="var(--accent)"/><text x="12" y="16.5" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff" font-family="Arial, Helvetica, sans-serif">?</text></svg><span class="tip-box align-left" style="left:0;transform:none;">總押分、總贏分、獲利不含活動數據</span></span>
+        <span style="flex:1;height:1px;background:var(--border);"></span>
+      </div>
+      <div class="detail-row"><span class="k">總押分</span><span class="v" id="topup-bet">0</span></div>
+      <div class="detail-row"><span class="k">總贏分</span><span class="v" id="topup-win">0</span></div>
+      <div class="detail-row"><span class="k">獲利</span><span class="v" id="topup-profit">0</span></div>
+      <div class="detail-row"><span class="k">活動總押分</span><span class="v" id="topup-act-bet">0</span></div>
+      <div class="detail-row"><span class="k">活動總贏分</span><span class="v" id="topup-act-win">0</span></div>
+      <div class="detail-row" style="align-items:center;">
+        <span class="k">餘額說明</span>
+        <span class="v"><select style="width:140px;"><option>人工充值</option><option>人工扣款</option></select></span>
+      </div>
+      <div class="detail-row" style="align-items:flex-start;">
+        <span class="k">註解</span>
+        <span class="v"><textarea style="width:220px;height:60px;resize:vertical;" placeholder="輸入註解"></textarea></span>
+      </div>
+      <div class="detail-row"><span class="k">餘額</span><span class="v"><span id="topup-balance" style="margin-right:10px;color:var(--text-secondary);">0</span><input type="number" value="0" style="width:100px;text-align:right;"></span></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeManualTopupModal()">✕ 取消</button>
+      <button class="btn btn-primary" title="示意,尚未綁定功能">✓ 確認</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ 輸出設定 Modal ============
      先選搜尋方式:時間 / 活動ID,兩種欄位完全分開、不共用。
      時間模式:時間類型(開始/達成/派獎)+日期區間+高級營運(快速勾選底下所有營運)+營運+幣別+用戶帳號+狀態
@@ -1292,7 +1394,8 @@ const ICON_PATHS = {
   download:'<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/>',
   pause:'<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
   bag:'<path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/><rect x="4" y="7" width="16" height="14" rx="2"/><path d="M9 12h6"/>',
-  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>'
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>',
+  squareFill:'<rect x="5" y="5" width="14" height="14" rx="4" fill="currentColor" stroke="none"/>'
 };
 function iconSvg(name, size){
   size = size || 16;
@@ -2121,6 +2224,77 @@ function closeTrafficOpGroupModal(){
   document.getElementById('traffic-op-group-modal-overlay').classList.remove('open');
 }
 
+// 記錄查詢 > 用戶盈虧(比照你提供的真實系統截圖畫面示意)。
+// 註冊時間/更新時間/營運/用戶帳號/總押分.../免費金額... 這幾欄數字沿用截圖裡的真實數字;
+// 「活動總押分/總投注數」「活動獎金」是新增欄位,數字是我假設的示意值(大部分用戶沒有活動,只有少數幾筆有)。
+const USER_PROFIT_LOSS_ROWS = [
+  { regAt:'2019-06-20 23:14:07', updAt:'2026-08-31 15:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00065', betAmount:446019.2, betCount:265, winAmount:196263.05, winCount:93, freeAmount:41001.6, freeCount:2, freePct:0.75, rtp:0.44, profit:249756.15, historyPnl:-1128925.63, actBetAmount:12500, actBetCount:8, actBonus:3200 },
+  { regAt:'2019-06-20 23:14:04', updAt:'2026-08-25 10:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00014', betAmount:90146.4, betCount:2417, winAmount:42193, winCount:659, freeAmount:682.5, freeCount:15, freePct:0.62, rtp:0.47, profit:47953.4, historyPnl:-3055177.742, actBetAmount:0, actBetCount:0, actBonus:0 },
+  { regAt:'2019-06-20 23:14:03', updAt:'2026-08-25 10:00:00', op:'bx高級營運 / bxvip', online:true, member:'rsgtest00008', betAmount:100071.6, betCount:449, winAmount:76447, winCount:146, freeAmount:38027.1, freeCount:33, freePct:7.35, rtp:0.76, profit:23624.6, historyPnl:-554988003.886, actBetAmount:8000, actBetCount:5, actBonus:500000 },
+  { regAt:'2019-06-20 23:14:06', updAt:'2026-08-20 18:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00051', betAmount:96006, betCount:54, winAmount:77380.6, winCount:14, freeAmount:0, freeCount:0, freePct:0, rtp:0.81, profit:18625.4, historyPnl:10319953.35, actBetAmount:0, actBetCount:0, actBonus:0 },
+  { regAt:'2019-06-20 23:14:05', updAt:'2026-08-28 11:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00045', betAmount:14212.8, betCount:21, winAmount:4286.17, winCount:11, freeAmount:0, freeCount:0, freePct:0, rtp:0.30, profit:9926.63, historyPnl:9968032.901, actBetAmount:0, actBetCount:0, actBonus:0 },
+  { regAt:'2019-06-20 23:14:06', updAt:'2026-08-24 13:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00047', betAmount:20600.4, betCount:1031, winAmount:15630.2, winCount:282, freeAmount:5545, freeCount:4, freePct:0.39, rtp:0.76, profit:4970.2, historyPnl:9694171.792, actBetAmount:3200, actBetCount:6, actBonus:850 },
+  { regAt:'2019-06-20 23:14:03', updAt:'2026-08-31 17:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00010', betAmount:12052.8, betCount:145, winAmount:8907.2, winCount:33, freeAmount:0, freeCount:1, freePct:0.69, rtp:0.74, profit:3145.6, historyPnl:-813628.105, actBetAmount:0, actBetCount:0, actBonus:0 },
+  { regAt:'2019-06-20 23:14:05', updAt:'2026-08-19 17:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00036', betAmount:3457.2, betCount:653, winAmount:1581.86, winCount:154, freeAmount:522.3, freeCount:7, freePct:1.07, rtp:0.46, profit:1875.34, historyPnl:105549.501, actBetAmount:900, actBetCount:3, actBonus:220 },
+  { regAt:'2019-06-20 23:14:07', updAt:'2026-08-31 09:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00064', betAmount:1118, betCount:53, winAmount:397.02, winCount:21, freeAmount:0, freeCount:0, freePct:0, rtp:0.36, profit:720.98, historyPnl:73437.846, actBetAmount:0, actBetCount:0, actBonus:0 },
+  { regAt:'2019-06-20 23:14:03', updAt:'2026-08-28 11:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00012', betAmount:1819, betCount:1118, winAmount:1111.6, winCount:415, freeAmount:494.95, freeCount:15, freePct:1.34, rtp:0.61, profit:707.4, historyPnl:75767.244, actBetAmount:620, actBetCount:4, actBonus:180 },
+  { regAt:'2019-06-20 23:14:05', updAt:'2026-08-31 15:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00037', betAmount:4580.1, betCount:161, winAmount:3896.09, winCount:54, freeAmount:548.8, freeCount:1, freePct:0.62, rtp:0.85, profit:684.01, historyPnl:-109516.014, actBetAmount:0, actBetCount:0, actBonus:0 },
+  { regAt:'2019-06-20 23:14:04', updAt:'2026-08-13 16:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00015', betAmount:2183.6, betCount:132, winAmount:1622.65, winCount:32, freeAmount:0, freeCount:1, freePct:0.76, rtp:0.74, profit:560.95, historyPnl:-21392086.79, actBetAmount:0, actBetCount:0, actBonus:0 },
+  { regAt:'2019-06-20 23:14:05', updAt:'2026-08-28 11:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00033', betAmount:680, betCount:320, winAmount:325.75, winCount:117, freeAmount:65, freeCount:2, freePct:0.63, rtp:0.48, profit:354.25, historyPnl:-23749493.505, actBetAmount:240, actBetCount:2, actBonus:65 },
+  { regAt:'2019-06-20 23:14:06', updAt:'2026-08-10 17:00:00', op:'bx高級營運 / bxvip', online:false, member:'rsgtest00049', betAmount:508.8, betCount:11, winAmount:299.4, winCount:3, freeAmount:0, freeCount:0, freePct:0, rtp:0.59, profit:209.4, historyPnl:9774813.165, actBetAmount:0, actBetCount:0, actBonus:0 }
+];
+function renderUserProfitLossTable(){
+  const wrap = document.getElementById('user-profit-loss-table-wrap');
+  if(!wrap) return;
+  const rowsHtml = USER_PROFIT_LOSS_ROWS.map((r,i)=>{
+    const historyColor = r.historyPnl >= 0 ? 'var(--success)' : 'var(--danger)';
+    const profitColor = r.profit >= 0 ? 'var(--success)' : 'var(--danger)'; // 返還率跟平台營利共用同一套判斷:平台有賺(profit>=0)才是綠字,虧了是紅字
+    const dotCls = r.online ? 'user-status-dot online' : 'user-status-dot';
+    return `<tr>
+      <td>${i+1}</td>
+      <td>${r.regAt}</td>
+      <td>${r.updAt}</td>
+      <td>${r.op}</td>
+      <td><span class="${dotCls}"></span>${r.member}</td>
+      <td class="num">${r.betAmount.toLocaleString()} / ${r.betCount.toLocaleString()}</td>
+      <td class="num">${r.winAmount.toLocaleString()} / ${r.winCount.toLocaleString()}</td>
+      <td class="num">${r.freeAmount.toLocaleString()} / ${r.freeCount.toLocaleString()}(${r.freePct.toFixed(2)}%)</td>
+      <td class="num" style="color:${profitColor};">${r.rtp.toFixed(2)}</td>
+      <td class="num" style="color:${profitColor};">${r.profit.toLocaleString()}</td>
+      <td class="num" style="color:${historyColor};">${r.historyPnl.toLocaleString()}</td>
+      <td class="num">${r.actBetAmount.toLocaleString()} / ${r.actBetCount.toLocaleString()}</td>
+      <td class="num">${r.actBonus.toLocaleString()}</td>
+      <td><span class="icon-action" style="background:#ff9d1a;border-radius:8px;" title="示意,尚未綁定功能" data-icon="squareFill"></span></td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th rowspan="2">#</th>
+          <th rowspan="2">註冊時間</th>
+          <th rowspan="2">更新時間</th>
+          <th rowspan="2">營運</th>
+          <th rowspan="2">用戶帳號</th>
+          <th colspan="6" class="group-game">遊戲數據(不含活動)</th>
+          <th colspan="2" class="group-activity">活動數據</th>
+          <th rowspan="2">功能</th>
+        </tr>
+        <tr>
+          <th class="num group-game">總押分/總投注數</th>
+          <th class="num group-game">總贏分/總中獎數</th>
+          <th class="num group-game">免費金額/免費次數</th>
+          <th class="num group-game">返還率</th>
+          <th class="num group-game">平台營利</th>
+          <th class="num group-game">平台歷史損益</th>
+          <th class="num group-activity">總押分/總投注數</th>
+          <th class="num group-activity">總贏分</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+}
+
 /* ============================================================
    子頁籤(subtab):用於單一頁面內再分頁籤的情況(例如背包紀錄的「歷程/當前」),
    刻意用獨立的 class 名稱與 .tab/.tab-panel 區分,避免互相干擾;
@@ -2139,7 +2313,8 @@ document.querySelectorAll('.subtab').forEach(st=>{
 
 /* ============================================================
    左側選單獨立頁面切換:目前僅「活動模組 > 彩金活動 > 活動任務」「記錄查詢 > 背包紀錄」
-   「記錄查詢 > 道具紀錄」「帳號管理 > 用戶帳號」「系統總覽 > 流量統計」五個頁面是真的可切換的,
+   「記錄查詢 > 道具紀錄」「記錄查詢 > 用戶盈虧」「帳號管理 > 用戶帳號」「系統總覽 > 流量統計」
+   六個頁面是真的可切換的,
    其餘側邊選單項目僅示意用,尚未串接任何頁面
    ============================================================ */
 document.querySelectorAll('.sidebar .item[data-page]').forEach(item=>{
@@ -3870,6 +4045,26 @@ function openBackpackCurrentModal(member){
 function closeBackpackCurrentModal(){
   document.getElementById('backpack-current-modal-overlay').classList.remove('open');
 }
+
+// 帳號管理 > 用戶帳號「$」圖示 → 人工充值彈窗(比照截圖畫面示意)。
+// 總押分/總贏分/獲利/活動總押分/活動總贏分都先固定用 0(示意用假資料),
+// 帳號/姓名/用戶編號則帶入被點擊那一列的實際資料。
+function openManualTopupModal(id, member){
+  document.getElementById('topup-account').textContent = member;
+  document.getElementById('topup-name').textContent = member;
+  document.getElementById('topup-id').textContent = id;
+  document.getElementById('topup-fullname').textContent = '-';
+  document.getElementById('topup-bet').textContent = '0';
+  document.getElementById('topup-win').textContent = '0';
+  document.getElementById('topup-act-bet').textContent = '0';
+  document.getElementById('topup-act-win').textContent = '0';
+  document.getElementById('topup-profit').textContent = '0';
+  document.getElementById('topup-balance').textContent = '0';
+  document.getElementById('manual-topup-modal-overlay').classList.add('open');
+}
+function closeManualTopupModal(){
+  document.getElementById('manual-topup-modal-overlay').classList.remove('open');
+}
 // 遊戲篩選(彈窗左上):獨立於道具紀錄頁的 itemCardFilterState.games,避免互相干擾
 let bpCurrentGameFilter = new Set(GAME_LIST.map(g=>g.id));
 function renderBpCurrentGameFilterControl(){
@@ -4368,7 +4563,7 @@ function renderUserAccountTable(){
       <td>
         <span class="icon-action icon-edit" title="編輯(示意,未綁定功能)" data-icon="edit"></span>
         <span class="icon-action icon-pause" title="停用(示意,未綁定功能)" data-icon="pause"></span>
-        <span class="icon-action icon-del" title="儲值/扣款(示意,未綁定功能)" style="font-weight:700;font-size:13px;">$</span>
+        <span class="icon-action icon-del" title="人工充值/扣款" style="font-weight:700;font-size:13px;" onclick="openManualTopupModal('${u.id}','${u.member}')">$</span>
         <span class="icon-action icon-bag" title="目前背包" data-icon="bag" onclick="openBackpackCurrentModal('${u.member}')"></span>
       </td>
     </tr>`).join('');
@@ -4724,6 +4919,7 @@ renderItemCardTable();
 renderUserAccountTable();
 renderReportPanel();
 renderTrafficOpGroupChips();
+renderUserProfitLossTable();
 mountIcons();
 </script>
 </body>
