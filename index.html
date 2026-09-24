@@ -58,8 +58,8 @@
   .tab{padding:14px 6px;margin-right:28px;font-size:14px;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;}
   .tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
   .subtabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px;}
-  .subtab{padding:0 6px 12px;margin-right:24px;font-size:13.5px;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;}
-  .subtab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+  .subtab, .report-subtab{padding:0 6px 12px;margin-right:24px;font-size:13.5px;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;}
+  .subtab.active, .report-subtab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
   .subtab-panel{display:none;}
   .subtab-panel.active{display:block;}
   .tab-panel{display:none;padding:16px;}
@@ -781,10 +781,13 @@
 
           <!-- 任務數據(原任務明細)/ 每日數據 兩個子頁籤,兩種模式都提供:參與時間模式的每日數據是「搜尋區間內」
                的逐日拆分;整體活動模式的每日數據則是該活動自己完整舉辦期間的逐日拆分,不受搜尋條件限制,
-               呈現的仍是「整體、不受時間篩選」的數字,只是多拆了一層天而已 -->
+               呈現的仍是「整體、不受時間篩選」的數字,只是多拆了一層天而已。
+               注意:這兩顆務必用 class="report-subtab",不要用 class="subtab",原因跟上面兩顆模式按鈕
+               不能用 class="tab" 一樣——全文件會對所有 .subtab 元素綁定通用子頁籤切換邏輯,這兩顆沒有
+               data-subtab 屬性,一旦被那組邏輯誤抓,點擊就會拋出例外(讀取不存在的 #subpanel-undefined)。 -->
           <div class="subtabs" style="margin-bottom:10px;padding-left:10px;border-left:3px solid var(--accent);border-bottom:none;">
-            <div class="subtab active" id="report-subtab-task-btn" onclick="setReportSubTab('task')">任務數據</div>
-            <div class="subtab" id="report-subtab-daily-btn" onclick="setReportSubTab('daily')">每日數據</div>
+            <div class="report-subtab active" id="report-subtab-task-btn" onclick="setReportSubTab('task')">任務數據</div>
+            <div class="report-subtab" id="report-subtab-daily-btn" onclick="setReportSubTab('daily')">每日數據</div>
           </div>
           <div class="hint" id="report-task-hint" style="margin-bottom:8px;"></div>
 
