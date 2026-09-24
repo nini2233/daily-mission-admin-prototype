@@ -215,6 +215,10 @@
   .bp-detail-grid .detail-row{margin:0;}
   .btn-mode{border:1px solid var(--border);background:#fff;color:var(--text-secondary);padding:7px 16px;border-radius:6px;font-size:13.5px;font-weight:600;cursor:pointer;}
   .btn-mode.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  /* 任務列表「營運」欄位:多筆營運改成逐行堆疊呈現(格式為「營運全名/營運帳號」),超過固定高度
+     (約3行)才出現滾輪,欄位加寬以容納全名/帳號的較長文字;此欄位為純資訊呈現,不可點擊(不再開啟彈窗) */
+  .operator-scope-box{max-height:58px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:180px;}
+  .operator-scope-box .operator-scope-item{white-space:nowrap;}
   /* ---------- Modal ---------- */
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,15,20,.45);align-items:flex-start;justify-content:center;padding:32px 16px;z-index:100;overflow-y:auto;}
   .modal-overlay.open{display:flex;}
@@ -610,7 +614,7 @@
               <th>ID</th><th>名稱</th>
               <th class="sortable" onclick="sortMissionsBy('start')">開始時間<span class="sort-icon" id="sort-icon-start"></span></th>
               <th class="sortable" onclick="sortMissionsBy('end')">結束時間<span class="sort-icon" id="sort-icon-end"></span></th>
-              <th>幣別</th><th>營運</th>
+              <th>幣別</th><th style="min-width:200px;">營運</th>
               <th class="sortable" onclick="sortMissionsBy('status')">狀態<span class="sort-icon" id="sort-icon-status"></span></th>
               <th>啟用</th><th>功能</th>
             </tr></thead>
@@ -1616,20 +1620,22 @@ let recordsData = [
 
 // 任務列表「幣別 / 營運」欄位點擊後彈窗顯示的完整參與範圍(依幣別分組)
 let currentScopeId = null;
+// fullName:營運全名(對外顯示用的品牌/公司名稱),name:營運帳號(登入用帳號),兩者不強制相同,
+// 任務列表「營運」欄位改版後,每筆營運都以「全名/帳號」格式呈現(見 renderMissionTable 的 operatorCell)
 const missionScopeData = {
   '12356': {
     currencies:[ {code:'TWD', name:'新台幣 / TWD'} ],
-    operators:[ {name:'bxvip', currency:'TWD'} ]
+    operators:[ {name:'bxvip', fullName:'bxvip', currency:'TWD'} ]
   },
   '78987': {
     // 幣別已改為單選,一筆任務活動只會對應 1 個幣別;底下營運皆屬同一幣別
     currencies:[ {code:'HKD', name:'港幣 / HKD'} ],
     operators:[
-      {name:'bxvip123', currency:'HKD'},
-      {name:'bxvip999', currency:'HKD'},
-      {name:'bxvip456', currency:'HKD'},
-      {name:'kkvip', currency:'HKD'},
-      {name:'kkvip888', currency:'HKD'}
+      {name:'bxvip123', fullName:'必贏娛樂123', currency:'HKD'},
+      {name:'bxvip999', fullName:'必贏娛樂999', currency:'HKD'},
+      {name:'bxvip456', fullName:'必贏娛樂456', currency:'HKD'},
+      {name:'kkvip', fullName:'凱旋娛樂', currency:'HKD'},
+      {name:'kkvip888', fullName:'凱旋娛樂888', currency:'HKD'}
     ]
   }
 };
@@ -2169,7 +2175,11 @@ function renderMissionTable(){
     const currencyCount = scope ? scope.currencies.length : 1;
     const operatorCount = scope ? scope.operators.length : 1;
     const currencyCell = currencyCount > 1 ? `<span class="scope-link" onclick="openScopeModal('${m.id}')">${m.currencyHtml}</span>` : m.currencyHtml;
-    const operatorCell = operatorCount > 1 ? `<span class="scope-link" onclick="openScopeModal('${m.id}')">${m.operatorHtml}</span>` : m.operatorHtml;
+    // 營運欄位:多筆(operatorCount > 1)改成逐行堆疊 + 固定高度滾輪呈現完整名單,顯示格式為
+    // 「營運全名/營運帳號」;欄位為純資訊呈現,不可點擊(不再綁 openScopeModal,其他地方不動)
+    const operatorCell = operatorCount > 1
+      ? `<div class="operator-scope-box">${scope.operators.map(o=>`<div class="operator-scope-item">${o.fullName || o.name}/${o.name}</div>`).join('')}</div>`
+      : m.operatorHtml;
     // 編輯權限:已結束、或曾啟用後停用(已停用)皆為終局狀態,不可編輯,編輯按鈕直接隱藏,只留檢視;
     // 草稿與啟用中(準備開始/進行中)都保留編輯按鈕,差別只在於彈窗內欄位是否可編輯(見 openMissionModal 的 partial-lock 模式)
     const canEdit = !(st.text === '已結束' || (!m.enabled && m.everActivated));
