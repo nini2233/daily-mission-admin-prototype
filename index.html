@@ -204,9 +204,7 @@
   .report-chevron{display:inline-flex;transition:transform .15s;}
   .report-task-row td:nth-child(2){padding-left:34px;color:var(--text-secondary);}
   .report-task-row.nested td:nth-child(2){padding-left:58px;}
-  /* 參與時間模式不顯示實現成本:直接把整欄(表頭+每一列儲存格)都拿掉,而不是只藏表頭,
-     不然表頭少一欄、資料列還是七欄,會變成表頭對不齊、多出一欄空白標題的樣子 */
-  .report-hide-realized .report-realized-col{display:none;}
+
   td.num{text-align:center;}
   .bp-expand-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;transition:transform .15s;}
   .bp-expand-btn.open{transform:rotate(180deg);}
@@ -336,6 +334,12 @@
   .dp-cal-day.out:hover{background:none;}
   .dp-cal-day.selected{background:var(--accent);color:#fff;font-weight:700;}
   .dp-cal-day.today:not(.selected){outline:1px solid var(--accent);outline-offset:-1px;}
+  /* 區間選擇器(分析報表):雙月曆並排 + 快捷側欄,區間內日期以淡色底標示 */
+  .range-picker .ms-panel{right:auto;width:auto;max-height:none;}
+  .dp-range-cals{display:flex;}
+  .dp-cal-day.in-range{background:#e8f1ff;border-radius:0;color:var(--accent);}
+  .dp-cal-day.range-edge{border-radius:6px;}
+  .dp-cal-nav-group{display:inline-flex;gap:2px;}
 </style>
 </head>
 <body>
@@ -344,7 +348,7 @@
   <!-- ============ Top Bar ============ -->
   <div class="topbar">
     <div class="env-tag">測試環境(QAT)</div>
-    <select><option>新台幣 / TWD</option><option>港幣 / HKD</option><option>馬幣 / MYR</option></select>
+    <select id="topbar-currency-select"></select>
     <select><option>所有營運</option><option>高級營運 A</option><option>高級營運 B</option></select>
     <div class="env-id">da0ec7e9 · v095685f9</div>
     <div class="spacer"></div>
@@ -720,62 +724,32 @@
         </div>
 
         <!-- ---------------- Tab 4: 分析報表 ---------------- -->
-        <!-- 改版說明:分析報表有「參與時間 / 整體活動」兩個模式,查詢的時間基準完全不同,不能混用:
-             參與時間 = 以「玩家實際參與的時間」為基準(達成即自動領獎,參與/領獎/預估成本三者時間軸一致),
-             搜尋區間內「有參與數據的活動」才會列出,統計數字也只算落在區間內的部分,不是活動的全部累計;
-             因為實現成本要等玩家事後使用獎勵才會產生,跟參與時間常常對不齊,所以此模式不顯示實現成本。
-             整體活動 = 用「活動舉辦期間」找活動(活動起訖跟搜尋區間只要有重疊就算),但列出來之後看的是
-             該活動自上線以來完整、不受時間限制的累計數字(此時實現成本才是完整可信的數字),搜尋區間在這裡
-             純粹是「用來找活動」的定位條件,不是拿來限制統計範圍,查到多筆時也刻意不顯示彙總卡片,避免被
-             誤會成「這段期間的加總」。兩個模式的搜尋時間都只到「日」,不含時分秒。這幾點都已經跟你確認過。 -->
+        <!-- 改版說明:分析報表已統一只看「整體活動」(不再分參與時間 / 整體活動兩個模式):
+             - 搜尋條件:活動ID、活動期間(起訖,以日為單位)、幣別、營運帳號,全部放在同一列;
+             - 填了活動ID就以ID精準查詢並忽略活動期間;沒填ID才用活動期間找活動(舉辦期間與搜尋區間有重疊就算),
+               幣別/營運帳號都是「定位條件」,只決定哪些活動會出現,不影響統計數字怎麼算;
+             - 列出來之後看的永遠是活動自上線以來的完整累計(含實現成本),搜尋區間不是拿來限制統計範圍。 -->
         <div class="tab-panel" id="panel-report">
-          <!-- 注意:這兩顆務必維持 btn-mode 樣式,不要改成 class="tab",因為全文件在載入時會對所有 .tab
-               元素綁定「切換分頁籤」的通用邏輯(見下方 Tabs 區塊),若這裡也用 .tab,點擊時會被那組通用邏輯
-               誤判成分頁籤切換,把整張分析報表(甚至同一張卡片內的其他頁籤)都清成空白畫面。 -->
-          <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <button class="btn btn-mode active" id="report-mode-time-btn" onclick="setReportMode('time')">參與時間</button>
-            <button class="btn btn-mode" id="report-mode-id-btn" onclick="setReportMode('id')">整體活動</button>
-          </div>
-
-          <div class="filter-bar" id="report-time-filter-bar">
-            <input type="date" id="report-date-start" value="2026-07-01">
-            <span class="arrow">→</span>
-            <input type="date" id="report-date-end" value="2026-07-13">
-            <div class="ms" id="report-time-currency-ms" style="width:170px;align-self:flex-start;">
-              <div class="ms-control" onclick="toggleDropdownById('report-time-currency-ms')">
-                <span class="ms-summary" id="report-time-currency-summary"></span>
+          <div class="filter-bar" id="report-filter-bar">
+            <!-- 活動期間改為區間選擇器(雙月曆 + 快捷);起訖值仍存在下面兩個 hidden input,搜尋邏輯沿用 -->
+            <input type="hidden" id="report-id-period-start" value="2026-07-01">
+            <input type="hidden" id="report-id-period-end" value="2026-07-13">
+            <div class="ms date-picker range-picker" id="report-range-dp" style="width:250px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleRangePicker('report-range')">
+                <span class="ms-summary" id="report-range-label"></span>
+                <span class="chevron" data-icon="calendar"></span>
+              </div>
+              <div class="ms-panel" id="report-range-panel"></div>
+            </div>
+            <input type="text" id="report-id-input" placeholder="活動ID(有填則忽略活動期間)" style="width:230px;align-self:flex-start;">
+            <div class="ms" id="report-id-currency-ms" style="width:170px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleDropdownById('report-id-currency-ms')">
+                <span class="ms-summary" id="report-id-currency-summary"></span>
                 <span class="chevron" data-icon="chevronDown"></span>
               </div>
-              <div class="ms-panel" id="report-time-currency-panel"></div>
+              <div class="ms-panel" id="report-id-currency-panel"></div>
             </div>
-            <input type="text" id="report-time-operator-input" placeholder="搜尋營運帳號" style="width:150px;align-self:flex-start;">
-            <button class="btn btn-primary" onclick="renderReportPanel()">搜尋</button>
-          </div>
-          <div class="filter-bar" id="report-id-filter-bar" style="display:none;">
-            <span style="display:flex;align-items:center;gap:10px;align-self:center;font-size:13px;color:var(--text-secondary);white-space:nowrap;">
-              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
-                <input type="radio" name="report-id-search-type" value="id" checked onchange="onReportIdSearchTypeChange()"> 活動ID
-              </label>
-              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
-                <input type="radio" name="report-id-search-type" value="period" onchange="onReportIdSearchTypeChange()"> 活動期間
-              </label>
-            </span>
-            <input type="text" id="report-id-input" placeholder="輸入活動ID" style="width:220px;">
-            <!-- 幣別/營運帳號篩選只在「活動期間」搜尋時才有意義:活動ID是精準查單一活動,不需要也不應該被
-                 這兩個條件排除掉,所以這兩個控制項放在 report-id-period-inputs 裡面,跟期間輸入框一起顯示/隱藏 -->
-            <span id="report-id-period-inputs" style="display:none;align-items:center;gap:8px;">
-              <input type="date" id="report-id-period-start" value="2026-07-01">
-              <span class="arrow">→</span>
-              <input type="date" id="report-id-period-end" value="2026-07-13">
-              <div class="ms" id="report-id-currency-ms" style="width:170px;">
-                <div class="ms-control" onclick="toggleDropdownById('report-id-currency-ms')">
-                  <span class="ms-summary" id="report-id-currency-summary"></span>
-                  <span class="chevron" data-icon="chevronDown"></span>
-                </div>
-                <div class="ms-panel" id="report-id-currency-panel"></div>
-              </div>
-              <input type="text" id="report-id-operator-input" placeholder="搜尋營運帳號" style="width:150px;">
-            </span>
+            <input type="text" id="report-id-operator-input" placeholder="搜尋營運帳號" style="width:150px;align-self:flex-start;">
             <button class="btn btn-primary" onclick="renderReportPanel()">搜尋</button>
           </div>
           <div class="hint" id="report-filter-hint" style="margin-bottom:16px;"></div>
@@ -798,7 +772,7 @@
           <div id="report-subtab-task-panel">
             <table>
               <thead><tr>
-                <th>活動ID</th><th>活動名稱 / 營運 / 任務編號</th><th class="num">參與次數</th><th class="num">領獎次數(完成率)</th><th>幣別</th><th class="num" id="report-nominal-cost-th">總預估成本(TWD)</th><th class="num report-realized-col" id="report-realized-cost-th">實現成本(TWD)</th>
+                <th>活動ID</th><th>活動名稱 / 營運 / 任務編號</th><th class="num">不重複參與人數</th><th class="num" title="活動起訖日內,活動涵蓋營運旗下玩家的不重複登入人數(營運列為該營運;活動列為各營運加總)">不重複登入人數</th><th class="num" title="不重複參與人數 ÷ 不重複登入人數">參與率</th><th class="num" id="report-participants-th">參與次數</th><th class="num" id="report-rewarded-th">領獎次數(完成率)</th><th>幣別</th><th class="num" id="report-nominal-cost-th">總預估成本(TWD)</th><th class="num report-realized-col" id="report-realized-cost-th">實現成本(TWD)</th>
               </tr></thead>
               <tbody id="report-task-tbody"></tbody>
             </table>
@@ -806,7 +780,7 @@
           <div id="report-subtab-daily-panel" style="display:none;">
             <table>
               <thead><tr>
-                <th>活動ID</th><th>活動名稱 / 營運 / 日期</th><th class="num">參與次數</th><th class="num">領獎次數(完成率)</th><th>幣別</th><th class="num" id="report-daily-nominal-cost-th">總預估成本(TWD)</th><th class="num report-realized-col" id="report-daily-realized-cost-th">實現成本(TWD)</th>
+                <th>活動ID</th><th>活動名稱 / 營運 / 日期</th><th class="num">不重複參與人數</th><th class="num" title="活動起訖日內,活動涵蓋營運旗下玩家的不重複登入人數(營運列為該營運;活動列為各營運加總)">不重複登入人數</th><th class="num" title="不重複參與人數 ÷ 不重複登入人數">參與率</th><th class="num" id="report-daily-participants-th">參與次數</th><th class="num" id="report-daily-rewarded-th">領獎次數(完成率)</th><th>幣別</th><th class="num" id="report-daily-nominal-cost-th">總預估成本(TWD)</th><th class="num report-realized-col" id="report-daily-realized-cost-th">實現成本(TWD)</th>
               </tr></thead>
               <tbody id="report-daily-tbody"></tbody>
             </table>
@@ -1495,12 +1469,69 @@ function mountIcons(){
    ============================================================ */
 const CURRENCIES = [
   {code:'TWD', name:'新台幣 / TWD'},
+  {code:'THB', name:'泰銖 / THB'},
+  {code:'THB100', name:'泰銖1比100 / THB100'},
   {code:'HKD', name:'港幣 / HKD'},
-  {code:'MYR', name:'馬幣 / MYR'},
-  {code:'USD', name:'美元 / USD'},
-  {code:'CNY', name:'人民幣 / CNY'},
-  {code:'THB', name:'泰銖 / THB'}
+  {code:'HKD100', name:'港幣1比100 / HKD100'},
+  {code:'VND', name:'越盾 / VND'},
+  {code:'VNDK', name:'千越盾 / VNDK'},
+  {code:'INR', name:'印度盧比 / INR'},
+  {code:'USD', name:'美金 / USD'},
+  {code:'JPY', name:'日幣 / JPY'},
+  {code:'KRW', name:'韓圓 / KRW'},
+  {code:'KRWK', name:'千韓圓 / KRWK'},
+  {code:'MYR', name:'馬來幣 / MYR'},
+  {code:'MYR100', name:'馬來幣1比100 / MYR100'},
+  {code:'PHP', name:'菲律賓比索 / PHP'},
+  {code:'PKR', name:'巴基斯坦盧比 / PKR'},
+  {code:'UGX', name:'烏干達先令 / UGX'},
+  {code:'BDT', name:'孟加拉塔卡 / BDT'},
+  {code:'NPR', name:'尼泊爾盧比 / NPR'},
+  {code:'AUD', name:'澳大利亞元 / AUD'},
+  {code:'BRL', name:'巴西雷亞爾 / BRL'},
+  {code:'ETB', name:'埃塞俄比亞比爾 / ETB'},
+  {code:'KES', name:'肯尼亞先令 / KES'},
+  {code:'MXN', name:'墨西哥比索 / MXN'},
+  {code:'PEN', name:'祕魯索爾 / PEN'},
+  {code:'SGD', name:'新加坡元 / SGD'},
+  {code:'BND', name:'汶萊元 / BND'},
+  {code:'EUR', name:'歐元 / EUR'},
+  {code:'IDR', name:'印尼盾 / IDR'},
+  {code:'SAR', name:'沙烏地里亞爾 / SAR'},
+  {code:'CLP', name:'智利披索 / CLP'},
+  {code:'PGK', name:'基那 / PGK'},
+  {code:'IDRK', name:'千印尼盾 / IDRK'},
+  {code:'USDT', name:'泰達幣 / USDT'},
+  {code:'NGN', name:'奈拉 / NGN'},
+  {code:'P10', name:'1比10 / P10'},
+  {code:'P20', name:'1比20 / P20'},
+  {code:'P100', name:'1比100 / P100'},
+  {code:'P1000', name:'1比1000 / P1000'},
+  {code:'LAK', name:'寮國基普 / LAK'},
+  {code:'LAKK', name:'寮國基普(1:1000) / LAKK'},
+  {code:'ARS', name:'阿根廷披索 / ARS'},
+  {code:'BOB', name:'玻利維亞諾 / BOB'},
+  {code:'COP', name:'哥倫比亞披索 / COP'},
+  {code:'PYG', name:'巴拉圭瓜拉尼 / PYG'},
+  {code:'EGP', name:'埃及鎊 / EGP'},
+  {code:'TZS', name:'坦尚尼亞先令 / TZS'},
+  {code:'ZAR', name:'南非幣 / ZAR'},
+  {code:'XOF', name:'西非法郎 / XOF'},
+  {code:'TRY', name:'土耳其里拉 / TRY'},
+  {code:'IRR', name:'伊朗里亞爾 / IRR'},
+  {code:'IRRK', name:'伊朗里亞爾(1:1000) / IRRK'},
+  {code:'UZS', name:'烏茲別克蘇姆 / UZS'},
+  {code:'CAD', name:'加拿大元 / CAD'},
+  {code:'MAD', name:'摩洛哥迪拉姆 / MAD'},
+  {code:'AED', name:'阿聯酋迪拉姆 / AED'},
+  {code:'KWD', name:'科威特第納爾 / KWD'},
+  {code:'QAR', name:'卡塔爾里亞爾 / QAR'},
+  {code:'RUB', name:'俄羅斯盧布 / RUB'},
+  {code:'MNT', name:'蒙古圖格里克 / MNT'},
+  {code:'CNY', name:'人民幣 / CNY'}
 ];
+
+document.getElementById('topbar-currency-select').innerHTML = CURRENCIES.map(c=>`<option>${c.name}</option>`).join('');
 
 // 模擬約 1000 筆營運資料,依高級營運分組,並各自帶有幣別歸屬
 const operatorTreeData = (function(){
@@ -2076,6 +2107,113 @@ function applyDateShortcut(ns, kind){
   document.getElementById(ns+'-end-time').value = '23:59:59';
   closeAllDropdowns(); // 選完就收合下拉,不需要另外點擊關閉
 }
+
+// ---- 區間選擇器(雙月曆 + 快捷側欄):目前只給分析報表的「活動期間」使用 ----
+// 先點起日、再點迄日(迄日早於起日會自動對調),選完即套用並收合;起訖值寫回 hidden input,搜尋仍由「搜尋」按鈕觸發。
+const RANGE_PICKER_CFG = { 'report-range': { startId:'report-id-period-start', endId:'report-id-period-end' } };
+let rangePickerState = {}; // ns -> { year, month, pending }(year/month 為左側月曆;pending 為已點起日、尚未點迄日)
+function rangePickerValues(ns){
+  const c = RANGE_PICKER_CFG[ns];
+  return { start: document.getElementById(c.startId).value, end: document.getElementById(c.endId).value };
+}
+function syncRangePickerLabel(ns){
+  const v = rangePickerValues(ns);
+  const el = document.getElementById(ns+'-label');
+  if(el) el.textContent = (v.start && v.end) ? v.start+' - '+v.end : '請選擇日期區間';
+}
+function setRangePickerValues(ns, startYmd, endYmd){
+  const c = RANGE_PICKER_CFG[ns];
+  document.getElementById(c.startId).value = startYmd;
+  document.getElementById(c.endId).value = endYmd;
+  syncRangePickerLabel(ns);
+}
+function toggleRangePicker(ns){
+  const wrapperId = ns+'-dp';
+  const wasOpen = document.getElementById(wrapperId).classList.contains('open');
+  toggleDropdownById(wrapperId);
+  if(!wasOpen){
+    const v = rangePickerValues(ns);
+    const base = v.start ? new Date(v.start+'T00:00:00') : new Date(MISSION_NOW);
+    rangePickerState[ns] = { year: base.getFullYear(), month: base.getMonth(), pending: null };
+    renderRangePickerPanel(ns);
+  }
+}
+function navRangePickerMonth(ns, delta){
+  const st = rangePickerState[ns];
+  let m = st.month + delta, y = st.year;
+  while(m<0){ m+=12; y--; }
+  while(m>11){ m-=12; y++; }
+  st.year = y; st.month = m;
+  renderRangePickerPanel(ns);
+}
+function pickRangeDay(ns, ymd){
+  const st = rangePickerState[ns];
+  if(!st.pending){ st.pending = ymd; renderRangePickerPanel(ns); return; }
+  const a = st.pending, b = ymd;
+  st.pending = null;
+  setRangePickerValues(ns, a<=b?a:b, a<=b?b:a);
+  closeAllDropdowns();
+}
+// 快捷:今天/3天/7天/90天為「含今天往前推」;本月為當月 1 日~月底;「N月份」為上個月整月
+function applyRangeShortcut(ns, kind){
+  const today = new Date(MISSION_NOW); today.setHours(0,0,0,0);
+  let start = new Date(today), end = new Date(today);
+  if(kind==='3d') start.setDate(start.getDate()-2);
+  else if(kind==='7d') start.setDate(start.getDate()-6);
+  else if(kind==='90d') start.setDate(start.getDate()-89);
+  else if(kind==='thisMonth'){ start = new Date(today.getFullYear(), today.getMonth(), 1); end = new Date(today.getFullYear(), today.getMonth()+1, 0); }
+  else if(kind==='lastMonth'){ start = new Date(today.getFullYear(), today.getMonth()-1, 1); end = new Date(today.getFullYear(), today.getMonth(), 0); }
+  setRangePickerValues(ns, formatYmd(start), formatYmd(end));
+  closeAllDropdowns();
+}
+function renderRangeMonthHtml(ns, year, month, side, selStart, selEnd, todayStr){
+  const startWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const daysInPrev = new Date(year, month, 0).getDate();
+  const cells = [];
+  for(let i=startWeekday-1;i>=0;i--) cells.push({day:daysInPrev-i, out:true});
+  for(let d=1; d<=daysInMonth; d++) cells.push({day:d, out:false, ymd:`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`});
+  let nd=1; while(cells.length % 7 !== 0) cells.push({day:nd++, out:true});
+  const nav = (txt, delta, hidden) => `<span class="dp-cal-nav" ${hidden?'style="visibility:hidden"':`onclick="navRangePickerMonth('${ns}', ${delta})"`}>${txt}</span>`;
+  const header = side==='left'
+    ? `<span class="dp-cal-nav-group">${nav('&laquo;',-12)}${nav('&lsaquo;',-1)}</span><span>${year} 年 ${month+1} 月</span><span class="dp-cal-nav-group" style="visibility:hidden">${nav('&rsaquo;',1,true)}${nav('&raquo;',12,true)}</span>`
+    : `<span class="dp-cal-nav-group" style="visibility:hidden">${nav('&laquo;',-12,true)}${nav('&lsaquo;',-1,true)}</span><span>${year} 年 ${month+1} 月</span><span class="dp-cal-nav-group">${nav('&rsaquo;',1)}${nav('&raquo;',12)}</span>`;
+  return `<div class="dp-calendar">
+    <div class="dp-cal-header">${header}</div>
+    <div class="dp-cal-grid">
+      ${['日','一','二','三','四','五','六'].map(l=>`<div class="dp-cal-dow">${l}</div>`).join('')}
+      ${cells.map(c=>{
+        if(c.out) return `<div class="dp-cal-day out">${c.day}</div>`;
+        const cls = ['dp-cal-day'];
+        const isEdge = c.ymd===selStart || c.ymd===selEnd;
+        if(isEdge) cls.push('selected');
+        else if(selStart && selEnd && c.ymd>selStart && c.ymd<selEnd) cls.push('in-range');
+        if(c.ymd===todayStr) cls.push('today');
+        return `<div class="${cls.join(' ')}" onclick="pickRangeDay('${ns}','${c.ymd}')">${c.day}</div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+function renderRangePickerPanel(ns){
+  const panel = document.getElementById(ns+'-panel');
+  const st = rangePickerState[ns];
+  if(!panel || !st) return;
+  const v = rangePickerValues(ns);
+  // 已點起日、尚未點迄日時,只標示該起日;否則標示完整區間
+  const selStart = st.pending || v.start, selEnd = st.pending ? '' : v.end;
+  const todayStr = formatYmd(new Date(MISSION_NOW));
+  const lastMonth = new Date(MISSION_NOW.getFullYear(), MISSION_NOW.getMonth()-1, 1);
+  const shortcuts = [['today','今天'],['3d','3天'],['7d','7天'],['90d','90天'],['thisMonth','本月'],['lastMonth',(lastMonth.getMonth()+1)+'月份']];
+  let ry = st.year, rm = st.month+1; if(rm>11){ rm=0; ry++; }
+  panel.innerHTML = `<div class="dp-body">
+    <div class="dp-shortcuts">${shortcuts.map(([k,l])=>`<div class="dp-shortcut-item" onclick="applyRangeShortcut('${ns}','${k}')">${l}</div>`).join('')}</div>
+    <div class="dp-range-cals">
+      ${renderRangeMonthHtml(ns, st.year, st.month, 'left', selStart, selEnd, todayStr)}
+      ${renderRangeMonthHtml(ns, ry, rm, 'right', selStart, selEnd, todayStr)}
+    </div>
+  </div>`;
+}
+syncRangePickerLabel('report-range');
 
 // 依目前 missionFilterState 判斷單筆任務活動是否符合(所有條件皆為 AND 交集)
 function missionMatchesFilter(m){
@@ -4708,6 +4846,37 @@ function renderUserAccountTable(){
    ============================================================ */
 // 示意匯率:成本統一換算成 TWD 呈現時使用,正式串接應改用即時匯率
 const REPORT_FX_TO_TWD = { TWD:1, HKD:4.1 };
+// 完成率括號只在整體活動模式顯示(見 renderReportPanel 的說明),參與時間模式一律不帶
+// 不重複參與人數往下拆到任務/天:示範資料裡每個任務有自己的 uniqueParticipants(同一玩家可做多個任務,所以任務加總會大於活動數字);
+// 單日人數用「單日參與佔比 × 平均活躍天數(REPORT_DAILY_REACH)」示意,逐日加總同樣會大於整個區間的去重人數。
+// 營運層維持「一位玩家只歸屬一個營運」,所以營運份額 = 該營運不重複人數 ÷ 活動不重複人數。正式串接後應直接從攤平表 count distinct。
+const REPORT_DAILY_REACH = 2.2;
+function reportOperatorUniqueShare(m, op){ return m.uniqueParticipants>0 ? op.uniqueParticipants / m.uniqueParticipants : 0; }
+function reportTaskUnique(m, t, op, windowFraction){ return Math.round((t.uniqueParticipants||0) * windowFraction * reportOperatorUniqueShare(m, op)); }
+function reportDayUnique(m, d, op){
+  if(m.participants<=0) return 0;
+  const activityDay = Math.min(m.uniqueParticipants, d.participants / m.participants * m.uniqueParticipants * REPORT_DAILY_REACH);
+  return Math.round(activityDay * reportOperatorUniqueShare(m, op));
+}
+// 不重複登入人數 = 活動起訖日內不重複登入的玩家數。營運之間玩家不重複,所以營運列 = 該營運旗下玩家的活躍數,
+// 活動列 = 活動涵蓋營運的加總(只有一個營運時就等於該營運的數字,不含沒加入此活動的營運);任務列沒有意義,顯示「-」;
+// 每日數據的逐日列(掛在營運底下)顯示該營運當日活躍(DAU)。參與率 = 不重複參與人數 ÷ 不重複登入人數,活動列與營運列口徑一致。
+// 逐日 DAU 這裡用週間權重 × 固定比例示意,正式串接應直接取各營運每日登入玩家數。
+const REPORT_SITE_DAU_RATIO = 0.45;
+// 活動列的不重複登入人數 = 活動涵蓋營運的活躍玩家加總(營運之間玩家不重複,可直接相加;不含未加入此活動的營運)
+function reportActiveTotal(m){ return (m.operators||[]).reduce((s,o)=>s+(o.siteActive||0), 0); }
+function reportSiteRate(m){ const a = reportActiveTotal(m); return a>0 ? (m.uniqueParticipants/a*100).toFixed(1)+'%' : '-'; }
+function reportOpSiteRate(op, uniq){ return op.siteActive>0 ? (uniq/op.siteActive*100).toFixed(1)+'%' : '-'; }
+function reportSiteDau(m, d){
+  const wt = REPORT_DAILY_WEEKDAY_WEIGHTS[(d.date.getDay()+6)%7];
+  return Math.min(m.siteActive, Math.round(m.siteActive * REPORT_SITE_DAU_RATIO * wt));
+}
+// 逐日列參與率 = 該營運當日不重複參與人數 ÷ 該營運當日不重複登入人數(DAU);參與者必定當天有登入,分子是分母的子集
+function reportDayRate(m, d, op){
+  const dau = reportSiteDau(op, d);
+  return dau>0 ? (Math.min(reportDayUnique(m, d, op), dau)/dau*100).toFixed(1)+'%' : '-';
+}
+function reportRateSuffix(p){ return '('+p+')'; }
 
 // tasks 陣列合併了原本拆兩份(任務參與/達成 vs 獎勵支出)但用 taskNo 對應的資料,改成一個任務一筆,不用擔心兩邊對不齊:
 // claimed=參與次數;rewarded=領獎次數(系統達成任務即自動領獎,不再另外存一個「達成次數」中間狀態);
@@ -4723,31 +4892,31 @@ const REPORT_FX_TO_TWD = { TWD:1, HKD:4.1 };
 const reportData = {
   '12356': {
     name:'台幣任務', currency:'TWD', startDate:'2026-07-01', endDate:'2026-07-07',
-    uniqueLogins: 620, uniqueParticipants: 460, participants: 3200, rewardedCount: 2554,
+    uniqueParticipants: 460, participants: 3200, rewardedCount: 2554,
     realizedCost: 721490,
     operators: [
-      { name:'bxvip', weight:1 }
+      { name:'bxvip', weight:1, siteActive:3100 }
     ],
     tasks: [
-      { no:1, taskType:'bet_amount', threshold:'5,000', rewardContent:'免費旋轉 x10(戰神賽特2)', claimed:3200, rewarded:2432, betLevel:5, maxWinMultiplier:20 },
-      { no:2, taskType:'bet_count', threshold:'200', rewardContent:'免費旋轉 x15(戰神賽特)', claimed:3200, rewarded:1075, betLevel:5, maxWinMultiplier:20 },
-      { no:3, taskType:'super_free', threshold:'1', rewardContent:'免費旋轉 x30(赤三國)', claimed:2400, rewarded:2140, betLevel:5, maxWinMultiplier:45 }
+      { no:1, resetMode:'daily', taskType:'bet_amount', threshold:'5,000', rewardContent:'免費旋轉 x10(戰神賽特2)', claimed:3200, uniqueParticipants:430, rewarded:2432, betLevel:5, maxWinMultiplier:20 },
+      { no:2, resetMode:'daily', taskType:'bet_count', threshold:'200', rewardContent:'免費旋轉 x15(戰神賽特)', claimed:3200, uniqueParticipants:380, rewarded:1075, betLevel:5, maxWinMultiplier:20 },
+      { no:3, resetMode:'none', taskType:'super_free', threshold:'1', rewardContent:'免費旋轉 x30(赤三國)', claimed:2400, uniqueParticipants:300, rewarded:2140, betLevel:5, maxWinMultiplier:45 }
     ]
   },
   '78987': {
     name:'其他幣別任務', currency:'HKD', startDate:'2026-07-05', endDate:'2026-07-13',
-    uniqueLogins: 390, uniqueParticipants: 280, participants: 1800, rewardedCount: 1290,
+    uniqueParticipants: 280, participants: 1800, rewardedCount: 1290,
     realizedCost: 129600,
     operators: [
-      { name:'bxvip123', weight:0.30 },
-      { name:'bxvip999', weight:0.25 },
-      { name:'bxvip456', weight:0.20 },
-      { name:'kkvip', weight:0.15 },
-      { name:'kkvip888', weight:0.10 }
+      { name:'bxvip123', weight:0.30, siteActive:1500 },
+      { name:'bxvip999', weight:0.25, siteActive:1200 },
+      { name:'bxvip456', weight:0.20, siteActive:900 },
+      { name:'kkvip', weight:0.15, siteActive:700 },
+      { name:'kkvip888', weight:0.10, siteActive:500 }
     ],
     tasks: [
-      { no:1, taskType:'free_game', threshold:'3', rewardContent:'免費旋轉 x5(戰神賽特)', claimed:1800, rewarded:1470, betLevel:2, maxWinMultiplier:20 },
-      { no:2, taskType:'bet_count', threshold:'200', rewardContent:'免費旋轉 x20(所有遊戲)', claimed:1800, rewarded:690, betLevel:2, maxWinMultiplier:50 }
+      { no:1, resetMode:'none', taskType:'free_game', threshold:'3', rewardContent:'免費旋轉 x5(戰神賽特)', claimed:1800, uniqueParticipants:260, rewarded:1470, betLevel:2, maxWinMultiplier:20 },
+      { no:2, resetMode:'daily', taskType:'bet_count', threshold:'200', rewardContent:'免費旋轉 x20(所有遊戲)', claimed:1800, uniqueParticipants:150, rewarded:690, betLevel:2, maxWinMultiplier:50 }
     ]
   }
 };
@@ -4755,13 +4924,11 @@ const reportData = {
 // 幣別直接從 reportData 現有的 currency 欄位取不重複清單;營運帳號用關鍵字比對活動底下的 operators 名單。
 // 這兩個條件在「參與時間」跟「整體活動」的「活動期間」搜尋都會用到,共用同一份狀態,兩邊的UI互相同步;
 // 「整體活動」的「活動ID」精準搜尋則不套用這兩個條件,因為那是查單一指定活動,篩選條件應該對它沒有作用。
-const REPORT_CURRENCIES = Array.from(new Set(Object.values(reportData).map(m=>m.currency))).sort();
+const REPORT_CURRENCIES = CURRENCIES.map(c=>c.code); // 搜尋用幣別清單比照系統支援的全部幣別,不只限於目前假資料用到的
 let reportFilterCurrencies = new Set();
 function reportActivityMatchesFilter(m){
   if(reportFilterCurrencies.size>0 && !reportFilterCurrencies.has(m.currency)) return false;
-  const kw1 = (document.getElementById('report-time-operator-input')||{}).value || '';
-  const kw2 = (document.getElementById('report-id-operator-input')||{}).value || '';
-  const kw = (reportMode==='id' ? kw2 : kw1).trim().toLowerCase();
+  const kw = ((document.getElementById('report-id-operator-input')||{}).value || '').trim().toLowerCase();
   if(kw){
     const hasOp = (m.operators||[]).some(o=>o.name.toLowerCase().includes(kw));
     if(!hasOp) return false;
@@ -4769,7 +4936,7 @@ function reportActivityMatchesFilter(m){
   return true;
 }
 function renderReportCurrencyControls(){
-  ['report-time-currency-summary','report-id-currency-summary'].forEach(sid=>{
+  ['report-id-currency-summary'].forEach(sid=>{
     const el = document.getElementById(sid);
     if(!el) return;
     if(reportFilterCurrencies.size===0){ el.textContent='幣別:不限'; el.classList.add('placeholder'); }
@@ -4779,7 +4946,7 @@ function renderReportCurrencyControls(){
     <label class="ms-option">
       <input type="checkbox" ${reportFilterCurrencies.has(code)?'checked':''} onchange="toggleReportFilterCurrency('${code}', this.checked)"> ${code}
     </label>`).join('')}</div>`;
-  ['report-time-currency-panel','report-id-currency-panel'].forEach(pid=>{
+  ['report-id-currency-panel'].forEach(pid=>{
     const panel = document.getElementById(pid);
     if(panel) panel.innerHTML = panelHtml;
   });
@@ -4825,7 +4992,6 @@ function toggleReportOperatorExpand(id, opName){
   renderReportPanel();
 }
 
-let reportMode = 'time'; // 'time' 參與時間(跨活動彙總,以日為單位) | 'id' 整體活動(全部累計不受時間篩選)
 // 任務數據/每日數據 兩個子頁籤在兩種模式下都提供:參與時間模式的每日數據是「區間內」的逐日拆分;
 // 整體活動模式的每日數據則是該活動自己完整舉辦期間(startDate~endDate)的逐日拆分,不受搜尋條件限制,
 // 跟任務數據一樣呈現「整體、不受時間篩選」的數字,只是拆到天而已。
@@ -4833,15 +4999,6 @@ let reportSubTab = 'task';
 // 記錄「整體活動」模式目前查到的活動清單與是否強制展開,讓每日數據頁籤可以沿用同一份結果,不用重新查一次
 let reportIdModeIds = [];
 let reportIdModeForceOpenAll = false;
-function setReportMode(mode){
-  reportMode = mode;
-  document.getElementById('report-mode-time-btn').classList.toggle('active', mode==='time');
-  document.getElementById('report-mode-id-btn').classList.toggle('active', mode==='id');
-  document.getElementById('report-time-filter-bar').style.display = mode==='time' ? 'flex' : 'none';
-  document.getElementById('report-id-filter-bar').style.display = mode==='id' ? 'flex' : 'none';
-  renderReportPanel();
-}
-
 function setReportSubTab(tab){
   reportSubTab = tab;
   document.getElementById('report-subtab-task-btn').classList.toggle('active', tab==='task');
@@ -4857,18 +5014,9 @@ function renderReportPanel(){
   document.getElementById('report-subtab-daily-btn').classList.toggle('active', reportSubTab==='daily');
   document.getElementById('report-subtab-task-panel').style.display = reportSubTab==='task' ? '' : 'none';
   document.getElementById('report-subtab-daily-panel').style.display = reportSubTab==='daily' ? '' : 'none';
-  // 參與時間模式不顯示實現成本:用 class 整欄隱藏(表頭+所有資料列的td一起藏),不是只藏表頭,
-  // 不然表頭少一欄、資料列還是照樣渲染7欄,會變成多出一欄沒有標題的空白欄。
-  document.getElementById('panel-report').classList.toggle('report-hide-realized', reportMode==='time');
-  // 「總預估成本(TWD)」在參與時間模式底下,顯示的其實是「落在搜尋區間內」的部分,不是活動的全部累計,
-  // 掛著「總」字容易讓人誤以為是完整總數,所以這個模式改叫「預估成本(TWD)」;整體活動模式維持「總預估成本(TWD)」,
-  // 因為那裡看到的才是活動從上線以來真正的完整加總。
-  const nominalLabel = reportMode==='time' ? '預估成本(TWD)' : '總預估成本(TWD)';
-  document.getElementById('report-nominal-cost-th').textContent = nominalLabel;
-  document.getElementById('report-daily-nominal-cost-th').textContent = nominalLabel;
+  document.getElementById('report-task-hint').textContent = '說明:不重複參與人數為去重人數,營運、任務、逐日各層的數字不可直接往上加總(同一玩家可能做多個任務、跨多天參與)。不重複登入人數為活動起訖日內的去重登入人數:營運列是該營運旗下玩家,活動列是活動涵蓋營運的加總(營運之間玩家不重複,可直接相加,不含未加入此活動的營運);逐日列為該營運當日活躍;參與率 = 不重複參與人數 ÷ 不重複登入人數。';
   renderReportCurrencyControls();
-  if(reportMode === 'id') renderReportIdMode();
-  else renderReportTimeMode();
+  renderReportResults();
 }
 
 // 依日期區間拆出每一天(含頭尾),日期字串格式為 yyyy-mm-dd;區間不合法(空值或起始晚於結束)則回傳空陣列
@@ -4919,12 +5067,18 @@ function reportActivityOperatorBreakdown(m){
   const participantsByOp = reportSplitTotalByWeights(m.participants, weights);
   const rewardedByOp = reportSplitTotalByWeights(m.rewardedCount, weights);
   const realizedByOp = reportSplitTotalByWeights(m.realizedCost, weights);
+  // 不重複參與人數也按同樣的營運權重拆分,前提是「一位玩家只會歸屬一個營運」,這個假設在拆到營運層級是合理的,
+  // 但不能再往下拆到任務或天(同一位玩家在同一個活動裡本來就可能做好幾個任務、參與好幾天,加總會重複計算,
+  // 所以任務列、逐日列的「不重複參與人數」一律顯示「-」,不比照 participants 的拆法往下拆)
+  const uniqueParticipantsByOp = reportSplitTotalByWeights(m.uniqueParticipants, weights);
   return m.operators.map((o,i)=>({
     name: o.name,
     participants: participantsByOp[i],
     rewardedCount: rewardedByOp[i],
     realizedCost: realizedByOp[i],
     realizedTWD: realizedByOp[i] * fx,
+    uniqueParticipants: uniqueParticipantsByOp[i],
+    siteActive: o.siteActive || 0,
     fraction: m.participants>0 ? participantsByOp[i] / m.participants : 0
   }));
 }
@@ -4949,42 +5103,6 @@ function reportActivityDailySeries(m){
   }));
 }
 
-// 「參與時間」模式的核心計算:依目前選的日期區間(以日為單位),對每個活動只取「落在區間內」的逐日資料加總,
-// 沒有交集(這段期間活動根本沒有參與數據)的活動直接排除,不列入清單也不算進彙總數字。
-// 不重複登入/參與人數無法真的逐日相加(同一人可能橫跨多天,直接加總會重複計算同一人),這裡改用
-// 「區間內參與次數 ÷ 活動總參與次數」的佔比去估算,純屬demo示意用的近似值,實際串接後端後應改為
-// 直接查詢該區間的去重人數,不要沿用這種比例估算的做法。
-function computeReportTimeWindow(){
-  const startStr = document.getElementById('report-date-start').value;
-  const endStr = document.getElementById('report-date-end').value;
-  const searchStart = startStr ? new Date(startStr + 'T00:00:00') : null;
-  const searchEnd = endStr ? new Date(endStr + 'T00:00:00') : null;
-
-  const matchedIds = [];
-  const windowed = {};
-  Object.keys(reportData).filter(id=>reportActivityMatchesFilter(reportData[id])).forEach(id=>{
-    const m = reportData[id];
-    const series = reportActivityDailySeries(m);
-    const inWindow = series.filter(s => (!searchStart || s.date >= searchStart) && (!searchEnd || s.date <= searchEnd));
-    if(inWindow.length === 0) return; // 這段參與時間區間內,此活動完全沒有參與數據,不列入
-
-    const wp = inWindow.reduce((s,d)=>s+d.participants, 0);
-    const wr = inWindow.reduce((s,d)=>s+d.rewarded, 0);
-    const wNominal = inWindow.reduce((s,d)=>s+d.nominalTWD, 0);
-    const fraction = m.participants>0 ? wp / m.participants : 0;
-
-    windowed[id] = {
-      participants: wp,
-      rewardedCount: wr,
-      nominalTWD: wNominal,
-      fraction, // 供任務層級展開時,按同樣比例概估各任務在此區間內的數字
-      days: inWindow
-    };
-    matchedIds.push(id);
-  });
-  return { matchedIds, windowed };
-}
-
 // 每日數據的展開狀態跟「任務數據」表格分開記錄,兩邊各自收合/展開互不影響(分別代表不同的下鑽維度:任務 vs 天)
 let expandedReportDailyMissions = new Set();
 function toggleReportDailyMissionExpand(id){
@@ -5001,94 +5119,15 @@ function toggleReportDailyOperatorExpand(id, opName){
   renderReportDailyTable();
 }
 
-// 每日數據頁籤在兩種模式下都有,渲染邏輯不同,這裡依目前的 reportMode 分流
-function renderReportDailyTable(){
-  if(reportMode === 'id') renderReportDailyTableForIdMode();
-  else renderReportDailyTableForTimeMode();
-}
-
-// 參與時間模式的每日數據:活動→營運→天,三層展開。活動列數字是落在搜尋區間內的部分(沒有交集的活動不會出現);
-// 營運列 = 該營運全部累計的份額,再乘上活動落在區間內的佔比;天列則是「該天的活動總量 × 該營運的佔比」,
-// 這樣不論從活動列、營運列還是逐日加總回去,數字都兜得起來。實現成本欄一律顯示「-」(整欄本身在此模式被隱藏)。
-function renderReportDailyTableForTimeMode(){
-  const { matchedIds, windowed } = computeReportTimeWindow();
-  const tbody = document.getElementById('report-daily-tbody');
-  if(matchedIds.length === 0){
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">此區間查無參與數據的活動</td></tr>`;
-    return;
-  }
-  let rowsHtml = '';
-  matchedIds.forEach(id=>{
-    const m = reportData[id];
-    const w = windowed[id];
-    const missionPct = w.participants>0 ? (w.rewardedCount/w.participants*100).toFixed(1)+'%' : '-';
-    const isOpen = expandedReportDailyMissions.has(id);
-
-    rowsHtml += `
-    <tr class="report-mission-row" onclick="toggleReportDailyMissionExpand('${id}')">
-      <td>${id}</td>
-      <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${isOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${m.name}</td>
-      <td class="num">${w.participants.toLocaleString()}</td>
-      <td class="num">${w.rewardedCount.toLocaleString()}(${missionPct})</td>
-      <td>${m.currency}</td>
-      <td class="num">${Math.round(w.nominalTWD).toLocaleString()}</td>
-      <td class="num report-realized-col">-</td>
-    </tr>`;
-
-    if(isOpen){
-      const operators = reportActivityOperatorBreakdown(m);
-      operators.forEach(op=>{
-        const opParticipants = Math.round(op.participants * w.fraction);
-        const opRewarded = Math.round(op.rewardedCount * w.fraction);
-        const opNominal = w.nominalTWD * op.fraction;
-        const opPct = opParticipants>0 ? (opRewarded/opParticipants*100).toFixed(1)+'%' : '-';
-        const opKey = id + '::' + op.name;
-        const opIsOpen = expandedReportDailyOperators.has(opKey);
-
-        rowsHtml += `
-        <tr class="report-operator-row" onclick="toggleReportDailyOperatorExpand('${id}','${op.name}')">
-          <td>-</td>
-          <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${opIsOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${op.name}</td>
-          <td class="num">${opParticipants.toLocaleString()}</td>
-          <td class="num">${opRewarded.toLocaleString()}(${opPct})</td>
-          <td>${m.currency}</td>
-          <td class="num">${Math.round(opNominal).toLocaleString()}</td>
-          <td class="num report-realized-col">-</td>
-        </tr>`;
-
-        if(opIsOpen){
-          w.days.forEach(d=>{
-            const dp = Math.round(d.participants * op.fraction);
-            const dr = Math.round(d.rewarded * op.fraction);
-            const dn = d.nominalTWD * op.fraction;
-            const pct = dp>0 ? (dr/dp*100).toFixed(1)+'%' : '-';
-            rowsHtml += `
-            <tr class="report-task-row nested">
-              <td>-</td>
-              <td>${d.dateStr}</td>
-              <td class="num">${dp.toLocaleString()}</td>
-              <td class="num">${dr.toLocaleString()}(${pct})</td>
-              <td>${m.currency}</td>
-              <td class="num">${Math.round(dn).toLocaleString()}</td>
-              <td class="num report-realized-col">-</td>
-            </tr>`;
-          });
-        }
-      });
-    }
-  });
-  tbody.innerHTML = rowsHtml || `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">查無符合條件的資料</td></tr>`;
-}
-
 // 整體活動模式的每日數據:沿用 renderReportIdModeById/ByPeriod 查到的同一份活動清單(reportIdModeIds),
 // 一樣是活動→營運→天三層展開,呈現的是「整體、不受時間篩選」的數字。實現成本可以拆到活動層級跟營運層級
 // (派彩/使用紀錄有標記營運),但沒辦法再往下拆到天(紀錄沒有同時標記日期+營運這麼細),所以逐日列的
 // 實現成本一律顯示「-」,這點你已經確認過。
-function renderReportDailyTableForIdMode(){
+function renderReportDailyTable(){
   const tbody = document.getElementById('report-daily-tbody');
   const ids = reportIdModeIds;
   if(ids.length === 0){
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">請先查詢出活動</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:20px;">請先查詢出活動</td></tr>`;
     return;
   }
   let rowsHtml = '';
@@ -5104,8 +5143,11 @@ function renderReportDailyTableForIdMode(){
     <tr class="report-mission-row" onclick="toggleReportDailyMissionExpand('${id}')">
       <td>${id}</td>
       <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${isOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${m.name}</td>
+      <td class="num">${m.uniqueParticipants.toLocaleString()}</td>
+      <td class="num">${reportActiveTotal(m).toLocaleString()}</td>
+      <td class="num">${reportSiteRate(m)}</td>
       <td class="num">${m.participants.toLocaleString()}</td>
-      <td class="num">${m.rewardedCount.toLocaleString()}(${missionPct})</td>
+      <td class="num">${m.rewardedCount.toLocaleString()}${reportRateSuffix(missionPct)}</td>
       <td>${m.currency}</td>
       <td class="num">${Math.round(nominalTWD).toLocaleString()}</td>
       <td class="num report-realized-col">${Math.round(totals.realized * fx).toLocaleString()}</td>
@@ -5124,8 +5166,11 @@ function renderReportDailyTableForIdMode(){
         <tr class="report-operator-row" onclick="toggleReportDailyOperatorExpand('${id}','${op.name}')">
           <td>-</td>
           <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${opIsOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${op.name}</td>
+          <td class="num">${op.uniqueParticipants.toLocaleString()}</td>
+          <td class="num">${op.siteActive.toLocaleString()}</td>
+          <td class="num">${reportOpSiteRate(op, op.uniqueParticipants)}</td>
           <td class="num">${op.participants.toLocaleString()}</td>
-          <td class="num">${op.rewardedCount.toLocaleString()}(${opPct})</td>
+          <td class="num">${op.rewardedCount.toLocaleString()}${reportRateSuffix(opPct)}</td>
           <td>${m.currency}</td>
           <td class="num">${Math.round(opNominal).toLocaleString()}</td>
           <td class="num report-realized-col">${Math.round(op.realizedTWD).toLocaleString()}</td>
@@ -5141,8 +5186,11 @@ function renderReportDailyTableForIdMode(){
             <tr class="report-task-row nested">
               <td>-</td>
               <td>${d.dateStr}</td>
+              <td class="num">${reportDayUnique(m, d, op).toLocaleString()}</td>
+              <td class="num">${reportSiteDau(op, d).toLocaleString()}</td>
+              <td class="num">${reportDayRate(m, d, op)}</td>
               <td class="num">${dp.toLocaleString()}</td>
-              <td class="num">${dr.toLocaleString()}(${pct})</td>
+              <td class="num">${dr.toLocaleString()}${reportRateSuffix(pct)}</td>
               <td>${m.currency}</td>
               <td class="num">${Math.round(dn).toLocaleString()}</td>
               <td class="num report-realized-col">-</td>
@@ -5152,174 +5200,80 @@ function renderReportDailyTableForIdMode(){
       });
     }
   });
-  tbody.innerHTML = rowsHtml || `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">查無符合條件的資料</td></tr>`;
+  tbody.innerHTML = rowsHtml || `<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:20px;">查無符合條件的資料</td></tr>`;
 }
 
-// 參與時間模式:以「玩家實際參與的時間」為篩選基準,只統計搜尋區間內、有參與數據的活動,數字也只算落在
-// 區間內的部分(不是活動的全部累計)。不顯示「實現成本」:派彩當下只記活動ID,且要等玩家實際使用獎勵才會
-// 產生金額,跟參與時間常常對不齊,窄區間會顯示還沒使用完、不完整的數字,容易誤導,所以只在整體活動模式才顯示。
-function renderReportTimeMode(){
-  document.getElementById('report-filter-hint').textContent =
-    '說明:搜尋區間以「日」為單位;顯示的是在這段參與時間內,有參與數據的活動,統計數字也只計算落在區間內的部分,不是活動的全部累計。';
-
-  const { matchedIds, windowed } = computeReportTimeWindow();
-
-  if(matchedIds.length === 0){
-    document.getElementById('report-stats').innerHTML = `<div style="grid-column:1/-1;color:var(--text-secondary);padding:12px;">此區間查無參與數據的活動</div>`;
-    document.getElementById('report-stats-hint').textContent = '';
-    document.getElementById('report-task-tbody').innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">此區間查無參與數據的活動</td></tr>`;
-    if(reportSubTab === 'daily') renderReportDailyTable();
-    return;
-  }
-
-  let uniqueLogins=0, uniqueParticipants=0, participants=0, rewardedCount=0, totalNominalTWD=0;
-  matchedIds.forEach(id=>{
-    const m = reportData[id];
-    const w = windowed[id];
-    participants += w.participants;
-    rewardedCount += w.rewardedCount;
-    totalNominalTWD += w.nominalTWD;
-    // 不重複人數用區間內參與次數佔活動總參與次數的比例去估算,純屬demo近似值,見上方 computeReportTimeWindow 說明
-    uniqueLogins += Math.round(m.uniqueLogins * w.fraction);
-    uniqueParticipants += Math.round(m.uniqueParticipants * w.fraction);
-  });
-  const rewardedPct = participants>0 ? (rewardedCount/participants*100).toFixed(1)+'%' : '-';
-
-  document.getElementById('report-stats').innerHTML = `
-    <div class="stat-card"><div class="label">不重複登入人數</div><div class="value">${uniqueLogins.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">不重複參與人數</div><div class="value">${uniqueParticipants.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">總參與次數</div><div class="value">${participants.toLocaleString()}</div></div>
-    <div class="stat-card accent"><div class="label">總領獎次數(完成率)</div><div class="value">${rewardedCount.toLocaleString()}(${rewardedPct})</div></div>
-    <div class="stat-card"><div class="label">總預估成本(TWD)</div><div class="value">${Math.round(totalNominalTWD).toLocaleString()}</div></div>
-  `;
-  document.getElementById('report-stats-hint').textContent = '';
-
-  renderReportTaskTable(matchedIds, { forceOpenAll:false, showRealizedCost:false, windowOverrides: windowed });
-  if(reportSubTab === 'daily') renderReportDailyTable();
-}
-
-// 整體活動模式:顯示活動自上線以來的全部累計(不受時間篩選),實現成本在此模式才是完整數字;
-// 沒有「不重複登入人數」,因為登入是跟活動無關的平台層級行為,無法歸屬到單一活動。
-// 提供「活動ID / 活動期間」兩種互斥搜尋方式(單選UI沿用「紀錄」頁籤既有慣例):
-// - 活動ID:精準比對單一活動,行為與之前相同。
-// - 活動期間:純粹是「locator」,只用來篩出活動舉辦期間與所選區間有重疊的活動,不是拿來統計這段期間的數字;
-//   可能查到 0~多筆活動,每一筆顯示的仍是該活動自己的完整累計。為了不讓操作者誤以為上方會有「這段期間的加總」,
-//   查到多筆時刻意不顯示彙總統計卡片,只用文字提示找到幾筆活動,實際數字全部下放到任務數據列表呈現(此點已與你確認過)。
-function onReportIdSearchTypeChange(){
-  const searchType = document.querySelector('input[name="report-id-search-type"]:checked').value;
-  document.getElementById('report-id-input').style.display = searchType === 'id' ? '' : 'none';
-  document.getElementById('report-id-period-inputs').style.display = searchType === 'period' ? 'flex' : 'none';
-}
-
-function renderReportIdMode(){
-  const searchType = document.querySelector('input[name="report-id-search-type"]:checked').value;
-  if(searchType === 'period') renderReportIdModeByPeriod();
-  else renderReportIdModeById();
-}
-
-function renderReportIdModeById(){
-  document.getElementById('report-filter-hint').textContent =
-    '說明:輸入完整的活動ID進行精準查詢(不支援模糊名稱搜尋),顯示該活動自上線以來的全部累計統計與任務數據,不受時間篩選影響。';
-
+// 統一搜尋:填了活動ID就精準查單一活動並忽略活動期間;沒填ID才用活動期間(重疊即算)找活動。
+// 幣別/營運帳號是定位條件,兩種方式都套用,只決定哪些活動出現,不影響統計數字。
+// 列出的永遠是各活動自上線以來的完整累計(含實現成本);查到多筆時上方卡片是這些活動的加總,
+// 上方卡片不放不重複參與人數:跨活動去重需要玩家集合聯集,不能把各活動人數直接相加。
+function renderReportResults(){
   const idQuery = document.getElementById('report-id-input').value.trim();
-  const ids = (idQuery && reportData[idQuery]) ? [idQuery] : [];
+  const byId = idQuery !== '';
+  document.getElementById('report-filter-hint').textContent = byId
+    ? '說明:已輸入活動ID,以ID精準查詢並忽略活動期間;顯示該活動自上線以來的全部累計。'
+    : '說明:活動期間僅用來找出舉辦期間與所選範圍有重疊的活動,列表顯示的是各活動自上線以來的完整累計,並非這段期間的統計。';
+
+  let ids;
+  if(byId){
+    ids = reportData[idQuery] && reportActivityMatchesFilter(reportData[idQuery]) ? [idQuery] : [];
+  }else{
+    const startStr = document.getElementById('report-id-period-start').value;
+    const endStr = document.getElementById('report-id-period-end').value;
+    const searchStart = startStr ? new Date(startStr + 'T00:00:00') : null;
+    const searchEnd = endStr ? new Date(endStr + 'T23:59:59') : null;
+    ids = Object.keys(reportData).filter(id=>{
+      const m = reportData[id];
+      if(!reportActivityMatchesFilter(m)) return false;
+      if(!m.startDate || !m.endDate) return false;
+      const actStart = new Date(m.startDate + 'T00:00:00');
+      const actEnd = new Date(m.endDate + 'T23:59:59');
+      if(searchStart && actEnd < searchStart) return false;
+      if(searchEnd && actStart > searchEnd) return false;
+      return true;
+    });
+  }
 
   reportIdModeIds = ids;
-  reportIdModeForceOpenAll = true;
+  reportIdModeForceOpenAll = byId;
 
   if(ids.length===0){
-    document.getElementById('report-stats').innerHTML = `<div style="grid-column:1/-1;color:var(--text-secondary);padding:12px;">請輸入有效的活動ID以查看統計</div>`;
+    const msg = byId ? '查無符合條件的活動ID' : '此期間查無舉辦中的活動';
+    document.getElementById('report-stats').innerHTML = `<div style="grid-column:1/-1;color:var(--text-secondary);padding:12px;">${msg}</div>`;
     document.getElementById('report-stats-hint').textContent = '';
-    document.getElementById('report-task-tbody').innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">請於上方輸入有效的活動ID</td></tr>`;
+    document.getElementById('report-task-tbody').innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:20px;">${msg}</td></tr>`;
     if(reportSubTab === 'daily') renderReportDailyTable();
     return;
   }
 
-  const m = reportData[ids[0]];
-  const totals = reportMissionTotals(m);
-  const fx = REPORT_FX_TO_TWD[m.currency] || 1;
-  const rewardedPct = m.participants>0 ? (m.rewardedCount/m.participants*100).toFixed(1)+'%' : '-';
-
-  document.getElementById('report-stats').innerHTML = `
-    <div class="stat-card"><div class="label">不重複參與人數</div><div class="value">${m.uniqueParticipants.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">總參與次數</div><div class="value">${m.participants.toLocaleString()}</div></div>
-    <div class="stat-card accent"><div class="label">總領獎次數(完成率)</div><div class="value">${m.rewardedCount.toLocaleString()}(${rewardedPct})</div></div>
-    <div class="stat-card"><div class="label">總預估成本(TWD)</div><div class="value">${Math.round(totals.nominal * fx).toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">總實現成本(TWD)</div><div class="value">${Math.round(totals.realized * fx).toLocaleString()}</div></div>
-  `;
-  document.getElementById('report-stats-hint').textContent =
-    '說明:整體活動顯示該活動自上線以來的全部累計數字,不受時間篩選影響,「實現成本」在此模式才是完整、可信的數字;沒有「不重複登入人數」,因為登入是跟活動無關的平台層級行為,無法歸屬到單一活動。';
-
-  renderReportTaskTable(ids, { forceOpenAll:true, showRealizedCost:true });
-  if(reportSubTab === 'daily') renderReportDailyTable();
-}
-
-function renderReportIdModeByPeriod(){
-  document.getElementById('report-filter-hint').textContent =
-    '說明:此區間僅用來篩選「活動舉辦期間」與所選範圍有重疊的活動,列表顯示的統計數字仍是各活動自上線以來的完整累計,並非這段期間的統計。';
-
-  const startStr = document.getElementById('report-id-period-start').value;
-  const endStr = document.getElementById('report-id-period-end').value;
-  const searchStart = startStr ? new Date(startStr + 'T00:00:00') : null;
-  const searchEnd = endStr ? new Date(endStr + 'T23:59:59') : null;
-
-  const ids = Object.keys(reportData).filter(id=>{
-    const m = reportData[id];
-    if(!reportActivityMatchesFilter(m)) return false; // 幣別/營運帳號定位條件
-    if(!m.startDate || !m.endDate) return false;
-    const actStart = new Date(m.startDate + 'T00:00:00');
-    const actEnd = new Date(m.endDate + 'T23:59:59');
-    if(searchStart && actEnd < searchStart) return false; // 活動已在搜尋區間開始前就結束
-    if(searchEnd && actStart > searchEnd) return false; // 活動在搜尋區間結束後才開始
-    return true; // 其餘情況代表舉辦期間與搜尋區間有重疊
-  });
-
-  reportIdModeIds = ids;
-  reportIdModeForceOpenAll = false;
-
-  if(ids.length===0){
-    document.getElementById('report-stats').innerHTML = `<div style="grid-column:1/-1;color:var(--text-secondary);padding:12px;">此期間查無舉辦中的活動</div>`;
-    document.getElementById('report-stats-hint').textContent = '';
-    document.getElementById('report-task-tbody').innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">此期間查無舉辦中的活動</td></tr>`;
-    if(reportSubTab === 'daily') renderReportDailyTable();
-    return;
-  }
-
-  // 查到多筆活動時,統計卡片是「這幾筆活動各自完整累計」的加總,不是這段期間的統計數字(這點在下面的說明文字
-  // 有特別澄清,避免跟「參與時間」模式的區間統計搞混);不重複參與人數只是把各活動自己的不重複人數直接相加,
-  // 不同活動之間沒有去重,同一位玩家若參與了多個活動會被重複計入,純供示意參考。跟「整體活動」單筆查詢一樣,
-  // 這裡也不顯示不重複登入人數(登入是平台層級行為,無法歸屬到單一活動,更不用說加總多個活動)。
-  let uniqueParticipants=0, participants=0, rewardedCount=0, totalNominalTWD=0;
+  let participants=0, rewardedCount=0, totalNominalTWD=0, totalRealizedTWD=0;
   ids.forEach(id=>{
     const m = reportData[id];
-    uniqueParticipants += m.uniqueParticipants;
-    participants += m.participants;
-    rewardedCount += m.rewardedCount;
     const totals = reportMissionTotals(m);
     const fx = REPORT_FX_TO_TWD[m.currency] || 1;
+    participants += m.participants;
+    rewardedCount += m.rewardedCount;
     totalNominalTWD += totals.nominal * fx;
+    totalRealizedTWD += totals.realized * fx;
   });
   const rewardedPct = participants>0 ? (rewardedCount/participants*100).toFixed(1)+'%' : '-';
-
   document.getElementById('report-stats').innerHTML = `
-    <div class="stat-card"><div class="label">不重複參與人數</div><div class="value">${uniqueParticipants.toLocaleString()}</div></div>
     <div class="stat-card"><div class="label">總參與次數</div><div class="value">${participants.toLocaleString()}</div></div>
     <div class="stat-card accent"><div class="label">總領獎次數(完成率)</div><div class="value">${rewardedCount.toLocaleString()}(${rewardedPct})</div></div>
     <div class="stat-card"><div class="label">總預估成本(TWD)</div><div class="value">${Math.round(totalNominalTWD).toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">總實現成本(TWD)</div><div class="value">${Math.round(totalRealizedTWD).toLocaleString()}</div></div>
   `;
   document.getElementById('report-stats-hint').textContent = '';
 
-  renderReportTaskTable(ids, { forceOpenAll:false, showRealizedCost:true });
+  renderReportTaskTable(ids, { forceOpenAll:byId, showRealizedCost:true });
   if(reportSubTab === 'daily') renderReportDailyTable();
 }
 
 // 任務數據表:活動列展開後先看到「營運列」,營運列再展開才是「任務列」(活動→營運→任務三層)。
-// opts.forceOpenAll:整體活動查單筆時活動列直接強制展開(營運列仍要手動點開,避免一次全展開太多列);
-// opts.showRealizedCost:是否顯示真實的實現成本數字(參與時間模式一律顯示「-」,活動列跟營運列共用同一個規則,
-// 因為派彩/使用紀錄有標記營運,實現成本可以拆到營運層級,只是跟活動層級一樣有「參與時間跟使用時間對不齊」的問題);
-// opts.windowOverrides:參與時間模式專用,傳入 computeReportTimeWindow() 算好的區間內數字,活動列跟往下展開的
-// 營運列、任務列都會按這個區間佔比去概估,沒傳入則維持活動全部累計(整體活動模式)。
-// 任務列的「實現成本」不論哪個模式、不論在哪個營運底下,都固定顯示「-」,因為紀錄沒有同時標記任務+營運,
+// opts.forceOpenAll:用活動ID查詢時活動列直接強制展開(營運列仍要手動點開,避免一次全展開太多列);
+// opts.showRealizedCost:是否顯示真實的實現成本數字(統一為整體活動後一律 true;活動列跟營運列共用同一個規則,
+// 因為派彩/使用紀錄有標記營運,實現成本可以拆到營運層級)。
+// 任務列的「實現成本」不論在哪個營運底下,都固定顯示「-」,因為紀錄沒有同時標記任務+營運,
 // 實現成本目前只能拆到「活動+營運」這一層,沒辦法再往下拆到任務。
 function renderReportTaskTable(ids, opts){
   const taskTbody = document.getElementById('report-task-tbody');
@@ -5328,21 +5282,24 @@ function renderReportTaskTable(ids, opts){
     const m = reportData[id];
     const totals = reportMissionTotals(m);
     const fx = REPORT_FX_TO_TWD[m.currency] || 1;
-    const w = opts.windowOverrides && opts.windowOverrides[id];
-    const participants = w ? w.participants : m.participants;
-    const rewardedCount = w ? w.rewardedCount : m.rewardedCount;
-    const nominalTWD = w ? w.nominalTWD : totals.nominal * fx;
-    const windowFraction = w ? w.fraction : 1; // 這個活動落在搜尋區間內的佔比,參與時間模式才會 <1
+    const participants = m.participants;
+    const rewardedCount = m.rewardedCount;
+    const nominalTWD = totals.nominal * fx;
+    const windowFraction = 1; // 這個活動落在搜尋區間內的佔比,參與時間模式才會 <1
     const missionPct = participants>0 ? (rewardedCount/participants*100).toFixed(1)+'%' : '-';
     const isOpen = opts.forceOpenAll || expandedReportMissions.has(id);
     const realizedCell = opts.showRealizedCost ? Math.round(totals.realized * fx).toLocaleString() : '-';
+    const uniqueParticipants = m.uniqueParticipants;
 
     rowsHtml += `
     <tr class="report-mission-row" onclick="toggleReportMissionExpand('${id}')">
       <td>${id}</td>
       <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${isOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${m.name}</td>
+      <td class="num">${uniqueParticipants.toLocaleString()}</td>
+      <td class="num">${reportActiveTotal(m).toLocaleString()}</td>
+      <td class="num">${reportSiteRate(m)}</td>
       <td class="num">${participants.toLocaleString()}</td>
-      <td class="num">${rewardedCount.toLocaleString()}(${missionPct})</td>
+      <td class="num">${rewardedCount.toLocaleString()}${reportRateSuffix(missionPct)}</td>
       <td>${m.currency}</td>
       <td class="num">${Math.round(nominalTWD).toLocaleString()}</td>
       <td class="num report-realized-col">${realizedCell}</td>
@@ -5355,6 +5312,7 @@ function renderReportTaskTable(ids, opts){
         const opParticipants = Math.round(op.participants * windowFraction);
         const opRewarded = Math.round(op.rewardedCount * windowFraction);
         const opNominal = nominalTWD * op.fraction; // 直接用目前顯示的活動預估成本(已考慮區間)按營運權重分,不重複套用區間比例
+        const opUniqueParticipants = Math.round(op.uniqueParticipants * windowFraction);
         const opPct = opParticipants>0 ? (opRewarded/opParticipants*100).toFixed(1)+'%' : '-';
         const opRealizedCell = opts.showRealizedCost ? Math.round(op.realizedTWD).toLocaleString() : '-';
         const opKey = id + '::' + op.name;
@@ -5364,15 +5322,19 @@ function renderReportTaskTable(ids, opts){
         <tr class="report-operator-row" onclick="toggleReportOperatorExpand('${id}','${op.name}')">
           <td>-</td>
           <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${opIsOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${op.name}</td>
+          <td class="num">${opUniqueParticipants.toLocaleString()}</td>
+          <td class="num">${op.siteActive.toLocaleString()}</td>
+          <td class="num">${reportOpSiteRate(op, opUniqueParticipants)}</td>
           <td class="num">${opParticipants.toLocaleString()}</td>
-          <td class="num">${opRewarded.toLocaleString()}(${opPct})</td>
+          <td class="num">${opRewarded.toLocaleString()}${reportRateSuffix(opPct)}</td>
           <td>${m.currency}</td>
           <td class="num">${Math.round(opNominal).toLocaleString()}</td>
           <td class="num report-realized-col">${opRealizedCell}</td>
         </tr>`;
 
         if(opIsOpen){
-          // 任務層級再按「活動區間佔比 × 該營運佔比」的合併比例,從活動整體的任務原始數字概估出來(demo近似值)
+          // 任務層級再按「活動區間佔比 × 該營運佔比」的合併比例,從活動整體的任務原始數字概估出來(demo近似值);
+          // 不重複參與人數改用各任務自己的去重人數(見 reportTaskUnique),不是按比例硬拆,所以任務加總會大於活動數字
           const combinedFraction = windowFraction * op.fraction;
           m.tasks.forEach(t=>{
             const claimed = Math.round(t.claimed * combinedFraction);
@@ -5382,9 +5344,12 @@ function renderReportTaskTable(ids, opts){
             rowsHtml += `
             <tr class="report-task-row nested">
               <td>-</td>
-              <td>任務 ${t.no}</td>
+              <td>任務 ${t.no}(${t.resetMode==='none'?'活動期間不重置':'每日重置'})</td>
+              <td class="num">${reportTaskUnique(m, t, op, windowFraction).toLocaleString()}</td>
+              <td class="num">-</td>
+              <td class="num">-</td>
               <td class="num">${claimed.toLocaleString()}</td>
-              <td class="num">${rewarded.toLocaleString()}(${taskPct})</td>
+              <td class="num">${rewarded.toLocaleString()}${reportRateSuffix(taskPct)}</td>
               <td>${m.currency}</td>
               <td class="num">${Math.round(nominal).toLocaleString()}</td>
               <td class="num report-realized-col">-</td>
@@ -5394,7 +5359,7 @@ function renderReportTaskTable(ids, opts){
       });
     }
   });
-  taskTbody.innerHTML = rowsHtml || `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">查無符合條件的資料</td></tr>`;
+  taskTbody.innerHTML = rowsHtml || `<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:20px;">查無符合條件的資料</td></tr>`;
 }
 
 /* ============================================================
