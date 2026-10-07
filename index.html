@@ -342,6 +342,10 @@
   .dp-cal-day.in-range{background:#e8f1ff;border-radius:0;color:var(--accent);}
   .dp-cal-day.range-edge{border-radius:6px;}
   .dp-cal-nav-group{display:inline-flex;gap:2px;}
+  /* 表頭 (?) 說明:滑鼠移入顯示、移出隱藏(純 CSS hover,文案放在 data-tip) */
+  .help-tip{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:4px;border-radius:50%;border:1px solid var(--text-secondary);color:var(--text-secondary);font-size:10px;font-weight:600;line-height:1;cursor:help;position:relative;vertical-align:middle;}
+  .help-tip::after{content:attr(data-tip);display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);width:190px;padding:8px 10px;background:#2b2f3a;color:#fff;font-size:12px;font-weight:400;line-height:1.5;border-radius:6px;text-align:left;white-space:normal;z-index:50;}
+  .help-tip:hover::after{display:block;}
 </style>
 </head>
 <body>
@@ -773,12 +777,11 @@
             <!-- 列表右上角:最後一次統計(彙總)完成的時間;數字是彙總批次的結果,實現成本等會隨時間增長,看這個時間才知道數字新不新 -->
             <div style="margin-bottom:10px;font-size:12.5px;color:var(--text-secondary);white-space:nowrap;">最後更新時間:<span id="report-last-updated"></span></div>
           </div>
-          <div class="hint" id="report-task-hint" style="margin-bottom:8px;"></div>
 
           <div id="report-subtab-task-panel">
             <table>
               <thead><tr>
-                <th>活動ID</th><th>活動名稱 / 營運 / 任務編號</th><th class="num" title="括號內為參與率 = 不重複參與人數 ÷ 不重複登入人數">不重複參與人數(參與率)</th><th class="num" title="活動起訖日內,活動涵蓋營運旗下玩家的不重複登入人數(營運列為該營運;活動列為各營運加總)">不重複登入人數</th><th class="num" id="report-participants-th">參與次數</th><th class="num" id="report-rewarded-th">領獎次數(完成率)</th><th>幣別</th><th class="num" id="report-nominal-cost-th" title="預估成本為上限:領獎次數 × 每局投注額 × 最大贏分倍數,實現成本不會超過此值">總預估成本(TWD)</th><th class="num report-realized-col" id="report-realized-cost-th">實現成本(TWD)</th>
+                <th>活動ID</th><th>活動名稱 / 營運 / 任務編號</th><th class="num">不重複登入人數<span class="help-tip" data-tip="在活動期間,不重複的登入玩家數量">?</span></th><th class="num">不重複參與人數(參與率)<span class="help-tip" data-tip="參與率=不重複參與人數/不重複登入人數">?</span></th><th class="num" id="report-participants-th">參與次數<span class="help-tip" data-tip="玩家開始累積任務進度即計為參與1次,以任務數量累計">?</span></th><th class="num" id="report-rewarded-th">領獎次數(完成率)<span class="help-tip" data-tip="完成率=領獎次數/參與次數">?</span></th><th>幣別</th><th class="num" id="report-nominal-cost-th" title="預估成本為上限:領獎次數 × 每局投注額 × 最大贏分倍數,實現成本不會超過此值">總預估成本(TWD)</th><th class="num report-realized-col" id="report-realized-cost-th">實現成本(TWD)</th>
               </tr></thead>
               <tbody id="report-task-tbody"></tbody>
             </table>
@@ -786,7 +789,7 @@
           <div id="report-subtab-daily-panel" style="display:none;">
             <table>
               <thead><tr>
-                <th>活動ID</th><th>活動名稱 / 營運 / 日期</th><th class="num" title="括號內為參與率 = 不重複參與人數 ÷ 不重複登入人數">不重複參與人數(參與率)</th><th class="num" title="活動起訖日內,活動涵蓋營運旗下玩家的不重複登入人數(營運列為該營運;活動列為各營運加總)">不重複登入人數</th><th class="num" id="report-daily-participants-th">參與次數</th><th class="num" id="report-daily-rewarded-th">領獎次數(完成率)</th><th>幣別</th><th class="num" id="report-daily-nominal-cost-th" title="預估成本為上限:領獎次數 × 每局投注額 × 最大贏分倍數,實現成本不會超過此值">總預估成本(TWD)</th><th class="num report-realized-col" id="report-daily-realized-cost-th">實現成本(TWD)</th>
+                <th>活動ID</th><th>活動名稱 / 營運 / 日期</th><th class="num">不重複登入人數<span class="help-tip" data-tip="在活動期間,不重複的登入玩家數量">?</span></th><th class="num">不重複參與人數(參與率)<span class="help-tip" data-tip="參與率=不重複參與人數/不重複登入人數">?</span></th><th class="num" id="report-daily-participants-th">參與次數<span class="help-tip" data-tip="玩家開始累積任務進度即計為參與1次,以任務數量累計">?</span></th><th class="num" id="report-daily-rewarded-th">領獎次數(完成率)<span class="help-tip" data-tip="完成率=領獎次數/參與次數">?</span></th><th>幣別</th><th class="num" id="report-daily-nominal-cost-th" title="預估成本為上限:領獎次數 × 每局投注額 × 最大贏分倍數,實現成本不會超過此值">總預估成本(TWD)</th><th class="num report-realized-col" id="report-daily-realized-cost-th">實現成本(TWD)</th>
               </tr></thead>
               <tbody id="report-daily-tbody"></tbody>
             </table>
@@ -5062,7 +5065,6 @@ function renderReportPanel(){
   document.getElementById('report-subtab-daily-btn').classList.toggle('active', reportSubTab==='daily');
   document.getElementById('report-subtab-task-panel').style.display = reportSubTab==='task' ? '' : 'none';
   document.getElementById('report-subtab-daily-panel').style.display = reportSubTab==='daily' ? '' : 'none';
-  document.getElementById('report-task-hint').textContent = '說明:不重複參與人數為去重人數,營運、任務、逐日各層的數字不可直接往上加總(同一玩家可能做多個任務、跨多天參與)。不重複登入人數為活動起訖日內的去重登入人數:營運列是該營運旗下玩家,活動列是活動涵蓋營運的加總(營運之間玩家不重複,可直接相加,不含未加入此活動的營運);逐日列為該營運當日活躍;不重複參與人數括號內為參與率 = 不重複參與人數 ÷ 不重複登入人數。';
   document.getElementById('report-last-updated').textContent = REPORT_LAST_UPDATED;
   renderReportCurrencyControls();
   renderReportResults();
@@ -5192,9 +5194,9 @@ function renderReportDailyTable(){
     rowsHtml += `
     <tr class="report-mission-row" onclick="toggleReportDailyMissionExpand('${id}')">
       <td>${id}</td>
-      <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${isOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${m.name}</td>
-      <td class="num">${reportWithRate(sc.uniqueParticipants.toLocaleString(), reportRatioPct(sc.uniqueParticipants, sc.active))}</td>
+      <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${isOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${m.name}<span style="margin-left:8px;font-weight:400;font-size:12.5px;color:var(--text-secondary);white-space:nowrap;">${m.startDate} ~ ${m.endDate}</span></td>
       <td class="num">${sc.active.toLocaleString()}</td>
+      <td class="num">${reportWithRate(sc.uniqueParticipants.toLocaleString(), reportRatioPct(sc.uniqueParticipants, sc.active))}</td>
       <td class="num">${sc.participants.toLocaleString()}</td>
       <td class="num">${sc.rewardedCount.toLocaleString()}${reportRateSuffix(missionPct)}</td>
       <td>${m.currency}</td>
@@ -5215,8 +5217,8 @@ function renderReportDailyTable(){
         <tr class="report-operator-row" onclick="toggleReportDailyOperatorExpand('${id}','${op.name}')">
           <td>-</td>
           <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${opIsOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${op.name}</td>
-          <td class="num">${reportWithRate(op.uniqueParticipants.toLocaleString(), reportOpSiteRate(op, op.uniqueParticipants))}</td>
           <td class="num">${op.siteActive.toLocaleString()}</td>
+          <td class="num">${reportWithRate(op.uniqueParticipants.toLocaleString(), reportOpSiteRate(op, op.uniqueParticipants))}</td>
           <td class="num">${op.participants.toLocaleString()}</td>
           <td class="num">${op.rewardedCount.toLocaleString()}${reportRateSuffix(opPct)}</td>
           <td>${m.currency}</td>
@@ -5234,8 +5236,8 @@ function renderReportDailyTable(){
             <tr class="report-task-row nested">
               <td>-</td>
               <td>${d.dateStr}</td>
-              <td class="num">${reportWithRate(reportDayUnique(m, d, op).toLocaleString(), reportDayRate(m, d, op))}</td>
               <td class="num">${reportSiteDau(op, d).toLocaleString()}</td>
+              <td class="num">${reportWithRate(reportDayUnique(m, d, op).toLocaleString(), reportDayRate(m, d, op))}</td>
               <td class="num">${dp.toLocaleString()}</td>
               <td class="num">${dr.toLocaleString()}${reportRateSuffix(pct)}</td>
               <td>${m.currency}</td>
@@ -5342,9 +5344,9 @@ function renderReportTaskTable(ids, opts){
     rowsHtml += `
     <tr class="report-mission-row" onclick="toggleReportMissionExpand('${id}')">
       <td>${id}</td>
-      <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${isOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${m.name}</td>
-      <td class="num">${reportWithRate(uniqueParticipants.toLocaleString(), reportRatioPct(sc.uniqueParticipants, sc.active))}</td>
+      <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${isOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${m.name}<span style="margin-left:8px;font-weight:400;font-size:12.5px;color:var(--text-secondary);white-space:nowrap;">${m.startDate} ~ ${m.endDate}</span></td>
       <td class="num">${sc.active.toLocaleString()}</td>
+      <td class="num">${reportWithRate(uniqueParticipants.toLocaleString(), reportRatioPct(sc.uniqueParticipants, sc.active))}</td>
       <td class="num">${participants.toLocaleString()}</td>
       <td class="num">${rewardedCount.toLocaleString()}${reportRateSuffix(missionPct)}</td>
       <td>${m.currency}</td>
@@ -5369,8 +5371,8 @@ function renderReportTaskTable(ids, opts){
         <tr class="report-operator-row" onclick="toggleReportOperatorExpand('${id}','${op.name}')">
           <td>-</td>
           <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${opIsOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${op.name}</td>
-          <td class="num">${reportWithRate(opUniqueParticipants.toLocaleString(), reportOpSiteRate(op, opUniqueParticipants))}</td>
           <td class="num">${op.siteActive.toLocaleString()}</td>
+          <td class="num">${reportWithRate(opUniqueParticipants.toLocaleString(), reportOpSiteRate(op, opUniqueParticipants))}</td>
           <td class="num">${opParticipants.toLocaleString()}</td>
           <td class="num">${opRewarded.toLocaleString()}${reportRateSuffix(opPct)}</td>
           <td>${m.currency}</td>
@@ -5391,8 +5393,8 @@ function renderReportTaskTable(ids, opts){
             <tr class="report-task-row nested">
               <td>-</td>
               <td>任務 ${t.no}(${t.resetMode==='none'?'活動期間不重置':'每日重置'})</td>
-              <td class="num">${reportTaskUnique(m, t, op, windowFraction).toLocaleString()}</td>
               <td class="num">-</td>
+              <td class="num">${reportTaskUnique(m, t, op, windowFraction).toLocaleString()}</td>
               <td class="num">${claimed.toLocaleString()}</td>
               <td class="num">${rewarded.toLocaleString()}${reportRateSuffix(taskPct)}</td>
               <td>${m.currency}</td>
