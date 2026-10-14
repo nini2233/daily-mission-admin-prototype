@@ -445,7 +445,7 @@
           <div class="tab-panel active" id="panel-traffic-operator">
             <!-- margin-top 用負值抵消 .tab-panel 本身的上方 padding(16px),讓這則提示更貼近上面的搜尋條件列;
                  只調這個 hint 自己的間距,不動 .tab-panel/.filter-bar 的全域樣式,不影響其他頁籤/頁面 -->
-            <div class="hint" style="margin-top:-10px;margin-bottom:14px;">說明:此頁面統計數據不含活動流量(限時任務/平台贈送/彩金活動..等),如需查看這部分數據請切到「營運活動流量」頁籤。</div>
+            <div class="hint" style="margin-top:-10px;margin-bottom:14px;">說明:此頁面統計數據不含活動流量(任務活動/平台贈送/彩金活動..等),如需查看這部分數據請切到「營運活動流量」頁籤。</div>
             <div class="traffic-chip-row">
               <div class="traffic-chip c-danger">獲利: -3,740,813.51(-2544.56%)</div>
               <div class="traffic-chip c-warning">遊玩人數: 13</div>
@@ -515,17 +515,17 @@
 
           <!-- ---------------- Tab: 活動流量(新增,依你指定的四組欄位;數字為靜態假資料。
                上方為三個營運加總後的總計,下方卡片為各營運分別的數字,兩者刻意對得起來:
-               活動獎金(總)的中獎額/投注次數 = 限時任務 + 平台贈送 + 彩金活動 三者加總(無論總計或個別營運都成立);
-               活動獎金(總)的下注額則等於彩金活動的下注額(限時任務/平台贈送屬於道具驅動,沒有對應的下注額概念)。
+               活動獎金(總)的中獎額/投注次數 = 任務活動 + 平台贈送 + 彩金活動 三者加總(無論總計或個別營運都成立);
+               活動獎金(總)的下注額則等於彩金活動的下注額(任務活動/平台贈送屬於道具驅動,沒有對應的下注額概念)。
                中獎額/投注次數後面的(%)是各分類佔活動獎金(總)的比例,公式:該分類自己的該項數值 / 活動獎金(總)該項數值 * 100%
-               (已修正,之前分子分母寫反了),只套用在限時任務/平台贈送/彩金活動這三個分類,活動獎金(總)自己
+               (已修正,之前分子分母寫反了),只套用在任務活動/平台贈送/彩金活動這三個分類,活動獎金(總)自己
                這一列不顯示%。三個分類的百分比加總會等於100%(總計層級跟個別營運層級都成立)。
                此頁籤不提供排序搜尋條件,固定依「活動獎金(總) 中獎額」由高到低排列(下方 3 張營運卡片已依此排序,
                排名 #1~#3 對應此順序;bx高級營運 466,200 > qatmint 299,850 > qajimmy_QAT測試營運 126,400)。 ---------------- -->
           <div class="tab-panel" id="panel-traffic-activity">
             <div class="traffic-chip-row">
               <div class="traffic-chip c-info" style="font-size:14px;">活動獎金(總) 中獎額/下注額/投注次數: 892,450 / 92,100 / 3,821</div>
-              <div class="traffic-chip c-warning">限時任務 中獎額/投注次數: 612,300(68.61%) / 2,540(66.47%)</div>
+              <div class="traffic-chip c-warning">任務活動 中獎額/投注次數: 612,300(68.61%) / 2,540(66.47%)</div>
               <div class="traffic-chip c-success">平台贈送 中獎額/投注次數: 215,800(24.18%) / 980(25.65%)</div>
               <div class="traffic-chip c-pink">彩金活動 中獎額/下注額/投注次數: 64,350(7.21%) / 92,100 / 301(7.88%)</div>
             </div>
@@ -534,21 +534,21 @@
               <div class="traffic-op-col">
                 <div class="traffic-op-name">#1 bx高級營運</div>
                 <div class="traffic-op-row"><div class="k">活動獎金(總) 中獎額/下注額/投注次數</div><div class="v">466,200 / 47,300 / 1,992</div></div>
-                <div class="traffic-op-row"><div class="k">限時任務 中獎額/投注次數</div><div class="v">320,800(68.81%) / 1,320(66.27%)</div></div>
+                <div class="traffic-op-row"><div class="k">任務活動 中獎額/投注次數</div><div class="v">320,800(68.81%) / 1,320(66.27%)</div></div>
                 <div class="traffic-op-row"><div class="k">平台贈送 中獎額/投注次數</div><div class="v">112,600(24.15%) / 520(26.10%)</div></div>
                 <div class="traffic-op-row"><div class="k">彩金活動 中獎額/下注額/投注次數</div><div class="v">32,800(7.04%) / 47,300 / 152(7.63%)</div></div>
               </div>
               <div class="traffic-op-col">
                 <div class="traffic-op-name">#2 qatmint</div>
                 <div class="traffic-op-row"><div class="k">活動獎金(總) 中獎額/下注額/投注次數</div><div class="v">299,850 / 30,400 / 1,298</div></div>
-                <div class="traffic-op-row"><div class="k">限時任務 中獎額/投注次數</div><div class="v">210,500(70.20%) / 890(68.57%)</div></div>
+                <div class="traffic-op-row"><div class="k">任務活動 中獎額/投注次數</div><div class="v">210,500(70.20%) / 890(68.57%)</div></div>
                 <div class="traffic-op-row"><div class="k">平台贈送 中獎額/投注次數</div><div class="v">68,200(22.74%) / 310(23.88%)</div></div>
                 <div class="traffic-op-row"><div class="k">彩金活動 中獎額/下注額/投注次數</div><div class="v">21,150(7.05%) / 30,400 / 98(7.55%)</div></div>
               </div>
               <div class="traffic-op-col">
                 <div class="traffic-op-name">#3 qajimmy_QAT測試營運</div>
                 <div class="traffic-op-row"><div class="k">活動獎金(總) 中獎額/下注額/投注次數</div><div class="v">126,400 / 14,400 / 531</div></div>
-                <div class="traffic-op-row"><div class="k">限時任務 中獎額/投注次數</div><div class="v">81,000(64.08%) / 330(62.15%)</div></div>
+                <div class="traffic-op-row"><div class="k">任務活動 中獎額/投注次數</div><div class="v">81,000(64.08%) / 330(62.15%)</div></div>
                 <div class="traffic-op-row"><div class="k">平台贈送 中獎額/投注次數</div><div class="v">35,000(27.69%) / 150(28.25%)</div></div>
                 <div class="traffic-op-row"><div class="k">彩金活動 中獎額/下注額/投注次數</div><div class="v">10,400(8.23%) / 14,400 / 51(9.60%)</div></div>
               </div>
@@ -942,7 +942,7 @@
            為了讓兩組欄位在表格裡各自是連續的一塊(colspan 才排得出來),原本在畫面最右邊的
            返還率/平台營利/平台歷史損益,搬到活動數據那兩欄的「前面」,活動數據固定放在功能欄位之前。
            「免費金額/免費次數」我先假設是遊戲本身的免費遊戲觸發機制(比照 Excel 計算機裡的「平轉免遊」),
-           跟限時任務/平台贈送這種活動發的免費旋轉卡是兩回事,所以放在「純遊戲數據」這組——
+           跟任務活動/平台贈送這種活動發的免費旋轉卡是兩回事,所以放在「純遊戲數據」這組——
            這個假設我不是百分之百確定,已經在回覆裡跟你確認。
            排序方法/搜尋玩家/新增個人機率等按鈕都只是畫面示意,尚未綁定功能,數字為靜態假資料。 ============ -->
       <div class="page" id="page-user-profit-loss">
@@ -4088,7 +4088,7 @@ function confirmManualReward(){
 //  這份分類是我依你的描述推導出來的,不是既有規格,若還有其他新增來源類型要請你補充。
 //  原本還有 manual_resend(人工補派)這個來源,已依你的指示移除。)
 const TX_TYPE_LABEL = {
-  task: '限時任務',
+  task: '任務活動',
   platform_gift: '平台贈送',
   use: '使用',
   expired: '道具到期',
@@ -4496,8 +4496,8 @@ function buildItemCardData(){
     return {
       itemId: x.itemId,
       itemType: add.itemType,
-      source: add.type, // 來源:這張卡是怎麼進背包的(限時任務/平台贈送),對應 TX_TYPE_LABEL
-      activityId: add.activityId || '', // 僅來源為「限時任務」的紀錄才會有值(平台贈送沒有對應活動)
+      source: add.type, // 來源:這張卡是怎麼進背包的(任務活動/平台贈送),對應 TX_TYPE_LABEL
+      activityId: add.activityId || '', // 僅來源為「任務活動」的紀錄才會有值(平台贈送沒有對應活動)
       member: add.member,
       gameId: p.gameId,
       betLevel: p.betLevel,
@@ -4519,7 +4519,7 @@ function buildItemCardData(){
   });
 }
 
-// 來源篩選選項:只列「新增類」交易類型(限時任務/平台贈送),對應 buildItemCardData() 的 add.type
+// 來源篩選選項:只列「新增類」交易類型(任務活動/平台贈送),對應 buildItemCardData() 的 add.type
 const ITEM_CARD_SOURCE_OPTIONS = ['task','platform_gift'];
 // timeField:'validFrom'(獲得時間)| 'validTo'(有效時間),決定下方時間區間是套用在哪個時間欄位上
 function defaultItemCardFilterState(){
@@ -4636,7 +4636,7 @@ function itemCardMatchesFilter(c){
   if(itemCardFilterState.itemTypes.size>0 && !itemCardFilterState.itemTypes.has(c.itemType)) return false;
   const memberKw = (itemCardFilterState.member||'').trim().toLowerCase();
   if(memberKw && !c.member.toLowerCase().includes(memberKw)) return false;
-  // 活動ID只有來源是「限時任務」的道具卡才有值,搜尋活動ID時等於順便篩掉非任務來源的道具卡
+  // 活動ID只有來源是「任務活動」的道具卡才有值,搜尋活動ID時等於順便篩掉非任務來源的道具卡
   const activityKw = (itemCardFilterState.activityId||'').trim().toLowerCase();
   if(activityKw && !(c.activityId||'').toLowerCase().includes(activityKw)) return false;
   const fStart = new Date(`${itemCardFilterState.startDate}T${itemCardFilterState.startTime}`);
@@ -4700,7 +4700,7 @@ function toggleItemCardRow(itemId){
 //   「玩家背包」彈窗不傳這個,因為未使用狀態下最後更新時間=獲得時間,重複顯示沒有資訊量)。
 function itemCardDetailContentHtml(c, opts){
   opts = opts || {};
-  // 來源為「限時任務」才會有 activityId(平台贈送沒有對應活動),不受 opts 控制、只看資料本身有沒有值,
+  // 來源為「任務活動」才會有 activityId(平台贈送沒有對應活動),不受 opts 控制、只看資料本身有沒有值,
   // 兩個顯示這份詳情的地方(道具紀錄頁/玩家背包彈窗)都一致套用這個規則
   const activityIdHtml = (c.source === 'task' && c.activityId)
     ? `<div class="detail-row"><span class="k">活動ID</span><span class="v">${c.activityId}</span></div>`
