@@ -783,7 +783,7 @@
           <div id="report-subtab-task-panel">
             <table>
               <thead><tr>
-                <th>活動ID</th><th>活動名稱 / 營運 / 任務編號</th><th class="num">不重複登入人數<span class="help-tip" data-tip="在活動期間,不重複的登入玩家數量">?</span></th><th class="num">不重複參與人數(參與率)<span class="help-tip" data-tip="參與率=不重複參與人數/不重複登入人數">?</span></th><th class="num" id="report-participants-th">參與次數<span class="help-tip" data-tip="玩家開始累積任務進度即計為參與1次,以任務數量累計">?</span></th><th class="num" id="report-rewarded-th">領獎次數(完成率)<span class="help-tip" data-tip="完成率=領獎次數/參與次數">?</span></th><th>幣別</th><th class="num" id="report-nominal-cost-th" title="預估成本為上限:領獎次數 × 每局投注額 × 最大贏分倍數,實現成本不會超過此值">總預估成本(TWD)</th><th class="num report-realized-col" id="report-realized-cost-th">實現成本(TWD)</th>
+                <th>活動ID</th><th>活動名稱 / 營運 / 任務編號</th><th class="num">不重複登入人數<span class="help-tip" data-tip="活動期間進入活動任務之遊戲,不重複的玩家數量">?</span></th><th class="num">不重複參與人數(參與率)<span class="help-tip" data-tip="參與率=不重複參與人數/不重複登入人數">?</span></th><th class="num" id="report-participants-th">參與次數<span class="help-tip" data-tip="任務開始或重置後,玩家首次累積任務進度即計為參與1次,以任務數量累計">?</span></th><th class="num" id="report-rewarded-th">領獎次數(完成率)<span class="help-tip" data-tip="完成率=領獎次數/參與次數">?</span></th><th>幣別</th><th class="num" id="report-nominal-cost-th" title="預估成本為上限:領獎次數 × 每局投注額 × 最大贏分倍數,實現成本不會超過此值">總預估成本(TWD)</th><th class="num report-realized-col" id="report-realized-cost-th">實現成本(TWD)</th>
               </tr></thead>
               <tbody id="report-task-tbody"></tbody>
             </table>
@@ -791,7 +791,7 @@
           <div id="report-subtab-daily-panel" style="display:none;">
             <table>
               <thead><tr>
-                <th>活動ID</th><th>活動名稱 / 營運 / 日期</th><th class="num">不重複登入人數<span class="help-tip" data-tip="在活動期間,不重複的登入玩家數量">?</span></th><th class="num">不重複參與人數(參與率)<span class="help-tip" data-tip="參與率=不重複參與人數/不重複登入人數">?</span></th><th class="num" id="report-daily-participants-th">參與次數<span class="help-tip" data-tip="玩家開始累積任務進度即計為參與1次,以任務數量累計">?</span></th><th class="num" id="report-daily-rewarded-th">領獎次數(完成率)<span class="help-tip" data-tip="完成率=領獎次數/參與次數">?</span></th><th>幣別</th><th class="num" id="report-daily-nominal-cost-th" title="預估成本為上限:領獎次數 × 每局投注額 × 最大贏分倍數,實現成本不會超過此值">總預估成本(TWD)</th><th class="num report-realized-col" id="report-daily-realized-cost-th">實現成本(TWD)</th>
+                <th>活動ID</th><th>活動名稱 / 營運 / 日期</th><th class="num">不重複登入人數<span class="help-tip" data-tip="活動期間進入活動任務之遊戲,不重複的玩家數量">?</span></th><th class="num">不重複參與人數(參與率)<span class="help-tip" data-tip="參與率=不重複參與人數/不重複登入人數">?</span></th><th class="num" id="report-daily-participants-th">參與次數<span class="help-tip" data-tip="以日為單位:當日有累積任務進度即計為參與1次(不論任務是否重置),以任務數量累計。">?</span></th><th class="num" id="report-daily-rewarded-th">領獎次數(完成率)<span class="help-tip" data-tip="完成率=領獎次數/參與次數">?</span></th><th>幣別</th><th class="num" id="report-daily-nominal-cost-th" title="預估成本為上限:領獎次數 × 每局投注額 × 最大贏分倍數,實現成本不會超過此值">總預估成本(TWD)</th><th class="num report-realized-col" id="report-daily-realized-cost-th">實現成本(TWD)</th>
               </tr></thead>
               <tbody id="report-daily-tbody"></tbody>
             </table>
@@ -4886,8 +4886,8 @@ const REPORT_DAILY_REACH = 2.2;
 function reportOperatorUniqueShare(m, op){ return m.uniqueParticipants>0 ? op.uniqueParticipants / m.uniqueParticipants : 0; }
 function reportTaskUnique(m, t, op, windowFraction){ return Math.round((t.uniqueParticipants||0) * windowFraction * reportOperatorUniqueShare(m, op)); }
 function reportDayUnique(m, d, op){
-  if(m.participants<=0) return 0;
-  const activityDay = Math.min(m.uniqueParticipants, d.participants / m.participants * m.uniqueParticipants * REPORT_DAILY_REACH);
+  if(m.dayParticipants<=0) return 0;
+  const activityDay = Math.min(m.uniqueParticipants, d.participants / m.dayParticipants * m.uniqueParticipants * REPORT_DAILY_REACH);
   return Math.round(activityDay * reportOperatorUniqueShare(m, op));
 }
 // 不重複登入人數 = 活動起訖日內不重複登入的玩家數。營運之間玩家不重複,所以營運列 = 該營運旗下玩家的活躍數,
@@ -4907,7 +4907,7 @@ function reportScopedTotals(m){
   const sum = f => ops.reduce((acc,o)=>acc+f(o), 0);
   return {
     ops,
-    participants: sum(o=>o.participants), rewardedCount: sum(o=>o.rewardedCount),
+    participants: sum(o=>o.participants), dayParticipants: sum(o=>o.dayParticipants), rewardedCount: sum(o=>o.rewardedCount),
     uniqueParticipants: sum(o=>o.uniqueParticipants), active: sum(o=>o.siteActive),
     nominalTWD: sum(o=>nominalTWD*o.fraction), realizedTWD: sum(o=>o.realizedTWD)
   };
@@ -4971,10 +4971,14 @@ const reportData = {
     ]
   }
 };
+const REPORT_NORESET_ACTIVE_DAYS = 3;
 // 活動層的「參與次數」「領獎次數」= 各任務加總(規格已確認),所以不另外存,由任務資料算出,避免兩邊對不上
 Object.values(reportData).forEach(m=>{
   m.participants = m.tasks.reduce((sum,t)=>sum+t.claimed, 0);
   m.rewardedCount = m.tasks.reduce((sum,t)=>sum+t.rewarded, 0);
+  // 每日數據的「參與次數」改用日制(當日有累積就 +1,不論任務是否重置),所以不重置任務每人會被算好幾天,
+  // 每日重置任務(0 點重置)則與週期制相同。示範資料用「不重置任務平均活躍 3 天」示意,正式串接應直接取每日累積資料
+  m.dayParticipants = m.tasks.reduce((sum,t)=>sum + t.claimed * (t.resetMode==='none' ? REPORT_NORESET_ACTIVE_DAYS : 1), 0);
 });
 // 幣別/營運帳號搜尋條件:只當「定位條件」用,篩選要看哪些活動,不影響統計數字怎麼算。
 // 幣別直接從 reportData 現有的 currency 欄位取不重複清單;營運帳號用關鍵字比對活動底下的 operators 名單。
@@ -5124,6 +5128,7 @@ function reportActivityOperatorBreakdown(m){
   const fx = reportFx(m.currency);
   const participantsByOp = reportSplitTotalByWeights(m.participants, weights);
   const rewardedByOp = reportSplitTotalByWeights(m.rewardedCount, weights);
+  const dayParticipantsByOp = reportSplitTotalByWeights(m.dayParticipants, weights); // 每日數據用的日制參與次數
   const realizedByOp = reportSplitTotalByWeights(m.realizedCost, weights);
   // 不重複參與人數也按同樣的營運權重拆分,前提是「一位玩家只會歸屬一個營運」,這個假設在拆到營運層級是合理的,
   // 但不能再往下拆到任務或天(同一位玩家在同一個活動裡本來就可能做好幾個任務、參與好幾天,加總會重複計算,
@@ -5136,6 +5141,8 @@ function reportActivityOperatorBreakdown(m){
     realizedCost: realizedByOp[i],
     realizedTWD: realizedByOp[i] * fx,
     uniqueParticipants: uniqueParticipantsByOp[i],
+    dayParticipants: dayParticipantsByOp[i],
+    dayFraction: m.dayParticipants>0 ? dayParticipantsByOp[i] / m.dayParticipants : 0,
     siteActive: o.siteActive || 0,
     fraction: m.participants>0 ? participantsByOp[i] / m.participants : 0
   }));
@@ -5149,7 +5156,7 @@ function reportActivityDailySeries(m){
   if(days.length===0) return [];
   const fx = reportFx(m.currency);
   const totals = reportMissionTotals(m);
-  const participantsByDay = reportSplitTotalByDay(m.participants, days);
+  const participantsByDay = reportSplitTotalByDay(m.dayParticipants, days); // 日制參與次數(每日數據專用)
   const rewardedByDay = reportSplitTotalByDay(m.rewardedCount, days);
   const nominalByDay = reportSplitTotalByDay(Math.round(totals.nominal * fx), days);
   return days.map((d,i)=>({
@@ -5195,7 +5202,7 @@ function renderReportDailyTable(){
     const fx = reportFx(m.currency);
     const nominalTWD = totals.nominal * fx;
     const sc = reportScopedTotals(m); // 套用營運帳號搜尋後的統計範圍
-    const missionPct = sc.participants>0 ? (sc.rewardedCount/sc.participants*100).toFixed(1)+'%' : '-';
+    const missionPct = sc.dayParticipants>0 ? (sc.rewardedCount/sc.dayParticipants*100).toFixed(1)+'%' : '-'; // 日制:領獎次數 ÷ 日制參與次數
     const isOpen = reportIdModeForceOpenAll || expandedReportDailyMissions.has(id);
 
     rowsHtml += `
@@ -5204,7 +5211,7 @@ function renderReportDailyTable(){
       <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${isOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${m.name}<span style="margin-left:8px;font-weight:400;font-size:12.5px;color:var(--text-secondary);white-space:nowrap;">${m.startDate} ~ ${m.endDate}</span></td>
       <td class="num">${sc.active.toLocaleString()}</td>
       <td class="num">${reportWithRate(sc.uniqueParticipants.toLocaleString(), reportRatioPct(sc.uniqueParticipants, sc.active))}</td>
-      <td class="num">${sc.participants.toLocaleString()}</td>
+      <td class="num">${sc.dayParticipants.toLocaleString()}</td>
       <td class="num">${sc.rewardedCount.toLocaleString()}${reportRateSuffix(missionPct)}</td>
       <td>${m.currency}</td>
       <td class="num">${Math.round(sc.nominalTWD).toLocaleString()}</td>
@@ -5215,7 +5222,7 @@ function renderReportDailyTable(){
       const operators = sc.ops;
       const series = reportActivityDailySeries(m);
       operators.forEach(op=>{
-        const opPct = op.participants>0 ? (op.rewardedCount/op.participants*100).toFixed(1)+'%' : '-';
+        const opPct = op.dayParticipants>0 ? (op.rewardedCount/op.dayParticipants*100).toFixed(1)+'%' : '-';
         const opNominal = nominalTWD * op.fraction;
         const opKey = id + '::' + op.name;
         const opIsOpen = expandedReportDailyOperators.has(opKey);
@@ -5226,7 +5233,7 @@ function renderReportDailyTable(){
           <td class="report-name-cell"><span class="report-chevron" style="transform:rotate(${opIsOpen?90:0}deg);">${iconSvg('chevronDown',13)}</span>${op.name}</td>
           <td class="num">${op.siteActive.toLocaleString()}</td>
           <td class="num">${reportWithRate(op.uniqueParticipants.toLocaleString(), reportOpSiteRate(op, op.uniqueParticipants))}</td>
-          <td class="num">${op.participants.toLocaleString()}</td>
+          <td class="num">${op.dayParticipants.toLocaleString()}</td>
           <td class="num">${op.rewardedCount.toLocaleString()}${reportRateSuffix(opPct)}</td>
           <td>${m.currency}</td>
           <td class="num">${Math.round(opNominal).toLocaleString()}</td>
@@ -5235,7 +5242,7 @@ function renderReportDailyTable(){
 
         if(opIsOpen){
           series.forEach(d=>{
-            const dp = Math.round(d.participants * op.fraction);
+            const dp = Math.round(d.participants * op.dayFraction);
             const dr = Math.round(d.rewarded * op.fraction);
             const dn = d.nominalTWD * op.fraction;
             const pct = dp>0 ? (dr/dp*100).toFixed(1)+'%' : '-';
