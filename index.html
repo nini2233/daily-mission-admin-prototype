@@ -346,6 +346,8 @@
   .help-tip{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:4px;border-radius:50%;border:1px solid var(--text-secondary);color:var(--text-secondary);font-size:10px;font-weight:600;line-height:1;cursor:help;position:relative;vertical-align:middle;}
   .help-tip::after{content:attr(data-tip);display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);width:190px;padding:8px 10px;background:#2b2f3a;color:#fff;font-size:12px;font-weight:400;line-height:1.5;border-radius:6px;text-align:left;white-space:normal;z-index:50;}
   .help-tip:hover::after{display:block;}
+  /* 文案較長的 (?) 說明:加寬,並靠右對齊(圖示位於篩選列右側,避免提示框超出畫面) */
+  .help-tip.wide::after{width:270px;left:auto;right:-8px;transform:none;}
 </style>
 </head>
 <body>
@@ -417,6 +419,9 @@
             <div class="tab" data-tab="traffic-currency">幣別流量</div>
             <div class="tab" data-tab="traffic-game">遊戲排名</div>
             <div class="tab" data-tab="traffic-activity">營運活動流量</div>
+            <!-- 流量統計共用說明:放在頁籤列最右側(共用層),四個頁籤都看得到、全頁面統一文案;
+                 文案刻意不提營運流量/幣別流量/遊戲排名(不是每個人都有這幾個頁籤的權限),活動流量大家都看得到 -->
+            <span class="help-tip wide" style="margin-left:auto;align-self:center;margin-right:16px;" data-tip="活動流量(任務活動/平台贈送/彩金活動..等)不列入遊戲統計中,僅獨立統計在「營運活動流量」頁籤中">?</span>
           </div>
 
           <!-- 篩選列:比照畫面示意排版,目前為裝飾用,尚未接搜尋/排序邏輯
@@ -443,9 +448,6 @@
 
           <!-- ---------------- Tab: 營運流量(唯一有填示意數據的頁籤) ---------------- -->
           <div class="tab-panel active" id="panel-traffic-operator">
-            <!-- margin-top 用負值抵消 .tab-panel 本身的上方 padding(16px),讓這則提示更貼近上面的搜尋條件列;
-                 只調這個 hint 自己的間距,不動 .tab-panel/.filter-bar 的全域樣式,不影響其他頁籤/頁面 -->
-            <div class="hint" style="margin-top:-10px;margin-bottom:14px;">說明:此頁面統計數據不含活動流量(任務活動/平台贈送/彩金活動..等),如需查看這部分數據請切到「營運活動流量」頁籤。</div>
             <div class="traffic-chip-row">
               <div class="traffic-chip c-danger">獲利: -3,740,813.51(-2544.56%)</div>
               <div class="traffic-chip c-warning">遊玩人數: 13</div>
@@ -928,7 +930,7 @@
           <div style="margin-bottom:8px;text-align:right;"><span id="itemcard-stats" style="font-size:12.5px;color:var(--text-secondary);"></span></div>
           <table>
             <thead><tr>
-              <th>道具ID</th><th>來源</th><th>類型</th><th>用戶帳號</th><th>遊戲</th><th class="num">已使用</th><th class="num">剩餘</th><th>獲得時間</th><th>使用時間</th><th>狀態</th><th>詳情</th>
+              <th>道具ID</th><th>來源</th><th>類型</th><th>營運</th><th>用戶帳號</th><th>遊戲</th><th class="num">已使用/剩餘</th><th>獲得時間</th><th>使用時間</th><th>狀態</th><th>詳情</th>
             </tr></thead>
             <tbody id="itemcard-tbody"></tbody>
           </table>
@@ -4467,6 +4469,10 @@ const ITEM_CARD_STATUS_LABEL = {
 // (ledger 只在道具離開背包的那一刻才記錄用了幾局)。這裡的 progressSpins 是放在 add 紀錄上的
 // 示意用「即時使用進度」欄位,用來示範「使用中」這個狀態長什麼樣子;正式串接應改由即時對局系統
 // 提供這份即時進度,不會是憑空寫在 add 紀錄裡。
+// 玩家隸屬的營運(營運帳號):示意用對照表,test000x 沿用「用戶帳號」頁的假資料,其餘帳號為示意分配;
+// 正式串接時營運資料應由玩家帳號本身帶出,不需要這張表
+const MEMBER_OPERATOR_DEMO = { test0001:'vip0001', test0002:'vip0123', test0003:'vip0456', test0004:'vip0301', test0005:'vip0777', rsgtest00008:'vip0001', rsgtest00010:'vip0123', rsgtest00012:'vip0456', rsgtest00014:'vip0301', rsgtest00015:'vip0777', rsgtest00033:'vip0001', rsgtest00036:'vip0123', rsgtest00037:'vip0456', rsgtest00045:'vip0301', rsgtest00047:'vip0777', rsgtest00049:'vip0001', rsgtest00051:'vip0123', rsgtest00064:'vip0456', rsgtest00065:'vip0301' };
+function memberOperator(member){ return MEMBER_OPERATOR_DEMO[member] || '-'; }
 function buildItemCardData(){
   const byItem = {};
   backpackHistoryData.forEach(r=>{
@@ -4499,6 +4505,7 @@ function buildItemCardData(){
       source: add.type, // 來源:這張卡是怎麼進背包的(任務活動/平台贈送),對應 TX_TYPE_LABEL
       activityId: add.activityId || '', // 僅來源為「任務活動」的紀錄才會有值(平台贈送沒有對應活動)
       member: add.member,
+      operator: memberOperator(add.member), // 玩家隸屬的營運帳號
       gameId: p.gameId,
       betLevel: p.betLevel,
       maxWinDisplay: formatMaxWinDisplay(p.maxWinMode, p.maxWinMultiplier),
@@ -4781,7 +4788,7 @@ function getSortedItemCards(){
   });
   return sorted;
 }
-// 欄位順序(左至右):道具ID/來源/類型/用戶帳號/遊戲/已使用/剩餘/獲得時間/使用時間/狀態/詳情
+// 欄位順序(左至右):道具ID/來源/類型/營運/用戶帳號/遊戲/已使用/剩餘(合併成一欄顯示)/獲得時間/使用時間/狀態/詳情
 // (旋轉次數/有效時間移到展開詳情裡,見 itemCardDetailContentHtml 的 showSpinCount/showValidTo;
 //  最後更新時間已不再顯示,詳情不再傳 showLastUpdated)
 // 總筆數:依目前篩選結果(getFilteredItemCards())即時算出,只做小字顯示放列表左上角,不再另外呈現總中獎金額。
@@ -4808,10 +4815,10 @@ function renderItemCardTable(){
       <td>${c.itemId}</td>
       <td>${TX_TYPE_LABEL[c.source]}</td>
       <td>${ITEM_TYPE_LABEL[c.itemType]}</td>
+      <td>${c.operator}</td>
       <td>${c.member}</td>
       <td>${gameName}</td>
-      <td class="num">${c.usedCount}</td>
-      <td class="num">${c.remainCount}</td>
+      <td class="num">${c.usedCount} / ${c.remainCount}</td>
       <td>${c.validFrom}</td>
       <td>${c.firstSpinAt || '-'}</td>
       <td><span class="${st.cls}">${st.text}</span></td>
