@@ -759,10 +759,18 @@
               </div>
               <div class="ms-panel" id="report-id-currency-panel"></div>
             </div>
-            <input type="text" id="report-id-operator-input" placeholder="搜尋營運帳號" style="width:150px;align-self:flex-start;">
+            <div class="ms" id="report-filter-operator-ms" style="width:220px;align-self:flex-start;">
+              <div class="ms-control" onclick="toggleDropdownById('report-filter-operator-ms')">
+                <span class="ms-summary" id="report-filter-operator-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="report-filter-operator-panel"></div>
+            </div>
             <button class="btn btn-primary" onclick="renderReportPanel()">搜尋</button>
+            <button class="btn btn-outline" onclick="resetReportFilter()">重置</button>
           </div>
           <div class="hint" id="report-filter-hint" style="margin-bottom:16px;"></div>
+
 
           <!-- 任務數據(原任務明細)/ 每日數據 兩個子頁籤,兩種模式都提供:參與時間模式的每日數據是「搜尋區間內」
                的逐日拆分;整體活動模式的每日數據則是該活動自己完整舉辦期間的逐日拆分,不受搜尋條件限制,
@@ -923,16 +931,16 @@
             </div>
             <button class="btn btn-primary" onclick="applyItemCardFilter()" style="align-self:flex-start;">搜尋</button>
             <button class="btn btn-outline" onclick="resetItemCardFilter()" style="align-self:flex-start;">重置</button>
-            <div class="spacer-flex"></div>
-            <span style="color:var(--text-secondary);font-size:13px;align-self:center;">排序方法</span>
-            <button class="btn btn-outline" id="itemcard-sort-old-btn" onclick="setItemCardSortDir('asc')" style="align-self:flex-start;">較舊在上</button>
-            <button class="btn btn-primary" id="itemcard-sort-new-btn" onclick="setItemCardSortDir('desc')" style="align-self:flex-start;">較新在上</button>
           </div>
           <!-- 總筆數:依目前篩選條件(尤其是搜尋活動ID時)即時算出,只做小字顯示,放列表右上角 -->
           <div style="margin-bottom:8px;text-align:right;"><span id="itemcard-stats" style="font-size:12.5px;color:var(--text-secondary);"></span></div>
           <table>
             <thead><tr>
-              <th>道具ID</th><th>來源</th><th>類型</th><th>營運</th><th>用戶帳號</th><th>遊戲</th><th class="num">已使用/剩餘</th><th>獲得時間</th><th>使用時間</th><th>狀態</th><th>詳情</th>
+              <th>道具ID</th><th>營運</th><th>用戶帳號</th><th>來源</th><th>類型</th><th>遊戲</th><th class="num">已使用/剩餘</th>
+              <th class="sortable" onclick="sortItemCardsBy('validFrom')">獲得時間<span class="sort-icon" id="itemcard-sort-icon-validFrom"></span></th>
+              <th class="sortable" onclick="sortItemCardsBy('validTo')">有效時間<span class="sort-icon" id="itemcard-sort-icon-validTo"></span></th>
+              <th class="sortable" onclick="sortItemCardsBy('firstSpinAt')">使用時間<span class="sort-icon" id="itemcard-sort-icon-firstSpinAt"></span></th>
+              <th>狀態</th><th>詳情</th>
             </tr></thead>
             <tbody id="itemcard-tbody"></tbody>
           </table>
@@ -4764,34 +4772,53 @@ function itemCardExpandBtnHtml(itemId){
   const isOpen = expandedItemCardRows.has(itemId);
   return `<button class="bp-expand-btn${isOpen?' open':''}" onclick="toggleItemCardRow('${itemId}')" title="展開/收合詳情">${iconSvg('chevronDown',14)}</button>`;
 }
-// 「獲得時間」排序:比照背包紀錄(歷程)頁的「排序方法」按鈕呈現方式(較舊在上/較新在上二擇一),
-// 一律套用排序(不像表頭點擊排序可取消),預設「較新在上」(desc)
-let itemCardSortDir = 'desc'; // 'asc'=較舊在上 | 'desc'=較新在上
-function setItemCardSortDir(dir){
-  itemCardSortDir = dir;
+// 排序:做在「獲得時間/有效時間/使用時間」三個欄位表頭上(點擊切換升/降冪,同欄再點一次反向),
+// 一律套用排序(不可取消),預設「獲得時間」新到舊,與先前預設「較新在上」一致。
+// 使用時間:從未使用過的卡片 firstSpinAt 為空字串,沒有時間可比,不論升降冪一律排在最後,避免空值混進排序結果。
+let itemCardSortKey = 'validFrom';   // 'validFrom' | 'validTo' | 'firstSpinAt'
+let itemCardSortDir = 'desc';        // 'asc' 舊→新 | 'desc' 新→舊
+function sortItemCardsBy(key){
+  if(itemCardSortKey === key){
+    itemCardSortDir = itemCardSortDir === 'asc' ? 'desc' : 'asc';
+  }else{
+    itemCardSortKey = key;
+    itemCardSortDir = 'asc';
+  }
   renderItemCardTable();
 }
-function updateItemCardSortButtons(){
-  const oldBtn = document.getElementById('itemcard-sort-old-btn');
-  const newBtn = document.getElementById('itemcard-sort-new-btn');
-  if(!oldBtn || !newBtn) return;
-  oldBtn.className = 'btn ' + (itemCardSortDir==='asc' ? 'btn-primary' : 'btn-outline');
-  newBtn.className = 'btn ' + (itemCardSortDir==='desc' ? 'btn-primary' : 'btn-outline');
+function updateItemCardSortIcons(){
+  ['validFrom','validTo','firstSpinAt'].forEach(key=>{
+    const el = document.getElementById('itemcard-sort-icon-'+key);
+    if(!el) return;
+    if(itemCardSortKey===key){
+      el.textContent = itemCardSortDir==='asc' ? '▲' : '▼';
+      el.classList.add('active');
+    }else{
+      el.textContent = '↕';
+      el.classList.remove('active');
+    }
+  });
+}
+function itemCardSortValue(c, key){
+  if(key === 'validTo') return c.validToDate.getTime();
+  if(key === 'firstSpinAt') return c.firstSpinAt ? new Date(c.firstSpinAt.replace(' ','T')).getTime() : null;
+  return new Date(c.validFrom.replace(' ','T')).getTime();
 }
 function getSortedItemCards(){
   const list = getFilteredItemCards();
   const sorted = list.slice();
+  const dir = itemCardSortDir === 'asc' ? 1 : -1;
   sorted.sort((a, b)=>{
-    const av = new Date(a.validFrom.replace(' ','T')).getTime();
-    const bv = new Date(b.validFrom.replace(' ','T')).getTime();
-    if(av<bv) return itemCardSortDir==='asc' ? -1 : 1;
-    if(av>bv) return itemCardSortDir==='asc' ? 1 : -1;
-    return 0;
+    const av = itemCardSortValue(a, itemCardSortKey), bv = itemCardSortValue(b, itemCardSortKey);
+    if(av===null && bv===null) return 0;
+    if(av===null) return 1;   // 空值固定排最後
+    if(bv===null) return -1;
+    return av===bv ? 0 : (av<bv ? -dir : dir);
   });
   return sorted;
 }
-// 欄位順序(左至右):道具ID/來源/類型/營運/用戶帳號/遊戲/已使用/剩餘(合併成一欄顯示)/獲得時間/使用時間/狀態/詳情
-// (旋轉次數/有效時間移到展開詳情裡,見 itemCardDetailContentHtml 的 showSpinCount/showValidTo;
+// 欄位順序(左至右):道具ID/營運/用戶帳號/來源/類型/遊戲/已使用/剩餘(合併成一欄顯示)/獲得時間/有效時間/使用時間/狀態/詳情
+// (旋轉次數移到展開詳情裡,見 itemCardDetailContentHtml 的 showSpinCount;有效時間已拉回外層列表;
 //  最後更新時間已不再顯示,詳情不再傳 showLastUpdated)
 // 總筆數:依目前篩選結果(getFilteredItemCards())即時算出,只做小字顯示放列表左上角,不再另外呈現總中獎金額。
 function renderItemCardStats(){
@@ -4803,10 +4830,10 @@ function renderItemCardStats(){
 function renderItemCardTable(){
   renderItemCardStats();
   const tbody = document.getElementById('itemcard-tbody');
-  updateItemCardSortButtons();
+  updateItemCardSortIcons();
   const list = getSortedItemCards();
   if(list.length === 0){
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--text-secondary);padding:20px;">查無符合條件的資料</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text-secondary);padding:20px;">查無符合條件的資料</td></tr>`;
     return;
   }
   tbody.innerHTML = list.map(c=>{
@@ -4815,18 +4842,19 @@ function renderItemCardTable(){
     let rowHtml = `
     <tr>
       <td>${c.itemId}</td>
-      <td>${TX_TYPE_LABEL[c.source]}</td>
-      <td>${ITEM_TYPE_LABEL[c.itemType]}</td>
       <td>${c.operator}</td>
       <td>${c.member}</td>
+      <td>${TX_TYPE_LABEL[c.source]}</td>
+      <td>${ITEM_TYPE_LABEL[c.itemType]}</td>
       <td>${gameName}</td>
       <td class="num">${c.usedCount} / ${c.remainCount}</td>
       <td>${c.validFrom}</td>
+      <td>${c.validToStr}</td>
       <td>${c.firstSpinAt || '-'}</td>
       <td><span class="${st.cls}">${st.text}</span></td>
       <td>${itemCardExpandBtnHtml(c.itemId)}</td>
     </tr>`;
-    if(expandedItemCardRows.has(c.itemId)) rowHtml += itemCardDetailRowHtml(c, 11, { showSpinCount:true, showValidTo:true });
+    if(expandedItemCardRows.has(c.itemId)) rowHtml += itemCardDetailRowHtml(c, 12, { showSpinCount:true });
     return rowHtml;
   }).join('');
 }
@@ -4900,11 +4928,12 @@ const REPORT_SITE_DAU_RATIO = 0.45;
 // 活動列的不重複登入人數 = 活動涵蓋營運的活躍玩家加總(營運之間玩家不重複,可直接相加;不含未加入此活動的營運)
 // 營運帳號搜尋同時是「統計範圍」條件:有輸入關鍵字時,活動底下只有名稱符合的營運會列出,
 // 活動列與上方統計卡也只加總這些營運(幣別是活動本身的屬性,不影響範圍)
-function reportOperatorKeyword(){ return ((document.getElementById('report-id-operator-input')||{}).value || '').trim().toLowerCase(); }
+// 營運選擇改為與「列表」頁一致的下拉(依幣別連動、可複選),狀態存營運 id;沒選=不限
+let reportFilterOperators = new Set();
+let reportFilterOperatorSearch = '';
 function reportScopedTotals(m){
-  const kw = reportOperatorKeyword();
   const all = reportActivityOperatorBreakdown(m);
-  const ops = kw ? all.filter(o=>o.name.toLowerCase().includes(kw)) : all;
+  const ops = reportFilterOperators.size>0 ? all.filter(o=>reportFilterOperators.has(o.opId)) : all;
   const nominalTWD = reportMissionTotals(m).nominal * reportFx(m.currency);
   const sum = f => ops.reduce((acc,o)=>acc+f(o), 0);
   return {
@@ -4973,6 +5002,16 @@ const reportData = {
     ]
   }
 };
+// 分析報表的營運示意資料連到 operatorTreeData(同「列表」頁營運選單的來源):依活動幣別挑出同幣別營運,
+// 營運帳號名稱直接取自該筆,這樣下拉選單選到的營運才對得上列表裡顯示的營運。正式串接後應直接用營運 id 關聯
+Object.values(reportData).forEach(m=>{
+  const ids = pickOperatorIdsByCurrency(m.currency, m.operators.length);
+  m.operators.forEach((o,i)=>{
+    o.opId = ids[i];
+    const found = operatorTreeData.flatMap(p=>p.children).find(c=>c.id===ids[i]);
+    if(found) o.name = found.name;
+  });
+});
 const REPORT_NORESET_ACTIVE_DAYS = 3;
 // 活動層的「參與次數」「領獎次數」= 各任務加總(規格已確認),所以不另外存,由任務資料算出,避免兩邊對不上
 Object.values(reportData).forEach(m=>{
@@ -4990,12 +5029,22 @@ const REPORT_CURRENCIES = CURRENCIES.map(c=>c.code); // 搜尋用幣別清單比
 let reportFilterCurrencies = new Set();
 function reportActivityMatchesFilter(m){
   if(reportFilterCurrencies.size>0 && !reportFilterCurrencies.has(m.currency)) return false;
-  const kw = reportOperatorKeyword();
-  if(kw){
-    const hasOp = (m.operators||[]).some(o=>o.name.toLowerCase().includes(kw));
+  if(reportFilterOperators.size>0){
+    const hasOp = (m.operators||[]).some(o=>reportFilterOperators.has(o.opId));
     if(!hasOp) return false;
   }
   return true;
+}
+// 重置:所有搜尋條件恢復預設值(活動期間回到預設區間、活動ID/營運清空、幣別不限),並重新搜尋;
+// 預設區間沿用畫面初始值,正式版的預設值待規格確認
+const REPORT_DEFAULT_PERIOD = ['2026-07-01','2026-07-13'];
+function resetReportFilter(){
+  setRangePickerValues('report-range', REPORT_DEFAULT_PERIOD[0], REPORT_DEFAULT_PERIOD[1]);
+  document.getElementById('report-id-input').value = '';
+  reportFilterCurrencies = new Set();
+  reportFilterOperators = new Set();
+  reportFilterOperatorSearch = '';
+  renderReportPanel();
 }
 function renderReportCurrencyControls(){
   ['report-id-currency-summary'].forEach(sid=>{
@@ -5012,10 +5061,69 @@ function renderReportCurrencyControls(){
     const panel = document.getElementById(pid);
     if(panel) panel.innerHTML = panelHtml;
   });
+  renderReportOperatorControl();
+  renderReportOperatorPanel();
 }
 function toggleReportFilterCurrency(code, checked){
   if(checked) reportFilterCurrencies.add(code); else reportFilterCurrencies.delete(code);
+  // 幣別變動後,移除不再符合幣別的已選營運(與「列表」頁一致)
+  if(reportFilterCurrencies.size>0){
+    const validIds = new Set();
+    operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(reportFilterCurrencies.has(c.currency)) validIds.add(c.id); }));
+    Array.from(reportFilterOperators).forEach(id=>{ if(!validIds.has(id)) reportFilterOperators.delete(id); });
+  }
   renderReportCurrencyControls();
+}
+// 營運下拉:沒選幣別列出全部營運,選了幣別只列該幣別下的營運;可用名稱搜尋、可複選;只顯示營運帳號
+function getReportFilterOperatorGroups(){
+  const kw = reportFilterOperatorSearch.trim().toLowerCase();
+  return operatorTreeData.map(parent=>{
+    const children = parent.children.filter(c=>{
+      if(reportFilterCurrencies.size>0 && !reportFilterCurrencies.has(c.currency)) return false;
+      if(kw && !c.name.toLowerCase().includes(kw)) return false;
+      return true;
+    });
+    return { parent, children };
+  }).filter(g=>g.children.length>0);
+}
+function renderReportOperatorControl(){
+  const el = document.getElementById('report-filter-operator-summary');
+  if(!el) return;
+  if(reportFilterOperators.size===0){ el.textContent='營運:不限'; el.classList.add('placeholder'); return; }
+  el.classList.remove('placeholder');
+  const names = [];
+  operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(reportFilterOperators.has(c.id)) names.push(c.name); }));
+  const shown = names.slice(0,2).join('、');
+  el.textContent = `營運:已選 ${names.length} 個${names.length>2? '('+shown+' 等)':''}`;
+}
+function renderReportOperatorPanel(){
+  const panel = document.getElementById('report-filter-operator-panel');
+  if(!panel) return;
+  panel.innerHTML = `
+    <div class="ms-search"><input type="text" placeholder="搜尋營運名稱" value="${reportFilterOperatorSearch}" oninput="onReportFilterOperatorSearch(this.value)"></div>
+    <div class="ms-list" id="report-filter-operator-ms-list"></div>`;
+  renderReportOperatorList();
+}
+function renderReportOperatorList(){
+  const list = document.getElementById('report-filter-operator-ms-list');
+  if(!list) return;
+  const groups = getReportFilterOperatorGroups();
+  list.innerHTML = groups.length===0 ? '<div class="ms-empty">查無符合的營運</div>' : groups.map(g=>`
+    <div class="ms-group-title" style="cursor:default;">${g.parent.name}<span class="tag" style="margin-left:6px;">${g.children.length} 筆</span></div>
+    ${g.children.map(c=>`
+      <label class="ms-option">
+        <input type="checkbox" ${reportFilterOperators.has(c.id)?'checked':''} onchange="toggleReportFilterOperator('${c.id}', this.checked)"> ${c.name} <span class="tag">${c.currency}</span>
+      </label>`).join('')}
+  `).join('');
+}
+function onReportFilterOperatorSearch(val){
+  reportFilterOperatorSearch = val;
+  renderReportOperatorList();
+}
+function toggleReportFilterOperator(id, checked){
+  if(checked) reportFilterOperators.add(id); else reportFilterOperators.delete(id);
+  renderReportOperatorControl();
+  renderReportOperatorList();
 }
 
 // 單一任務的預估成本
@@ -5138,6 +5246,7 @@ function reportActivityOperatorBreakdown(m){
   const uniqueParticipantsByOp = reportSplitTotalByWeights(m.uniqueParticipants, weights);
   return m.operators.map((o,i)=>({
     name: o.name,
+    opId: o.opId,
     participants: participantsByOp[i],
     rewardedCount: rewardedByOp[i],
     realizedCost: realizedByOp[i],
@@ -5275,8 +5384,7 @@ function renderReportDailyTable(){
 function renderReportResults(){
   const idQuery = document.getElementById('report-id-input').value.trim();
   const byId = idQuery !== '';
-  const opKw = reportOperatorKeyword();
-  const opNote = opKw ? '已輸入營運帳號,活動下只列出符合的營運,統計也只計入這些營運。' : '';
+  const opNote = reportFilterOperators.size>0 ? '已選擇營運,活動下只列出所選的營運,統計也只計入這些營運。' : '';
   document.getElementById('report-filter-hint').textContent = opNote + (byId
     ? '說明:已輸入活動ID,以ID精準查詢並忽略活動期間;顯示該活動自上線以來的全部累計。'
     : '說明:活動期間僅用來找出舉辦期間與所選範圍有重疊的活動,列表顯示的是各活動自上線以來的完整累計,並非這段期間的統計。');
