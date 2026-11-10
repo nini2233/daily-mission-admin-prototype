@@ -389,7 +389,7 @@
       <div class="icon-btn" title="下載" data-icon="download" onclick="toggleDlCategoryMenu()"></div>
       <div class="dl-category-menu" id="dl-category-menu">
         <div class="dl-category-item" onclick="openDownloadPanel('mission-record')">任務紀錄下載</div>
-        <div class="dl-category-item" onclick="openDownloadPanel('report')">分析報表下載</div>
+        <div class="dl-category-item" onclick="openDownloadPanel('report')">任務分析下載</div>
       </div>
       <div class="dl-panel" id="dl-panel">
         <div class="dl-panel-header">
@@ -1366,7 +1366,7 @@
             </div>
           </div>
         </div>
-        <div class="rexp-hint">舉辦期間與此區間有重疊的活動都會匯出;每個活動匯出的仍是自上線以來的累計</div>
+        <div class="rexp-hint">活動期間與此區間有重疊的活動都會匯出;每個活動匯出的是各活動自上線以來的完整累計,並非這段期間的統計。</div>
         <div class="rexp-row">
           <span class="rexp-label">幣別</span>
           <div class="rexp-ctl">
@@ -1413,6 +1413,7 @@
       <div class="rexp-row top">
         <span class="rexp-label"><span style="color:var(--danger);">*</span>明細層級<br><span style="font-weight:400;font-size:12px;color:var(--text-secondary);">(可複選)</span></span>
         <div class="rexp-ctl" style="display:flex;flex-direction:column;gap:8px;font-size:13.5px;">
+          <label class="rexp-check"><input type="checkbox" id="rexp-lv-operator" checked> 營運</label>
           <label class="rexp-check"><input type="checkbox" id="rexp-lv-task" checked> 任務</label>
           <label class="rexp-check"><input type="checkbox" id="rexp-lv-day"> 每日</label>
         </div>
@@ -3796,7 +3797,7 @@ function getRecordsForExportSnapshot(snapshot){
    ============================================================ */
 const DOWNLOAD_CATEGORIES = {
   'mission-record': { title:'任務紀錄下載', filename:'任務紀錄' },
-  'report': { title:'分析報表下載', filename:'分析報表' }
+  'report': { title:'任務分析下載', filename:'任務分析' }
 };
 // 示意用:預先放一筆「已完成」的歷史任務,讓下載列表一開始不是空的(比照參考截圖的呈現方式)
 let downloadJobs = [
@@ -5163,7 +5164,7 @@ function resetReportFilter(){
 }
 /* ============================================================
    分析報表匯出:內容跟著畫面上目前的搜尋條件(活動期間/活動ID/幣別/營運),建立當下做快照,
-   走「匯出下載中心 > 分析報表下載」的非同步任務;下載的是 .xlsx,一個工作表對應一個粒度:
+   走「匯出下載中心 > 任務分析下載」的非同步任務;下載的是 .xlsx,一個工作表對應一個粒度:
    說明 / 活動彙總 / 活動×營運 / 活動×營運×任務 / 活動×營運×日 / 匯率。
    不重複人數不可跨層加總,所以不攤成一張表;不適用的欄位留空(不填「-」或 0);金額同時給原幣與 TWD。
    示意數據沿用畫面同一套計算,正式版應由後端依同樣口徑產生。
@@ -5175,7 +5176,7 @@ function onDlPanelAdd(){
 function exportReport(){ openReportExportModal(); }
 // 輸出設定:搜尋方式「時間」= 活動期間 + 幣別/高級營運/營運(比照既有輸出設定,沒選幣別前高級營運/營運鎖定);
 // 「活動ID」只看活動ID(精準比對,忽略其他條件)。開啟時預設帶入畫面目前的搜尋條件;
-// 明細層級只有「任務」「每日」可選,預設勾任務,每日資料量最大所以預設不勾
+// 明細層級可選「營運」「任務」「每日」,預設勾營運、任務,每日資料量最大所以預設不勾
 let reportExportMode = 'period';
 let rexpCurrencies = new Set(), rexpMasters = new Set(), rexpOperators = new Set(), rexpOperatorSearch = '';
 function setReportExportMode(mode){
@@ -5201,6 +5202,7 @@ function openReportExportModal(){
   rexpOperatorSearch = '';
   renderRexpAll();
   setReportExportMode(idQuery ? 'id' : 'period');
+  document.getElementById('rexp-lv-operator').checked = true;
   document.getElementById('rexp-lv-task').checked = true;
   document.getElementById('rexp-lv-day').checked = false;
   document.getElementById('report-export-modal-overlay').classList.add('open');
@@ -5311,7 +5313,8 @@ function submitReportExport(){
   const start = document.getElementById('rexp-period-start').value, end = document.getElementById('rexp-period-end').value;
   if(!isId && (!start || !end)){ alert('請選擇活動期間'); return; }
   const levels = {
-    activity: false, operator: false, // 明細層級只保留「任務」「每日」;兩張表本身都已含活動ID、名稱、營運帳號
+    activity: false, // 明細層級可選「營運」「任務」「每日」(不再提供活動彙總)
+    operator: document.getElementById('rexp-lv-operator').checked,
     task: document.getElementById('rexp-lv-task').checked,
     day: document.getElementById('rexp-lv-day').checked
   };
@@ -5340,71 +5343,65 @@ function reportExportBuild(ids){
     const series = reportActivityDailySeries(m);
     sc.ops.forEach(op=>{
       const opNomOrig = totals.nominal * op.fraction;
-      opr.push([id, m.name, op.name, m.currency, fx, op.siteActive, op.uniqueParticipants, rate(op.uniqueParticipants, op.siteActive),
-        op.participants, op.rewardedCount, rate(op.rewardedCount, op.participants),
-        r2(opNomOrig), Math.round(opNomOrig*fx), r2(op.realizedCost), Math.round(op.realizedTWD),
-        rate(op.realizedCost, opNomOrig), rate(Math.round(op.realizedTWD), op.uniqueParticipants)]);
+      // 欄位順序:活動ID/活動名稱/營運帳號/登入/參與人數/參與率/參與次數/領獎次數/完成率/幣別/預估(原幣)/實現(原幣)/預估(TWD)/實現(TWD)
+      opr.push([id, m.name, op.name, op.siteActive, op.uniqueParticipants, rate(op.uniqueParticipants, op.siteActive),
+        op.participants, op.rewardedCount, rate(op.rewardedCount, op.participants), m.currency,
+        r2(opNomOrig), r2(op.realizedCost), Math.round(opNomOrig*fx), Math.round(op.realizedTWD)]);
       m.tasks.forEach(t=>{
         const claimed = Math.round(t.claimed * op.fraction), rewarded = Math.round(t.rewarded * op.fraction);
         const nom = reportTaskNominal(t) * op.fraction;
         tsk.push([id, m.name, op.name, t.no, (TASK_TYPES[t.taskType]||{}).label || t.taskType, t.resetMode==='none'?'活動期間不重置':'每日重置',
-          t.threshold, t.rewardContent, t.betLevel, t.maxWinMultiplier, m.currency, fx,
-          reportTaskUnique(m, t, op, 1), claimed, rewarded, rate(rewarded, claimed), r2(nom), Math.round(nom*fx), null, null]);
+          t.threshold, t.rewardContent, t.betLevel, t.maxWinMultiplier,
+          reportTaskUnique(m, t, op, 1), claimed, rewarded, rate(rewarded, claimed), m.currency, r2(nom), Math.round(nom*fx)]); // 任務層沒有實現成本,不放該欄
       });
       series.forEach(d=>{
         const dp = Math.round(d.participants * op.dayFraction), dr = Math.round(d.rewarded * op.fraction);
         const dnTWD = d.nominalTWD * op.fraction, dau = reportSiteDau(op, d), uq = Math.min(reportDayUnique(m, d, op), dau);
-        day.push([id, m.name, op.name, d.dateStr, m.currency, fx, dau, uq, rate(uq, dau), dp, dr, rate(dr, dp),
-          fx>0 ? r2(dnTWD/fx) : null, Math.round(dnTWD), null, null]);
+        // 欄位順序:活動ID/活動名稱/營運帳號/日期/當日登入/當日參與/參與率/當日參與次數/領獎次數/當日完成率/幣別/預估成本(原幣)/預估成本(TWD)
+        // (日層沒有實現成本,不放該欄)
+        day.push([id, m.name, op.name, d.dateStr, dau, uq, rate(uq, dau), dp, dr, rate(dr, dp), m.currency,
+          fx>0 ? r2(dnTWD/fx) : null, Math.round(dnTWD)]);
       });
     });
   });
   // 欄位名稱裡含「原幣」「TWD」「率」「人數」「次數」會被套用對應的數字格式(見 reportExportFormatSheet)
   const sheets = {
     '活動彙總': { head:['活動ID','活動名稱','活動起日','活動迄日','幣別','匯率(對TWD)','營運數','不重複登入人數','不重複參與人數','參與率','參與次數(週期制)','領獎次數','完成率','預估成本(原幣)','預估成本(TWD)','實現成本(原幣)','實現成本(TWD)','實現成本率(實現÷預估)','每位參與玩家實現成本(TWD)'], rows:act },
-    '活動×營運': { head:['活動ID','活動名稱','營運帳號','幣別','匯率(對TWD)','不重複登入人數','不重複參與人數','參與率','參與次數(週期制)','領獎次數','完成率','預估成本(原幣)','預估成本(TWD)','實現成本(原幣)','實現成本(TWD)','實現成本率(實現÷預估)','每位參與玩家實現成本(TWD)'], rows:opr },
-    '活動×營運×任務': { head:['活動ID','活動名稱','營運帳號','任務編號','任務類型','重置模式','達成門檻','獎勵內容','每局投注額','最大贏分倍數','幣別','匯率(對TWD)','不重複參與人數','參與次數(週期制)','領獎次數','完成率','預估成本(原幣)','預估成本(TWD)','實現成本(原幣)','實現成本(TWD)'], rows:tsk },
-    '活動×營運×日': { head:['活動ID','活動名稱','營運帳號','日期','幣別','匯率(對TWD)','當日不重複登入人數','當日不重複參與人數','參與率','當日參與次數(日制)','領獎次數','當日完成率(日制)','預估成本(原幣)','預估成本(TWD)','實現成本(原幣)','實現成本(TWD)'], rows:day },
+    '營運': { head:['活動ID','活動名稱','營運帳號','不重複登入人數','不重複參與人數','參與率','參與次數(週期制)','領獎次數','完成率','幣別','預估成本(原幣)','實現成本(原幣)','預估成本(TWD)','實現成本(TWD)'], rows:opr },
+    '任務': { head:['活動ID','活動名稱','營運帳號','任務編號','任務類型','重置模式','達成門檻','獎勵內容','每局投注額','最大贏分倍數','不重複參與人數','參與次數(週期制)','領獎次數','完成率','幣別','預估成本(原幣)','預估成本(TWD)'], rows:tsk },
+    '每日': { head:['活動ID','活動名稱','營運帳號','日期','當日不重複登入人數','當日不重複參與人數','參與率','當日參與次數(日制)','領獎次數','當日完成率','幣別','預估成本(原幣)','預估成本(TWD)'], rows:day },
     '匯率': { head:['幣別','對TWD匯率'], rows:Array.from(usedFx).map(c=>[c, reportFx(c)]) }
   };
   return sheets;
 }
-// 依輸出設定的明細層級,只保留勾選的工作表(匯率表一定保留,方便對照換算)
+// 依輸出設定的明細層級,只保留勾選的工作表;匯率表與各表的匯率欄位一律不匯出
 function reportExportFilterSheets(sheets, levels){
   const out = {};
   Object.keys(sheets).forEach(name=>{
     if(name==='活動彙總' && !levels.activity) return;
-    if(name==='活動×營運' && !levels.operator) return;
-    if(name==='活動×營運×任務' && !levels.task) return;
-    if(name==='活動×營運×日' && !levels.day) return;
-    out[name] = sheets[name];
+    if(name==='營運' && !levels.operator) return;
+    if(name==='任務' && !levels.task) return;
+    if(name==='每日' && !levels.day) return;
+    if(name==='匯率') return; // 匯出不附匯率表(匯率不對外揭露)
+    // 同時拿掉各表的「匯率」欄位;金額仍保留原幣與 TWD 兩欄
+    const sh = sheets[name];
+    const keep = sh.head.map((h,i)=>h.includes('匯率') ? -1 : i).filter(i=>i>=0);
+    out[name] = { head: keep.map(i=>sh.head[i]), rows: sh.rows.map(r=>keep.map(i=>r[i])) };
   });
   return out;
 }
+// 說明頁(精簡版,放在第一個頁籤):只放匯出時間與匯出條件
 function reportExportInfoRows(job){
-  const rows = [
-    ['分析報表匯出(示意數據)', null],
+  return [
     ['匯出時間', job.createdAt + ' (UTC+8)'],
     ['資料最後更新時間', REPORT_LAST_UPDATED + ' (UTC+8)'],
-    ['搜尋條件 - 活動期間', job.cond.period || '(以活動ID搜尋,忽略活動期間)'],
-    ['搜尋條件 - 活動ID', job.cond.activityId || '(未填)'],
-    ['搜尋條件 - 幣別', job.cond.currency],
-    ['搜尋條件 - 營運帳號', job.cond.operator + (job.cond.operator==='不限' ? '' : '(統計範圍同步縮小為所選營運)')],
-    ['輸出設定 - 明細層級', job.cond.levels],
     [null, null],
-    ['工作表', '一個工作表對應一個粒度,不攤成一張表,避免不重複人數、實現成本在樞紐分析時重複計算'],
-    ['不重複人數', '不可跨列或跨層級加總(同一玩家可跨任務、跨日);只有營運→活動可以相加'],
-    ['參與次數(週期制)', '任務開始或重置後,玩家首次累積任務進度即計為參與1次,以任務數量累計。用於活動彙總/活動×營運/活動×營運×任務'],
-    ['參與次數(日制)', '當日有累積任務進度即計為參與1次(不論任務是否重置),以任務數量累計。僅用於活動×營運×日,與週期制數字不一致屬正常'],
-    ['完成率', '領獎次數 ÷ 參與次數(各工作表以其參與次數口徑計算);日制完成率不會超過100%'],
-    ['參與率', '不重複參與人數 ÷ 不重複登入人數'],
-    ['預估成本', '每局投注額 × 最大贏分倍數 × 領獎次數,為成本上限;實現成本不會超過預估成本'],
-    ['實現成本', '玩家實際使用獎勵後的真實派彩,僅活動/營運層級有值,任務與日工作表留空'],
-    ['幣別換算', 'TWD金額 = 原幣金額 × 匯率;匯率取值口徑尚未定案(示意匯率)'],
-    ['時區與日期', '日邊界以 UTC+8 00:00 為準;日期 yyyy-mm-dd'],
-    ['空白儲存格', '代表該層級不適用,不是 0,避免被誤加總']
+    ['搜尋條件', null],
+    [job.cond.activityId ? '活動ID' : '活動期間', job.cond.activityId || job.cond.period],
+    ['幣別', job.cond.currency],
+    ['營運', job.cond.operator],
+    ['明細層級', job.cond.levels]
   ];
-  return rows;
 }
 function createReportExportJob(opt){
   const idQuery = opt.idQuery, start = opt.start, end = opt.end, levels = opt.levels;
@@ -5420,7 +5417,7 @@ function createReportExportJob(opt){
   }
   if(ids.length===0){ alert('沒有符合條件的活動可匯出,請調整輸出設定。'); return false; }
   const sc = reportScopeLabels(opt.currencies, opt.operators), opLabel = sc.opLabel, curLabel = sc.curLabel;
-  const levelLabel = [].concat(levels.activity?['活動彙總']:[], levels.operator?['營運']:[], levels.task?['任務']:[], levels.day?['日']:[]).join('・');
+  const levelLabel = [].concat(levels.activity?['活動彙總']:[], levels.operator?['營運']:[], levels.task?['任務']:[], levels.day?['每日']:[]).join('、');
   const cond = { activityId:idQuery, period: idQuery ? '' : `${start} ~ ${end}`, currency:curLabel, operator:opLabel, levels:levelLabel };
   const job = {
     id:'dlj-'+String(downloadJobSeq++).padStart(4,'0'),
@@ -5457,7 +5454,7 @@ function reportExportFormatSheet(ws, head, rowCount){
   ws['!cols'] = head.map(h=>({ wch: Math.max(10, Math.min(28, h.length*2.2)) }));
 }
 function downloadReportExport(job){
-  const fname = `分析報表_${job.createdAt.replace(/[^0-9]/g,'').slice(0,12)}`;
+  const fname = `任務分析_${job.createdAt.replace(/[^0-9]/g,'').slice(0,12)}`;
   if(typeof XLSX === 'undefined'){
     // 退路:SheetJS 沒載入(離線)時,只能下載單一 CSV,先給「活動彙總」
     const sh = job.sheets['活動彙總'] || job.sheets[Object.keys(job.sheets)[0]]; // 沒勾活動彙總時退回第一個明細表
@@ -5470,8 +5467,9 @@ function downloadReportExport(job){
     return;
   }
   const wb = XLSX.utils.book_new();
+  // 頁籤順序:「說明」放第一個(精簡版),接著是「營運/任務/每日」(依輸出設定勾選)
   const info = XLSX.utils.aoa_to_sheet(reportExportInfoRows(job));
-  info['!cols'] = [{wch:24},{wch:100}];
+  info['!cols'] = [{wch:20},{wch:90}];
   XLSX.utils.book_append_sheet(wb, info, '說明');
   Object.keys(job.sheets).forEach(name=>{
     const sh = job.sheets[name];
