@@ -1413,8 +1413,6 @@
       <div class="rexp-row top">
         <span class="rexp-label"><span style="color:var(--danger);">*</span>明細層級<br><span style="font-weight:400;font-size:12px;color:var(--text-secondary);">(可複選)</span></span>
         <div class="rexp-ctl" style="display:flex;flex-direction:column;gap:8px;font-size:13.5px;">
-          <label class="rexp-check"><input type="checkbox" id="rexp-lv-activity" checked> 活動彙總</label>
-          <label class="rexp-check"><input type="checkbox" id="rexp-lv-operator" checked> 營運</label>
           <label class="rexp-check"><input type="checkbox" id="rexp-lv-task" checked> 任務</label>
           <label class="rexp-check"><input type="checkbox" id="rexp-lv-day"> 每日</label>
         </div>
@@ -5177,7 +5175,7 @@ function onDlPanelAdd(){
 function exportReport(){ openReportExportModal(); }
 // 輸出設定:搜尋方式「時間」= 活動期間 + 幣別/高級營運/營運(比照既有輸出設定,沒選幣別前高級營運/營運鎖定);
 // 「活動ID」只看活動ID(精準比對,忽略其他條件)。開啟時預設帶入畫面目前的搜尋條件;
-// 明細層級預設勾「活動彙總、營運、任務」,日資料量最大所以預設不勾
+// 明細層級只有「任務」「每日」可選,預設勾任務,每日資料量最大所以預設不勾
 let reportExportMode = 'period';
 let rexpCurrencies = new Set(), rexpMasters = new Set(), rexpOperators = new Set(), rexpOperatorSearch = '';
 function setReportExportMode(mode){
@@ -5203,8 +5201,6 @@ function openReportExportModal(){
   rexpOperatorSearch = '';
   renderRexpAll();
   setReportExportMode(idQuery ? 'id' : 'period');
-  document.getElementById('rexp-lv-activity').checked = true;
-  document.getElementById('rexp-lv-operator').checked = true;
   document.getElementById('rexp-lv-task').checked = true;
   document.getElementById('rexp-lv-day').checked = false;
   document.getElementById('report-export-modal-overlay').classList.add('open');
@@ -5315,8 +5311,7 @@ function submitReportExport(){
   const start = document.getElementById('rexp-period-start').value, end = document.getElementById('rexp-period-end').value;
   if(!isId && (!start || !end)){ alert('請選擇活動期間'); return; }
   const levels = {
-    activity: document.getElementById('rexp-lv-activity').checked,
-    operator: document.getElementById('rexp-lv-operator').checked,
+    activity: false, operator: false, // 明細層級只保留「任務」「每日」;兩張表本身都已含活動ID、名稱、營運帳號
     task: document.getElementById('rexp-lv-task').checked,
     day: document.getElementById('rexp-lv-day').checked
   };
