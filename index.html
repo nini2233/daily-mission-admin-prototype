@@ -184,6 +184,22 @@
   .info-tip:hover .tip-box{visibility:visible;opacity:1;}
   /* 人工充值彈窗:內容不長,不需要靠 overflow:auto 捲動,改成 visible 讓 ⓘ 提示框不會被裁切遮住 */
   #manual-topup-modal-overlay .modal-body{overflow:visible;}
+  /* 分析報表輸出設定:日期區間選擇器的月曆面板很大,modal-body 預設會裁切(overflow:auto),改成 visible 讓面板浮在彈窗上方不被蓋住 */
+  #report-export-modal-overlay .modal-body{overflow:visible;}
+  #report-export-modal-overlay .range-picker .ms-panel{z-index:60;}
+  /* 輸出設定(分析報表):標籤在左、欄位在右的橫式排版 */
+  .rexp-row{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+  .rexp-row.top{align-items:flex-start;}
+  .rexp-label{flex:0 0 78px;font-size:14px;font-weight:600;color:var(--text);}
+  .rexp-ctl{flex:1;min-width:0;}
+  .rexp-ctl input[type=text]{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;}
+  .rexp-seg{display:flex;justify-content:flex-end;}
+  .rexp-seg .btn{border-radius:0;min-width:84px;}
+  .rexp-seg .btn:first-child{border-radius:8px 0 0 8px;}
+  .rexp-seg .btn:last-child{border-radius:0 8px 8px 0;margin-left:-1px;}
+  .rexp-hint{margin:-8px 0 16px 92px;font-size:12px;color:var(--text-secondary);}
+  .rexp-check{display:flex;align-items:center;gap:6px;cursor:pointer;}
+  .rexp-check span{font-size:12px;color:var(--text-secondary);margin-left:4px;}
   /* ---------- 用戶盈虧列表:帳號旁邊的線上狀態小圓點(僅示意,灰=離線/綠=在線) ---------- */
   .user-status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#c7c9d1;margin-right:6px;vertical-align:middle;}
   .user-status-dot.online{background:var(--success);}
@@ -351,6 +367,8 @@
   /* 統計卡靠頁面左側,說明框改成往右展開,避免被左邊界裁掉 */
   .stat-card .help-tip.wide::after{left:-8px;right:auto;}
 </style>
+<!-- 分析報表匯出用 SheetJS 產生多工作表 .xlsx;載入失敗時(離線)退回只下載「活動彙總」CSV -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -371,12 +389,13 @@
       <div class="icon-btn" title="下載" data-icon="download" onclick="toggleDlCategoryMenu()"></div>
       <div class="dl-category-menu" id="dl-category-menu">
         <div class="dl-category-item" onclick="openDownloadPanel('mission-record')">任務紀錄下載</div>
+        <div class="dl-category-item" onclick="openDownloadPanel('report')">分析報表下載</div>
       </div>
       <div class="dl-panel" id="dl-panel">
         <div class="dl-panel-header">
           <span class="dl-panel-icon" data-icon="folder"></span>
           <span class="dl-panel-title" id="dl-panel-title"></span>
-          <button class="dl-panel-add" title="新增輸出" onclick="openExportSettingModal(dlPanelCategory, false)">+</button>
+          <button class="dl-panel-add" title="新增輸出" onclick="onDlPanelAdd()">+</button>
         </div>
         <div class="dl-panel-list" id="dl-panel-list"></div>
       </div>
@@ -768,6 +787,7 @@
             </div>
             <button class="btn btn-primary" onclick="renderReportPanel()">搜尋</button>
             <button class="btn btn-outline" onclick="resetReportFilter()">重置</button>
+            <button class="btn btn-outline" onclick="exportReport()">匯出</button>
           </div>
           <div class="hint" id="report-filter-hint" style="margin-bottom:16px;"></div>
 
@@ -1315,6 +1335,98 @@
      先選搜尋方式:時間 / 活動ID,兩種欄位完全分開、不共用。
      時間模式:時間類型(開始/達成/派獎)+日期區間+高級營運(快速勾選底下所有營運)+營運+幣別+用戶帳號+狀態
      活動ID模式:只有活動ID 這一個欄位,其他條件都不提供(已指定單一活動,不需要再疊加其他篩選) ============ -->
+<!-- 分析報表匯出的輸出設定:排版比照既有「輸出設定」(標籤在左、欄位在右);
+     搜尋方式「時間」可選幣別/高級營運/營運,「活動ID」只有活動ID;明細層級兩種方式共用 -->
+<div class="modal-overlay" id="report-export-modal-overlay">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3>輸出設定</h3>
+      <span class="modal-close" onclick="closeReportExportModal()" data-icon="close"></span>
+    </div>
+    <div class="modal-body">
+      <div class="rexp-row">
+        <span class="rexp-label">搜尋方式</span>
+        <div class="rexp-ctl rexp-seg">
+          <button class="btn btn-primary" id="rexp-mode-period-btn" onclick="setReportExportMode('period')">時間</button>
+          <button class="btn btn-outline" id="rexp-mode-id-btn" onclick="setReportExportMode('id')">活動ID</button>
+        </div>
+      </div>
+      <div id="rexp-fields-period">
+        <div class="rexp-row">
+          <span class="rexp-label">活動期間</span>
+          <div class="rexp-ctl">
+            <input type="hidden" id="rexp-period-start">
+            <input type="hidden" id="rexp-period-end">
+            <div class="ms date-picker range-picker" id="rexp-range-dp" style="width:100%;">
+              <div class="ms-control" onclick="toggleRangePicker('rexp-range')">
+                <span class="ms-summary" id="rexp-range-label"></span>
+                <span class="chevron" data-icon="calendar"></span>
+              </div>
+              <div class="ms-panel" id="rexp-range-panel"></div>
+            </div>
+          </div>
+        </div>
+        <div class="rexp-hint">舉辦期間與此區間有重疊的活動都會匯出;每個活動匯出的仍是自上線以來的累計</div>
+        <div class="rexp-row">
+          <span class="rexp-label">幣別</span>
+          <div class="rexp-ctl">
+            <div class="ms" id="rexp-currency-ms">
+              <div class="ms-control" onclick="toggleDropdownById('rexp-currency-ms')">
+                <span class="ms-summary" id="rexp-currency-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="rexp-currency-panel"></div>
+            </div>
+          </div>
+        </div>
+        <div class="rexp-row">
+          <span class="rexp-label">高級營運</span>
+          <div class="rexp-ctl">
+            <div class="ms" id="rexp-master-ms">
+              <div class="ms-control" onclick="toggleRexpOperatorDropdown('master')">
+                <span class="ms-summary" id="rexp-master-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="rexp-master-panel"></div>
+            </div>
+          </div>
+        </div>
+        <div class="rexp-row">
+          <span class="rexp-label">營運</span>
+          <div class="rexp-ctl">
+            <div class="ms" id="rexp-operator-ms">
+              <div class="ms-control" onclick="toggleRexpOperatorDropdown('operator')">
+                <span class="ms-summary" id="rexp-operator-summary"></span>
+                <span class="chevron" data-icon="chevronDown"></span>
+              </div>
+              <div class="ms-panel" id="rexp-operator-panel"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="rexp-fields-id" style="display:none;">
+        <div class="rexp-row">
+          <span class="rexp-label">活動ID</span>
+          <div class="rexp-ctl"><input type="text" id="rexp-activity-id" placeholder="輸入活動ID(精準比對,忽略活動期間與幣別、營運)"></div>
+        </div>
+      </div>
+      <div class="rexp-row top">
+        <span class="rexp-label"><span style="color:var(--danger);">*</span>明細層級<br><span style="font-weight:400;font-size:12px;color:var(--text-secondary);">(可複選)</span></span>
+        <div class="rexp-ctl" style="display:flex;flex-direction:column;gap:8px;font-size:13.5px;">
+          <label class="rexp-check"><input type="checkbox" id="rexp-lv-activity" checked> 活動彙總</label>
+          <label class="rexp-check"><input type="checkbox" id="rexp-lv-operator" checked> 營運</label>
+          <label class="rexp-check"><input type="checkbox" id="rexp-lv-task" checked> 任務</label>
+          <label class="rexp-check"><input type="checkbox" id="rexp-lv-day"> 每日</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeReportExportModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitReportExport()">確認</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="export-setting-modal-overlay">
   <div class="modal" style="max-width:560px;">
     <div class="modal-header">
@@ -2139,7 +2251,10 @@ function applyDateShortcut(ns, kind){
 
 // ---- 區間選擇器(雙月曆 + 快捷側欄):目前只給分析報表的「活動期間」使用 ----
 // 先點起日、再點迄日(迄日早於起日會自動對調),選完即套用並收合;起訖值寫回 hidden input,搜尋仍由「搜尋」按鈕觸發。
-const RANGE_PICKER_CFG = { 'report-range': { startId:'report-id-period-start', endId:'report-id-period-end' } };
+const RANGE_PICKER_CFG = {
+  'report-range': { startId:'report-id-period-start', endId:'report-id-period-end' },
+  'rexp-range': { startId:'rexp-period-start', endId:'rexp-period-end' } // 分析報表「輸出設定」彈窗用
+};
 let rangePickerState = {}; // ns -> { year, month, pending }(year/month 為左側月曆;pending 為已點起日、尚未點迄日)
 function rangePickerValues(ns){
   const c = RANGE_PICKER_CFG[ns];
@@ -3682,7 +3797,8 @@ function getRecordsForExportSnapshot(snapshot){
    openExportSettingModal(該分類, true) 即可沿用同一套下載列表/非同步任務機制
    ============================================================ */
 const DOWNLOAD_CATEGORIES = {
-  'mission-record': { title:'任務紀錄下載', filename:'任務紀錄' }
+  'mission-record': { title:'任務紀錄下載', filename:'任務紀錄' },
+  'report': { title:'分析報表下載', filename:'分析報表' }
 };
 // 示意用:預先放一筆「已完成」的歷史任務,讓下載列表一開始不是空的(比照參考截圖的呈現方式)
 let downloadJobs = [
@@ -3757,6 +3873,7 @@ function deleteDownloadJob(jobId){
 function downloadJobFile(jobId){
   const job = downloadJobs.find(j=>j.id===jobId);
   if(!job || job.status!=='done') return; // 尚未完成的任務,下載icon本身也已用 disabled 樣式擋掉點擊
+  if(job.category==='report'){ downloadReportExport(job); return; }
   const rows = getRecordsForExportSnapshot(job.filterSnapshot);
   buildAndDownloadRecordsCsv(rows, DOWNLOAD_CATEGORIES[job.category].filename);
 }
@@ -5046,6 +5163,329 @@ function resetReportFilter(){
   reportFilterOperatorSearch = '';
   renderReportPanel();
 }
+/* ============================================================
+   分析報表匯出:內容跟著畫面上目前的搜尋條件(活動期間/活動ID/幣別/營運),建立當下做快照,
+   走「匯出下載中心 > 分析報表下載」的非同步任務;下載的是 .xlsx,一個工作表對應一個粒度:
+   說明 / 活動彙總 / 活動×營運 / 活動×營運×任務 / 活動×營運×日 / 匯率。
+   不重複人數不可跨層加總,所以不攤成一張表;不適用的欄位留空(不填「-」或 0);金額同時給原幣與 TWD。
+   示意數據沿用畫面同一套計算,正式版應由後端依同樣口徑產生。
+   ============================================================ */
+function onDlPanelAdd(){
+  if(dlPanelCategory==='report'){ openReportExportModal(); return; }
+  openExportSettingModal(dlPanelCategory, false);
+}
+function exportReport(){ openReportExportModal(); }
+// 輸出設定:搜尋方式「時間」= 活動期間 + 幣別/高級營運/營運(比照既有輸出設定,沒選幣別前高級營運/營運鎖定);
+// 「活動ID」只看活動ID(精準比對,忽略其他條件)。開啟時預設帶入畫面目前的搜尋條件;
+// 明細層級預設勾「活動彙總、營運、任務」,日資料量最大所以預設不勾
+let reportExportMode = 'period';
+let rexpCurrencies = new Set(), rexpMasters = new Set(), rexpOperators = new Set(), rexpOperatorSearch = '';
+function setReportExportMode(mode){
+  reportExportMode = mode;
+  document.getElementById('rexp-mode-period-btn').className = mode==='period' ? 'btn btn-primary' : 'btn btn-outline';
+  document.getElementById('rexp-mode-id-btn').className = mode==='id' ? 'btn btn-primary' : 'btn btn-outline';
+  document.getElementById('rexp-fields-period').style.display = mode==='period' ? '' : 'none';
+  document.getElementById('rexp-fields-id').style.display = mode==='id' ? '' : 'none';
+  closeAllDropdowns();
+}
+function openReportExportModal(){
+  closeDownloadPanel(); closeDlCategoryMenu();
+  const idQuery = document.getElementById('report-id-input').value.trim();
+  setRangePickerValues('rexp-range', document.getElementById('report-id-period-start').value, document.getElementById('report-id-period-end').value);
+  document.getElementById('rexp-activity-id').value = idQuery;
+  // 帶入畫面目前的幣別/營運;只選了營運沒選幣別時,幣別依所選營運反推,才符合「先選幣別才能選營運」的規則
+  rexpCurrencies = new Set(reportFilterCurrencies);
+  rexpOperators = new Set(reportFilterOperators);
+  rexpMasters = new Set();
+  if(rexpCurrencies.size===0 && rexpOperators.size>0){
+    operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(rexpOperators.has(c.id)) rexpCurrencies.add(c.currency); }));
+  }
+  rexpOperatorSearch = '';
+  renderRexpAll();
+  setReportExportMode(idQuery ? 'id' : 'period');
+  document.getElementById('rexp-lv-activity').checked = true;
+  document.getElementById('rexp-lv-operator').checked = true;
+  document.getElementById('rexp-lv-task').checked = true;
+  document.getElementById('rexp-lv-day').checked = false;
+  document.getElementById('report-export-modal-overlay').classList.add('open');
+}
+function closeReportExportModal(){
+  document.getElementById('report-export-modal-overlay').classList.remove('open');
+  closeAllDropdowns();
+}
+/* ---- 幣別 → 高級營運 → 營運 三個選擇器(邏輯比照既有輸出設定,id 前綴 rexp-) ---- */
+function renderRexpAll(){
+  renderRexpCurrency(); renderRexpMaster(); renderRexpOperator();
+  const on = rexpCurrencies.size>0;
+  document.getElementById('rexp-master-ms').classList.toggle('disabled', !on);
+  document.getElementById('rexp-operator-ms').classList.toggle('disabled', !on);
+}
+function toggleRexpOperatorDropdown(key){
+  if(rexpCurrencies.size===0) return; // 沒選幣別前鎖定
+  toggleDropdownById('rexp-'+key+'-ms');
+}
+function renderRexpCurrency(){
+  const el = document.getElementById('rexp-currency-summary');
+  if(rexpCurrencies.size===0){ el.textContent='請選擇幣別'; el.classList.add('placeholder'); }
+  else{ el.classList.remove('placeholder'); el.textContent = '幣別:'+CURRENCIES.filter(c=>rexpCurrencies.has(c.code)).map(c=>c.code).join('、'); }
+  document.getElementById('rexp-currency-panel').innerHTML = `<div class="ms-list">${CURRENCIES.map(c=>`
+    <label class="ms-option">
+      <input type="checkbox" ${rexpCurrencies.has(c.code)?'checked':''} onchange="toggleRexpCurrency('${c.code}', this.checked)"> ${c.name}
+    </label>`).join('')}</div>`;
+}
+function toggleRexpCurrency(code, checked){
+  if(checked) rexpCurrencies.add(code); else rexpCurrencies.delete(code);
+  // 幣別變動後,清掉不再符合幣別的已選營運/高級營運
+  const validIds = new Set();
+  operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(rexpCurrencies.has(c.currency)) validIds.add(c.id); }));
+  Array.from(rexpOperators).forEach(id=>{ if(!validIds.has(id)) rexpOperators.delete(id); });
+  Array.from(rexpMasters).forEach(pid=>{
+    const p = operatorTreeData.find(x=>x.id===pid);
+    if(!(p && p.children.some(c=>rexpCurrencies.has(c.currency)))) rexpMasters.delete(pid);
+  });
+  renderRexpAll();
+}
+function renderRexpMaster(){
+  const el = document.getElementById('rexp-master-summary'), panel = document.getElementById('rexp-master-panel');
+  if(rexpCurrencies.size===0){ el.textContent='請先選擇幣別'; el.classList.add('placeholder'); panel.innerHTML='<div class="ms-empty">請先選擇幣別</div>'; return; }
+  if(rexpMasters.size===0){ el.textContent='請選擇高級營運'; el.classList.add('placeholder'); }
+  else{ el.classList.remove('placeholder'); el.textContent = '高級營運:'+operatorTreeData.filter(p=>rexpMasters.has(p.id)).map(p=>p.name).join('、'); }
+  panel.innerHTML = `<div class="ms-list">${operatorTreeData.map(p=>{
+    const valid = p.children.filter(c=>rexpCurrencies.has(c.currency));
+    if(valid.length===0) return '';
+    const all = valid.every(c=>rexpOperators.has(c.id)), some = valid.some(c=>rexpOperators.has(c.id));
+    return `<label class="ms-option">
+      <input type="checkbox" ${all?'checked':''} data-indeterminate="${some && !all}" onchange="toggleRexpMaster('${p.id}', this.checked)">
+      ${p.name}<span class="tag" style="margin-left:6px;">${valid.length} 筆</span>
+    </label>`;
+  }).join('')}</div>`;
+  panel.querySelectorAll('[data-indeterminate]').forEach(chk=>{ chk.indeterminate = chk.getAttribute('data-indeterminate')==='true'; });
+}
+function toggleRexpMaster(parentId, checked){
+  const p = operatorTreeData.find(x=>x.id===parentId);
+  if(!p) return;
+  p.children.filter(c=>rexpCurrencies.has(c.currency)).forEach(c=>{ if(checked) rexpOperators.add(c.id); else rexpOperators.delete(c.id); });
+  if(checked) rexpMasters.add(parentId); else rexpMasters.delete(parentId);
+  renderRexpMaster(); renderRexpOperator();
+}
+function renderRexpOperator(){
+  const el = document.getElementById('rexp-operator-summary'), panel = document.getElementById('rexp-operator-panel');
+  if(rexpCurrencies.size===0){ el.textContent='請先選擇幣別'; el.classList.add('placeholder'); panel.innerHTML='<div class="ms-empty">請先選擇幣別,才會列出對應營運</div>'; return; }
+  if(rexpOperators.size===0){ el.textContent='請選擇營運'; el.classList.add('placeholder'); }
+  else{
+    el.classList.remove('placeholder');
+    const names = [];
+    operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(rexpOperators.has(c.id)) names.push(c.name); }));
+    el.textContent = `營運:已選 ${names.length} 個${names.length>2? '('+names.slice(0,2).join('、')+' 等)':''}`;
+  }
+  panel.innerHTML = `
+    <div class="ms-search"><input type="text" placeholder="搜尋營運名稱" value="${rexpOperatorSearch}" oninput="onRexpOperatorSearch(this.value)"></div>
+    <div class="ms-list" id="rexp-operator-ms-list"></div>`;
+  renderRexpOperatorList();
+}
+function renderRexpOperatorList(){
+  const list = document.getElementById('rexp-operator-ms-list');
+  if(!list) return;
+  const kw = rexpOperatorSearch.trim().toLowerCase();
+  const groups = operatorTreeData.map(parent=>({ parent, children: parent.children.filter(c=>rexpCurrencies.has(c.currency) && (!kw || c.name.toLowerCase().includes(kw))) })).filter(g=>g.children.length>0);
+  list.innerHTML = groups.length===0 ? '<div class="ms-empty">查無符合的營運</div>' : groups.map(g=>`
+    <div class="ms-group-title" style="cursor:default;">${g.parent.name}<span class="tag" style="margin-left:6px;">${g.children.length} 筆</span></div>
+    ${g.children.map(c=>`
+      <label class="ms-option">
+        <input type="checkbox" ${rexpOperators.has(c.id)?'checked':''} onchange="toggleRexpOperator('${c.id}', this.checked)"> ${c.name} <span class="tag">${c.currency}</span>
+      </label>`).join('')}
+  `).join('');
+}
+function onRexpOperatorSearch(val){ rexpOperatorSearch = val; renderRexpOperatorList(); }
+function toggleRexpOperator(id, checked){
+  if(checked) rexpOperators.add(id); else rexpOperators.delete(id);
+  renderRexpOperator(); renderRexpMaster();
+}
+function reportScopeLabels(curSet, opSet){
+  const opNames = [];
+  operatorTreeData.forEach(p=>p.children.forEach(c=>{ if(opSet.has(c.id)) opNames.push(c.name); }));
+  const opLabel = opNames.length===0 ? '不限' : (opNames.length<=2 ? opNames.join('、') : `已選 ${opNames.length} 個(${opNames.slice(0,2).join('、')} 等)`);
+  const curLabel = curSet.size===0 ? '不限' : Array.from(curSet).join('、');
+  return { opLabel, curLabel };
+}
+function submitReportExport(){
+  const isId = reportExportMode==='id';
+  const idQuery = isId ? document.getElementById('rexp-activity-id').value.trim() : '';
+  if(isId && !idQuery){ alert('請輸入活動ID'); return; }
+  const start = document.getElementById('rexp-period-start').value, end = document.getElementById('rexp-period-end').value;
+  if(!isId && (!start || !end)){ alert('請選擇活動期間'); return; }
+  const levels = {
+    activity: document.getElementById('rexp-lv-activity').checked,
+    operator: document.getElementById('rexp-lv-operator').checked,
+    task: document.getElementById('rexp-lv-task').checked,
+    day: document.getElementById('rexp-lv-day').checked
+  };
+  if(!levels.activity && !levels.operator && !levels.task && !levels.day){ alert('請至少選擇一個明細層級'); return; }
+  // 活動ID模式只看活動ID,不套用幣別/營運;時間模式才套用輸出設定裡選的幣別/營運
+  const currencies = isId ? new Set() : new Set(rexpCurrencies), operators = isId ? new Set() : new Set(rexpOperators);
+  if(createReportExportJob({ idQuery, start, end, levels, currencies, operators })){
+    closeReportExportModal();
+    openDownloadPanel('report');
+  }
+}
+function reportExportBuild(ids){
+  const r2 = n => Math.round(n*100)/100;
+  const rate = (a,b) => b>0 ? a/b : null;
+  const act=[], opr=[], tsk=[], day=[], usedFx = new Set();
+  ids.forEach(id=>{
+    const m = reportData[id], fx = reportFx(m.currency);
+    usedFx.add(m.currency);
+    const totals = reportMissionTotals(m), sc = reportScopedTotals(m);
+    const nomOrig = fx>0 ? sc.nominalTWD/fx : 0;
+    const realOrig = sc.ops.reduce((a,o)=>a+o.realizedCost, 0);
+    act.push([id, m.name, m.startDate, m.endDate, m.currency, fx, sc.ops.length, sc.active, sc.uniqueParticipants,
+      rate(sc.uniqueParticipants, sc.active), sc.participants, sc.rewardedCount, rate(sc.rewardedCount, sc.participants),
+      r2(nomOrig), Math.round(sc.nominalTWD), r2(realOrig), Math.round(sc.realizedTWD), rate(realOrig, nomOrig),
+      rate(Math.round(sc.realizedTWD), sc.uniqueParticipants)]);
+    const series = reportActivityDailySeries(m);
+    sc.ops.forEach(op=>{
+      const opNomOrig = totals.nominal * op.fraction;
+      opr.push([id, m.name, op.name, m.currency, fx, op.siteActive, op.uniqueParticipants, rate(op.uniqueParticipants, op.siteActive),
+        op.participants, op.rewardedCount, rate(op.rewardedCount, op.participants),
+        r2(opNomOrig), Math.round(opNomOrig*fx), r2(op.realizedCost), Math.round(op.realizedTWD),
+        rate(op.realizedCost, opNomOrig), rate(Math.round(op.realizedTWD), op.uniqueParticipants)]);
+      m.tasks.forEach(t=>{
+        const claimed = Math.round(t.claimed * op.fraction), rewarded = Math.round(t.rewarded * op.fraction);
+        const nom = reportTaskNominal(t) * op.fraction;
+        tsk.push([id, m.name, op.name, t.no, (TASK_TYPES[t.taskType]||{}).label || t.taskType, t.resetMode==='none'?'活動期間不重置':'每日重置',
+          t.threshold, t.rewardContent, t.betLevel, t.maxWinMultiplier, m.currency, fx,
+          reportTaskUnique(m, t, op, 1), claimed, rewarded, rate(rewarded, claimed), r2(nom), Math.round(nom*fx), null, null]);
+      });
+      series.forEach(d=>{
+        const dp = Math.round(d.participants * op.dayFraction), dr = Math.round(d.rewarded * op.fraction);
+        const dnTWD = d.nominalTWD * op.fraction, dau = reportSiteDau(op, d), uq = Math.min(reportDayUnique(m, d, op), dau);
+        day.push([id, m.name, op.name, d.dateStr, m.currency, fx, dau, uq, rate(uq, dau), dp, dr, rate(dr, dp),
+          fx>0 ? r2(dnTWD/fx) : null, Math.round(dnTWD), null, null]);
+      });
+    });
+  });
+  // 欄位名稱裡含「原幣」「TWD」「率」「人數」「次數」會被套用對應的數字格式(見 reportExportFormatSheet)
+  const sheets = {
+    '活動彙總': { head:['活動ID','活動名稱','活動起日','活動迄日','幣別','匯率(對TWD)','營運數','不重複登入人數','不重複參與人數','參與率','參與次數(週期制)','領獎次數','完成率','預估成本(原幣)','預估成本(TWD)','實現成本(原幣)','實現成本(TWD)','實現成本率(實現÷預估)','每位參與玩家實現成本(TWD)'], rows:act },
+    '活動×營運': { head:['活動ID','活動名稱','營運帳號','幣別','匯率(對TWD)','不重複登入人數','不重複參與人數','參與率','參與次數(週期制)','領獎次數','完成率','預估成本(原幣)','預估成本(TWD)','實現成本(原幣)','實現成本(TWD)','實現成本率(實現÷預估)','每位參與玩家實現成本(TWD)'], rows:opr },
+    '活動×營運×任務': { head:['活動ID','活動名稱','營運帳號','任務編號','任務類型','重置模式','達成門檻','獎勵內容','每局投注額','最大贏分倍數','幣別','匯率(對TWD)','不重複參與人數','參與次數(週期制)','領獎次數','完成率','預估成本(原幣)','預估成本(TWD)','實現成本(原幣)','實現成本(TWD)'], rows:tsk },
+    '活動×營運×日': { head:['活動ID','活動名稱','營運帳號','日期','幣別','匯率(對TWD)','當日不重複登入人數','當日不重複參與人數','參與率','當日參與次數(日制)','領獎次數','當日完成率(日制)','預估成本(原幣)','預估成本(TWD)','實現成本(原幣)','實現成本(TWD)'], rows:day },
+    '匯率': { head:['幣別','對TWD匯率'], rows:Array.from(usedFx).map(c=>[c, reportFx(c)]) }
+  };
+  return sheets;
+}
+// 依輸出設定的明細層級,只保留勾選的工作表(匯率表一定保留,方便對照換算)
+function reportExportFilterSheets(sheets, levels){
+  const out = {};
+  Object.keys(sheets).forEach(name=>{
+    if(name==='活動彙總' && !levels.activity) return;
+    if(name==='活動×營運' && !levels.operator) return;
+    if(name==='活動×營運×任務' && !levels.task) return;
+    if(name==='活動×營運×日' && !levels.day) return;
+    out[name] = sheets[name];
+  });
+  return out;
+}
+function reportExportInfoRows(job){
+  const rows = [
+    ['分析報表匯出(示意數據)', null],
+    ['匯出時間', job.createdAt + ' (UTC+8)'],
+    ['資料最後更新時間', REPORT_LAST_UPDATED + ' (UTC+8)'],
+    ['搜尋條件 - 活動期間', job.cond.period || '(以活動ID搜尋,忽略活動期間)'],
+    ['搜尋條件 - 活動ID', job.cond.activityId || '(未填)'],
+    ['搜尋條件 - 幣別', job.cond.currency],
+    ['搜尋條件 - 營運帳號', job.cond.operator + (job.cond.operator==='不限' ? '' : '(統計範圍同步縮小為所選營運)')],
+    ['輸出設定 - 明細層級', job.cond.levels],
+    [null, null],
+    ['工作表', '一個工作表對應一個粒度,不攤成一張表,避免不重複人數、實現成本在樞紐分析時重複計算'],
+    ['不重複人數', '不可跨列或跨層級加總(同一玩家可跨任務、跨日);只有營運→活動可以相加'],
+    ['參與次數(週期制)', '任務開始或重置後,玩家首次累積任務進度即計為參與1次,以任務數量累計。用於活動彙總/活動×營運/活動×營運×任務'],
+    ['參與次數(日制)', '當日有累積任務進度即計為參與1次(不論任務是否重置),以任務數量累計。僅用於活動×營運×日,與週期制數字不一致屬正常'],
+    ['完成率', '領獎次數 ÷ 參與次數(各工作表以其參與次數口徑計算);日制完成率不會超過100%'],
+    ['參與率', '不重複參與人數 ÷ 不重複登入人數'],
+    ['預估成本', '每局投注額 × 最大贏分倍數 × 領獎次數,為成本上限;實現成本不會超過預估成本'],
+    ['實現成本', '玩家實際使用獎勵後的真實派彩,僅活動/營運層級有值,任務與日工作表留空'],
+    ['幣別換算', 'TWD金額 = 原幣金額 × 匯率;匯率取值口徑尚未定案(示意匯率)'],
+    ['時區與日期', '日邊界以 UTC+8 00:00 為準;日期 yyyy-mm-dd'],
+    ['空白儲存格', '代表該層級不適用,不是 0,避免被誤加總']
+  ];
+  return rows;
+}
+function createReportExportJob(opt){
+  const idQuery = opt.idQuery, start = opt.start, end = opt.end, levels = opt.levels;
+  // 匯出用輸出設定裡選的幣別/營運(不是畫面目前的條件):暫時換掉全域篩選狀態,算完立刻還原
+  const savedCur = reportFilterCurrencies, savedOps = reportFilterOperators;
+  reportFilterCurrencies = opt.currencies; reportFilterOperators = opt.operators;
+  let ids, sheets;
+  try{
+    ids = reportFindActivityIds(idQuery, start, end);
+    sheets = ids.length ? reportExportFilterSheets(reportExportBuild(ids), levels) : null;
+  }finally{
+    reportFilterCurrencies = savedCur; reportFilterOperators = savedOps;
+  }
+  if(ids.length===0){ alert('沒有符合條件的活動可匯出,請調整輸出設定。'); return false; }
+  const sc = reportScopeLabels(opt.currencies, opt.operators), opLabel = sc.opLabel, curLabel = sc.curLabel;
+  const levelLabel = [].concat(levels.activity?['活動彙總']:[], levels.operator?['營運']:[], levels.task?['任務']:[], levels.day?['日']:[]).join('・');
+  const cond = { activityId:idQuery, period: idQuery ? '' : `${start} ~ ${end}`, currency:curLabel, operator:opLabel, levels:levelLabel };
+  const job = {
+    id:'dlj-'+String(downloadJobSeq++).padStart(4,'0'),
+    category:'report',
+    title:`營運:${opLabel}`,
+    lines:[ idQuery ? `活動ID:${idQuery}` : `活動期間:${start} ~ ${end}`, `幣別:${curLabel}・${ids.length} 個活動`, `明細:${levelLabel}` ],
+    createdAt: formatDateTime(new Date()),
+    status:'processing',
+    cond, sheets // 建立當下做資料快照,之後畫面條件再變也不影響這筆匯出
+  };
+  downloadJobs.unshift(job);
+  if(dlPanelOpen && dlPanelCategory==='report') renderDownloadPanel();
+  // 示意用:模擬後端非同步產生檔案,1.5 秒後轉為「已完成」;正式串接應由後端完成後通知/前端輪詢狀態
+  setTimeout(()=>{
+    const target = downloadJobs.find(j=>j.id===job.id);
+    if(target) target.status = 'done';
+    if(dlPanelOpen) renderDownloadPanel();
+  }, 1500);
+  return true;
+}
+// 依欄位名稱套用數字格式:率→百分比;匯率→4位小數;TWD/人數/次數→千分位整數;原幣→千分位2位小數
+function reportExportFormatSheet(ws, head, rowCount){
+  head.forEach((h,ci)=>{
+    let z = null;
+    if(h.includes('率(') || /率$/.test(h) || h==='參與率') z = (h.includes('匯率')) ? '0.0000' : '0.0%';
+    else if(h.includes('原幣')) z = '#,##0.00';
+    else if(h.includes('TWD') || h.includes('人數') || h.includes('次數')) z = '#,##0';
+    if(!z) return;
+    for(let r=1; r<=rowCount; r++){
+      const addr = XLSX.utils.encode_cell({r, c:ci});
+      if(ws[addr] && ws[addr].t==='n') ws[addr].z = z;
+    }
+  });
+  ws['!cols'] = head.map(h=>({ wch: Math.max(10, Math.min(28, h.length*2.2)) }));
+}
+function downloadReportExport(job){
+  const fname = `分析報表_${job.createdAt.replace(/[^0-9]/g,'').slice(0,12)}`;
+  if(typeof XLSX === 'undefined'){
+    // 退路:SheetJS 沒載入(離線)時,只能下載單一 CSV,先給「活動彙總」
+    const sh = job.sheets['活動彙總'] || job.sheets[Object.keys(job.sheets)[0]]; // 沒勾活動彙總時退回第一個明細表
+    const esc = v => v===null||v===undefined ? '' : '"'+String(v).replace(/"/g,'""')+'"';
+    const csv = '﻿' + [sh.head].concat(sh.rows).map(r=>r.map(esc).join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+    a.download = fname + '_' + (job.sheets['活動彙總'] ? '活動彙總' : Object.keys(job.sheets)[0]) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  const info = XLSX.utils.aoa_to_sheet(reportExportInfoRows(job));
+  info['!cols'] = [{wch:24},{wch:100}];
+  XLSX.utils.book_append_sheet(wb, info, '說明');
+  Object.keys(job.sheets).forEach(name=>{
+    const sh = job.sheets[name];
+    const ws = XLSX.utils.aoa_to_sheet([sh.head].concat(sh.rows));
+    reportExportFormatSheet(ws, sh.head, sh.rows.length);
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  });
+  XLSX.writeFile(wb, fname + '.xlsx');
+}
 function renderReportCurrencyControls(){
   ['report-id-currency-summary'].forEach(sid=>{
     const el = document.getElementById(sid);
@@ -5381,6 +5821,24 @@ function renderReportDailyTable(){
 // 幣別/營運帳號是定位條件,兩種方式都套用,只決定哪些活動出現,不影響統計數字。
 // 列出的永遠是各活動自上線以來的完整累計(含實現成本);查到多筆時上方卡片是這些活動的加總,
 // 上方卡片不放不重複參與人數:跨活動去重需要玩家集合聯集,不能把各活動人數直接相加。
+// 依「活動ID(有填則忽略活動期間)/活動期間 + 目前的幣別、營運條件」找出活動清單;畫面搜尋與匯出共用同一套
+function reportFindActivityIds(idQuery, startStr, endStr){
+  if(idQuery){
+    return reportData[idQuery] && reportActivityMatchesFilter(reportData[idQuery]) ? [idQuery] : [];
+  }
+  const searchStart = startStr ? new Date(startStr + 'T00:00:00') : null;
+  const searchEnd = endStr ? new Date(endStr + 'T23:59:59') : null;
+  return Object.keys(reportData).filter(id=>{
+    const m = reportData[id];
+    if(!reportActivityMatchesFilter(m)) return false;
+    if(!m.startDate || !m.endDate) return false;
+    const actStart = new Date(m.startDate + 'T00:00:00');
+    const actEnd = new Date(m.endDate + 'T23:59:59');
+    if(searchStart && actEnd < searchStart) return false;
+    if(searchEnd && actStart > searchEnd) return false;
+    return true;
+  });
+}
 function renderReportResults(){
   const idQuery = document.getElementById('report-id-input').value.trim();
   const byId = idQuery !== '';
@@ -5389,25 +5847,7 @@ function renderReportResults(){
     ? '說明:已輸入活動ID,以ID精準查詢並忽略活動期間;顯示該活動自上線以來的全部累計。'
     : '說明:活動期間僅用來找出舉辦期間與所選範圍有重疊的活動,列表顯示的是各活動自上線以來的完整累計,並非這段期間的統計。');
 
-  let ids;
-  if(byId){
-    ids = reportData[idQuery] && reportActivityMatchesFilter(reportData[idQuery]) ? [idQuery] : [];
-  }else{
-    const startStr = document.getElementById('report-id-period-start').value;
-    const endStr = document.getElementById('report-id-period-end').value;
-    const searchStart = startStr ? new Date(startStr + 'T00:00:00') : null;
-    const searchEnd = endStr ? new Date(endStr + 'T23:59:59') : null;
-    ids = Object.keys(reportData).filter(id=>{
-      const m = reportData[id];
-      if(!reportActivityMatchesFilter(m)) return false;
-      if(!m.startDate || !m.endDate) return false;
-      const actStart = new Date(m.startDate + 'T00:00:00');
-      const actEnd = new Date(m.endDate + 'T23:59:59');
-      if(searchStart && actEnd < searchStart) return false;
-      if(searchEnd && actStart > searchEnd) return false;
-      return true;
-    });
-  }
+  const ids = reportFindActivityIds(idQuery, document.getElementById('report-id-period-start').value, document.getElementById('report-id-period-end').value);
 
   reportIdModeIds = ids;
   reportIdModeForceOpenAll = byId;
